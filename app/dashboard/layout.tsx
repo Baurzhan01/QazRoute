@@ -70,7 +70,7 @@ export default function DashboardLayout({ children }) {
               </SheetContent>
             </Sheet>
             <Link href="/" className="flex items-center gap-2">
-              <img src="/images/logo-qazroute.png" alt="QAZROUTE" className="h-6 w-auto" />
+              <img src="/images/logo-qazroute.png" alt="QAZROUTE" className="h-20 w-auto" />
               <span className="font-bold hidden md:inline-block">Управление автобусным парком</span>
             </Link>
           </div>

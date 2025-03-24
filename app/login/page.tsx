@@ -147,8 +147,11 @@ export default function LoginPage() {
       const { token, role } = response.value
   
       localStorage.setItem("authToken", token)
-      console.log(role);
-      router.push(`/dashboard/${role}`) // Например: /dashboard/admin
+      const normalizedRole = role
+      .replace(/([a-z])([A-Z])/g, "$1-$2") // добавляет дефис между словами
+      .toLowerCase()
+
+      router.push(`/dashboard/${normalizedRole}`) // Например: /dashboard/admin
     } catch (err) {
       console.error("Ошибка входа:", err)
       setError("Ошибка подключения к серверу")
@@ -161,7 +164,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-sky-100 to-white p-4">
       <Link href="/" className="absolute left-8 top-8 flex items-center text-sky-700">
-        <img src="/images/logo-qazroute.png" alt="QAZROUTE" className="h-8 w-auto mr-2" />
+        <img src="/images/logo-qazroute.png" alt="QAZROUTE" className="h-20 w-auto mr-2" />
         <span className="font-bold">Управление автобусным парком</span>
       </Link>
 

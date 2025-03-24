@@ -10,7 +10,7 @@ export default function Home() {
         <div className="container flex h-16 items-center">
           <div className="mr-4 flex items-center space-x-2">
             <Link href="/" className="flex items-center">
-              <img src="/images/logo-qazroute.png" alt="QAZROUTE" className="h-8 w-auto" />
+              <img src="/images/logo-qazroute.png" alt="QAZROUTE" className="h-20 w-auto" />
             </Link>
             <span className="hidden font-bold sm:inline-block">Управление автобусным парком</span>
           </div>
