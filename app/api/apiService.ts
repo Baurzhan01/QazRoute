@@ -84,6 +84,7 @@ async function fetchApi<T>(
     requestHeaders["Authorization"] = `Bearer ${token}`;
   }
 
+  
   const config: RequestInit = {
     method,
     headers: requestHeaders,
