@@ -1,25 +1,19 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Briefcase, Clock, FileText, Users, Wrench, UserPlus } from "lucide-react"
-import UserCard from "../UserCard"
-import type { User } from "../../types"
+import { Button } from "@/components/ui/button";
+import { Briefcase, Clock, FileText, Users, Wrench, UserPlus } from "lucide-react";
+import UserCard from "../UserCard";
+import type { User } from "../../types";
 
 interface UsersTabProps {
-  usersByRole: {
-    fleetManager: User[]
-    seniorDispatcher: User[]
-    dispatcher: User[]
-    mechanic: User[]
-    hr: User[]
-    taksirovka: User[]
-  }
-  onEditUser: (user: User) => void
-  onViewUsers: (role: string) => void
-  onAddUser: () => void
+  usersByRole: Partial<Record<User["role"], User[]>>;
+  onEditUser: (user: User) => void;
+  onViewUsers: (role: string) => void;
+  onAddUser: () => void;
+  onDeleteUser: (userId: string) => void; // Добавляем пропс для удаления
 }
 
-export default function UsersTab({ usersByRole, onEditUser, onViewUsers, onAddUser }: UsersTabProps) {
+export default function UsersTab({ usersByRole, onEditUser, onViewUsers, onAddUser, onDeleteUser }: UsersTabProps) {
   return (
     <div className="space-y-6">
       <div className="mb-6 flex justify-between items-center">
@@ -31,97 +25,61 @@ export default function UsersTab({ usersByRole, onEditUser, onViewUsers, onAddUs
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Карточка начальников колонн */}
         <UserCard
-          title={
-            <div className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5" />
-              Начальники колонн
-            </div>
-          }
-          role="fleet-manager"
-          users={usersByRole.fleetManager}
+          title={<div className="flex items-center gap-2"><Briefcase className="h-5 w-5" /> Начальники колонн</div>}
+          role="fleetManager"
+          users={usersByRole.fleetManager || []}
           onEdit={onEditUser}
           onViewAll={onViewUsers}
           onAddUser={onAddUser}
+          onDelete={onDeleteUser} // Передаем обработчик удаления
         />
-
-        {/* Карточка старших диспетчеров */}
         <UserCard
-          title={
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Старшие диспетчеры
-            </div>
-          }
-          role="senior-dispatcher"
-          users={usersByRole.seniorDispatcher}
+          title={<div className="flex items-center gap-2"><Clock className="h-5 w-5" /> Старшие диспетчеры</div>}
+          role="seniorDispatcher"
+          users={usersByRole.seniorDispatcher || []}
           onEdit={onEditUser}
           onViewAll={onViewUsers}
           onAddUser={onAddUser}
+          onDelete={onDeleteUser}
         />
-
-        {/* Карточка диспетчеров */}
         <UserCard
-          title={
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Диспетчеры
-            </div>
-          }
+          title={<div className="flex items-center gap-2"><Clock className="h-5 w-5" /> Диспетчеры</div>}
           role="dispatcher"
-          users={usersByRole.dispatcher}
+          users={usersByRole.dispatcher || []}
           onEdit={onEditUser}
           onViewAll={onViewUsers}
           onAddUser={onAddUser}
+          onDelete={onDeleteUser}
         />
-
-        {/* Карточка механиков */}
         <UserCard
-          title={
-            <div className="flex items-center gap-2">
-              <Wrench className="h-5 w-5" />
-              Механики
-            </div>
-          }
+          title={<div className="flex items-center gap-2"><Wrench className="h-5 w-5" /> Механики</div>}
           role="mechanic"
-          users={usersByRole.mechanic}
+          users={usersByRole.mechanic || []}
           onEdit={onEditUser}
           onViewAll={onViewUsers}
           onAddUser={onAddUser}
+          onDelete={onDeleteUser}
         />
-
-        {/* Карточка отдела кадров */}
         <UserCard
-          title={
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Отдел кадров
-            </div>
-          }
+          title={<div className="flex items-center gap-2"><Users className="h-5 w-5" /> Отдел кадров</div>}
           role="hr"
-          users={usersByRole.hr}
+          users={usersByRole.hr || []}
           onEdit={onEditUser}
           onViewAll={onViewUsers}
           onAddUser={onAddUser}
+          onDelete={onDeleteUser}
         />
-
-        {/* Карточка отдела таксировки */}
         <UserCard
-          title={
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Отдел таксировки
-            </div>
-          }
-          role="taksirovka"
-          users={usersByRole.taksirovka}
+          title={<div className="flex items-center gap-2"><FileText className="h-5 w-5" /> Отдел таксировки</div>}
+          role="taskInspector"
+          users={usersByRole.taskInspector || []}
           onEdit={onEditUser}
           onViewAll={onViewUsers}
           onAddUser={onAddUser}
+          onDelete={onDeleteUser}
         />
       </div>
     </div>
-  )
+  );
 }
-

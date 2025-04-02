@@ -1,47 +1,57 @@
-// Типы данных для страницы управления автобусным парком
-
 export interface User {
-    id: string
-    name: string
-    email: string
-    role: string
-    position?: string
-    avatar?: string
-    convoyId?: string
-    convoyNumber?: number
-  }
-  
-  export interface BusDepot {
-    id: string
-    name: string
-    city: string
-    address: string
-    logo?: string
-  }
-  
-  export interface Convoy {
-    id: string
-    number: number
-    busDepotId: string
-    chiefId?: string
-    mechanicId?: string
-    busIds: string[]
-  }
-  
-  export interface UserFormData {
-    name: string
-    email: string
-    login: string
-    password: string
-    role: string
-    position: string
-    convoyId: string
-  }
-  
-  export interface ConvoyFormData {
-    number: string
-    chiefId: string
-    mechanicId: string
-  }
-  
-  
+  id: string;
+  fullName: string;
+  email: string;
+  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" | "taskInspector";
+  position?: string;
+  avatar?: string;
+  busDepotId?: string;
+  convoyId?: string;
+  convoyNumber?: number;
+}
+
+export interface BusDepot {
+  id: string;
+  name: string;
+  city: string;
+  address: string;
+  logo?: string;
+}
+
+// Обновленный интерфейс Convoy
+export interface Convoy {
+  id: string;
+  number: number;
+  busDepotId: string;
+  chiefId?: string;    // Для совместимости с POST/PUT
+  mechanicId?: string; // Для совместимости с POST/PUT
+  chief?: { id: string; fullName: string };    // Из GET /by-depot/{id}
+  mechanic?: { id: string; fullName: string }; // Из GET /by-depot/{id}
+  busIds?: string[];
+  buses?: any[]; // Если структура buses отличается, уточните
+  driversCount?: number;
+}
+
+export interface UserFormData {
+  fullName: string;
+  email: string;
+  login: string;
+  password: string;
+  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" | "taskInspector";
+  position: string;
+  busDepotId: string;
+  convoyId?: string;
+  convoyNumber?: number;
+}
+
+export interface ConvoyFormData {
+  id?: string;
+  number: string;
+  chiefId: string;
+  mechanicId: string;
+}
+export interface UpdateUserRequest {
+  fullName: string;
+  role: string;
+  convoyId?: string; // Добавляем для обновления
+}

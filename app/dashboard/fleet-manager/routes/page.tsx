@@ -1,366 +1,403 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Label } from "@/components/ui/label"
-import { toast } from "@/components/ui/use-toast"
-import { motion } from "framer-motion"
-import { ArrowLeft, Edit, MoreHorizontal, Plus, RouteIcon, Search, Trash2 } from "lucide-react"
-import Link from "next/link"
-import { routeService } from "@/app/api/apiService"
-import type { Route } from "@/app/api/types"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "@/components/ui/use-toast";
+import { ArrowLeft, RouteIcon } from "lucide-react";
+import type { RouteFormData, UserContext } from "./types";
+import type { CreateRouteRequest, Route } from "@/types/route.types";
+import type { BusLine } from "@/types/busLine.types";
+import RoutesList from "./components/RoutesList";
+import RouteDialog from "./components/RouteDialog";
+import ViewRouteDialog from "./components/ViewRouteDialog";
+import CopyRouteDialog from "./components/CopyRouteDialog";
+import { routeService } from "@/service/routeService";
+import { busLineService } from "@/service/busLineService";
+import { FrontendRouteStatus, toBackendStatus } from "./utils/routeStatusUtils";
 
 export default function RoutesPage() {
-  const [routes, setRoutes] = useState<Route[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null)
-  const [formData, setFormData] = useState<Partial<Route>>({
-    number: "",
-  })
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter();
+
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [busLines, setBusLines] = useState<{ [routeId: string]: BusLine[] }>({});
+  const [loading, setLoading] = useState(true);
+  const [isUserContextLoading, setIsUserContextLoading] = useState(true); // Новое состояние для загрузки userContext
+
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
+  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
+
+  const [userContext, setUserContext] = useState<UserContext>({
+    userId: "",
+    userName: "",
+    convoyId: "",
+    convoyNumber: 0,
+  });
+
+  // Функция для загрузки маршрутов
+  const fetchRoutes = async (convoyId: string) => {
+    try {
+      setLoading(true);
+      const routesResponse = await routeService.getByConvoyId(convoyId);
+      console.log("Fetched routes after update:", routesResponse);
+      if (!routesResponse.isSuccess) {
+        throw new Error(routesResponse.error || "Не удалось загрузить маршруты");
+      }
+  
+      const fetchedRoutes = Array.isArray(routesResponse.value) ? routesResponse.value : [];
+      // Загружаем busLines для каждого маршрута
+      const busLinesMap: { [routeId: string]: BusLine[] } = {};
+
+      for (const route of fetchedRoutes) {
+        const busLinesResponse = await busLineService.getByRouteId(route.id || "");
+        if (busLinesResponse.isSuccess && busLinesResponse.value) {
+          route.busLines = busLinesResponse.value;
+          busLinesMap[route.id || ""] = busLinesResponse.value; // ✅ сохраняем в map
+        } else {
+          route.busLines = [];
+          busLinesMap[route.id || ""] = [];
+        }
+      }
+
+      setRoutes(fetchedRoutes);
+      setBusLines(busLinesMap); // ✅ теперь данные видны в ViewRouteDialog
+
+      console.log("Fetched routes with busLines:", fetchedRoutes.map((route) => ({
+        id: route.id,
+        number: route.number,
+        busLines: route.busLines || [],
+      })));
+      setRoutes(fetchedRoutes);
+    } catch (error) {
+      console.error("Ошибка при загрузке данных:", error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось загрузить данные маршрутов",
+        variant: "destructive",
+      });
+      setRoutes([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchRoutes = async () => {
+    const loadUserContextAndFetchData = async () => {
       try {
-        setLoading(true)
-        const response = await routeService.getAll()
-
-        if (response.isSuccess && response.value) {
-          setRoutes(response.value)
-        } else {
-          throw new Error(response.error || "Не удалось получить данные о маршрутах")
+        // 1. Загружаем данные из localStorage
+        const authData = localStorage.getItem("authData");
+        if (!authData) {
+          router.push("/login");
+          return;
         }
-      } catch (err) {
-        console.error("Ошибка при получении списка маршрутов:", err)
-        setError(err instanceof Error ? err.message : "Произошла ошибка при загрузке данных")
-      } finally {
-        setLoading(false)
-      }
-    }
 
-    fetchRoutes()
-  }, [])
+        const parsedData = JSON.parse(authData);
+        let userData: UserContext;
 
-  // Обработчик изменения полей формы
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+        if (parsedData.isSuccess && parsedData.value) {
+          userData = {
+            userId: parsedData.value.id,
+            userName: parsedData.value.fullName,
+            convoyId: parsedData.value.convoyId,
+            convoyNumber: parsedData.value.convoyNumber,
+          };
+        } else {
+          userData = {
+            userId: parsedData.id,
+            userName: parsedData.fullName,
+            convoyId: parsedData.convoyId,
+            convoyNumber: parsedData.convoyNumber,
+          };
+        }
 
-  // Обработчик добавления маршрута
-  const handleAddRoute = async () => {
-    try {
-      if (!formData.number) {
+        setUserContext(userData);
+        setIsUserContextLoading(false); // Данные userContext загружены
+
+        // 2. Проверяем convoyId и вызываем fetchData
+        if (!userData.convoyId) {
+          setLoading(false);
+          return;
+        }
+
+        await fetchRoutes(userData.convoyId);
+      } catch (error) {
+        console.error("Ошибка при загрузке данных:", error);
         toast({
           title: "Ошибка",
-          description: "Заполните номер маршрута",
+          description: "Не удалось загрузить данные маршрутов",
           variant: "destructive",
-        })
-        return
+        });
+        setRoutes([]);
       }
+    };
 
-      // В реальном приложении здесь должен быть API запрос
-      // routeService.create(formData as Omit<Route, "id">)
+    loadUserContextAndFetchData();
+  }, [router]); // Зависимость только от router, так как userContext теперь обрабатывается внутри
 
-      // Имитация добавления
-      const newRoute: Route = {
-        id: Math.random().toString(36).substring(2, 9),
+  const handleAddRoute = async (formData: RouteFormData) => {
+    try {
+      const checkResponse = await routeService.checkRoute(formData.number, userContext.convoyId);
+      if (!checkResponse.isSuccess) {
+        throw new Error("Маршрут с таким номером уже существует в этом автобусном парке");
+      }
+  
+      const newRoute = {
+        convoyId: userContext.convoyId,
+        routeStatus: formData.routeStatus,
         number: formData.number,
+        queue: formData.queue,
+      };
+  
+      const routeResponse = await routeService.create(newRoute);
+      console.log(`routeResponse: ${routeResponse}`);
+      if (!routeResponse.isSuccess || !routeResponse.value) {
+        throw new Error(routeResponse.error || "Не удалось добавить маршрут");
+      }
+      const createdRoute = routeResponse.value
+      // Проверяем, что createdRoute не null и имеет id
+      if (!createdRoute ) {
+        throw new Error("Не удалось получить ID созданного маршрута");
+      }
+  
+      const exitNumbers = formData.exitNumbers.split(",").map((num) => num.trim());
+      // Создаем массив объектов busLineData в правильном формате
+      const busLinesData = exitNumbers.map((number) => ({
+        number, // строка, например "3"
+        exitTime: "00:00:00", // Формат HH:mm:ss
+        endTime: "00:00:00",
+        shiftChangeTime: null, // Сервер ожидает строку, а не null
+      }));
+  
+      // Отправляем данные в формате { routeId, busLines }
+      const requestData = {
+        routeId: createdRoute, // Передаем только ID маршрута (строку)
+        busLines: busLinesData,
+      };
+      const busLinesResponse = await busLineService.createMultiple(requestData);
+      if (!busLinesResponse.isSuccess || !busLinesResponse.value) {
+        throw new Error(busLinesResponse.error || "Не удалось создать выходы");
       }
 
-      setRoutes((prev) => [...prev, newRoute])
-      setIsAddDialogOpen(false)
-      setFormData({ number: "" })
+      // После добавления маршрута и выходов делаем новый запрос, чтобы получить актуальные данные
+      await fetchRoutes(userContext.convoyId);
+      setIsAddDialogOpen(false);
+  
+      
+      toast({
+        title: "Успешно",
+        description: `Маршрут "${formData.number}" и ${busLinesData.length} выходов успешно добавлены`,
+      });
+    } catch (error) {
+      console.error("Ошибка при добавлении маршрута:", error);
+      toast({
+        title: "Ошибка",
+        description: error instanceof Error ? error.message : "Не удалось добавить маршрут",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditRoute = async (formData: RouteFormData) => {
+    try {
+      console.log("Selected route before edit:", selectedRoute);
+      if (!selectedRoute || !selectedRoute.id) {
+        console.warn("No selected route or route ID, aborting edit");
+        return;
+      }
+  
+      console.log("Form data for update:", formData);
+      const updatedRoute = {
+        convoyId: userContext.convoyId,
+        routeStatus: toBackendStatus(formData.routeStatus as FrontendRouteStatus),
+        number: formData.number,
+        queue: formData.queue,
+      };
+      console.log("Updated route data:", updatedRoute);
+  
+      const response = await routeService.update(selectedRoute.id, updatedRoute);
+      console.log("Update response:", response);
+      if (!response.isSuccess || !response.value) {
+        throw new Error(response.error || "Не удалось обновить маршрут");
+      }
+  
+      await fetchRoutes(userContext.convoyId);
+      setIsEditDialogOpen(false);
+  
+      toast({
+        title: "Успешно",
+        description: `Маршрут "${formData.number}" успешно обновлен`,
+      });
+    } catch (error) {
+      console.error("Ошибка при редактировании маршрута:", error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось обновить маршрут",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCopyRoute = async (route: Route, newRouteStatus: string) => {
+    try {
+      const copiedRoute = {
+        convoyId: route.convoyId,
+        routeStatus: newRouteStatus,
+        number: route.number,
+        queue: route.queue,
+      };
+
+      const response = await routeService.create(copiedRoute as CreateRouteRequest);
+      if (!response.isSuccess || !response.value) {
+        throw new Error(response.error || "Не удалось скопировать маршрут");
+      }
+
+      setRoutes((prev) => [...prev, response.value as unknown as Route]);
+      setIsCopyDialogOpen(false);
 
       toast({
         title: "Успешно",
-        description: "Маршрут успешно добавлен",
-      })
-    } catch (err) {
-      console.error("Ошибка при добавлении маршрута:", err)
+        description: `Маршрут "${route.number}" успешно скопирован с новым статусом`,
+      });
+    } catch (error) {
+      console.error("Ошибка при копировании маршрута:", error);
       toast({
         title: "Ошибка",
-        description: "Произошла ошибка при добавлении маршрута",
+        description: "Не удалось скопировать маршрут",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
-  // Обработчик редактирования маршрута
-  const handleEditRoute = async () => {
+  const handleDeleteRoute = async (routeId: string) => {
     try {
-      if (!selectedRoute || !formData.number) {
-        toast({
-          title: "Ошибка",
-          description: "Заполните номер маршрута",
-          variant: "destructive",
-        })
-        return
+      const response = await routeService.delete(routeId);
+      if (!response.isSuccess) {
+        throw new Error(response.error || "Не удалось удалить маршрут");
       }
 
-      // В реальном приложении здесь должен быть API запрос
-      // routeService.update(selectedRoute.id, formData as Omit<Route, "id">)
-
-      // Имитация обновления
-      setRoutes((prev) => prev.map((route) => (route.id === selectedRoute.id ? { ...route, ...formData } : route)))
-
-      setIsEditDialogOpen(false)
-
-      toast({
-        title: "Успешно",
-        description: "Маршрут успешно обновлен",
-      })
-    } catch (err) {
-      console.error("Ошибка при редактировании маршрута:", err)
-      toast({
-        title: "Ошибка",
-        description: "Произошла ошибка при обновлении маршрута",
-        variant: "destructive",
-      })
-    }
-  }
-
-  // Обработчик удаления маршрута
-  const handleDeleteRoute = async () => {
-    try {
-      if (!selectedRoute) return
-
-      // В реальном приложении здесь должен быть API запрос
-      // routeService.delete(selectedRoute.id)
-
-      // Имитация удаления
-      setRoutes((prev) => prev.filter((route) => route.id !== selectedRoute.id))
-      setIsDeleteDialogOpen(false)
+      setRoutes((prev) => prev.filter((route) => route.id !== routeId));
+      setBusLines((prev) => {
+        const updatedBusLines = { ...prev };
+        delete updatedBusLines[routeId];
+        return updatedBusLines;
+      });
 
       toast({
         title: "Успешно",
         description: "Маршрут успешно удален",
-      })
-    } catch (err) {
-      console.error("Ошибка при удалении маршрута:", err)
+      });
+    } catch (error) {
+      console.error("Ошибка при удалении маршрута:", error);
       toast({
         title: "Ошибка",
-        description: "Произошла ошибка при удалении маршрута",
+        description: "Не удалось удалить маршрут",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
-  // Открытие диалога редактирования
+  const openAddDialog = () => setIsAddDialogOpen(true);
   const openEditDialog = (route: Route) => {
-    setSelectedRoute(route)
-    setFormData({
-      number: route.number,
-    })
-    setIsEditDialogOpen(true)
-  }
+    setSelectedRoute(route);
+    setIsEditDialogOpen(true);
+  };
+  const openViewDialog = (route: Route) => {
+    setSelectedRoute(route);
+    setIsViewDialogOpen(true);
+  };
+  const openCopyDialog = (route: Route) => {
+    setSelectedRoute(route);
+    setIsCopyDialogOpen(true);
+  };
 
-  // Открытие диалога удаления
-  const openDeleteDialog = (route: Route) => {
-    setSelectedRoute(route)
-    setIsDeleteDialogOpen(true)
-  }
-
-  // Фильтрация маршрутов по поисковому запросу
-  const filteredRoutes = searchQuery
-    ? routes.filter((route) => route.number.toLowerCase().includes(searchQuery.toLowerCase()))
-    : routes
-
-  if (loading) {
+  if (isUserContextLoading || loading) {
     return (
       <div className="flex flex-col gap-4 p-4 md:p-8">
         <div className="flex items-center gap-2">
           <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse"></div>
           <div className="h-8 w-64 bg-gray-200 animate-pulse rounded"></div>
         </div>
-        <div className="space-y-4 mt-6">
-          <div className="h-10 bg-gray-200 animate-pulse rounded"></div>
-          <div className="h-64 bg-gray-200 animate-pulse rounded-lg"></div>
+        <div className="h-12 bg-gray-200 animate-pulse rounded mt-6"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="h-64 bg-gray-200 animate-pulse rounded-lg"></div>
+          ))}
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="flex flex-col gap-4 p-4 md:p-8">
       <div className="flex items-center gap-2 mb-6">
-        <Link href="/dashboard/fleet-manager">
-          <Button variant="outline" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-purple-700">Управление маршрутами</h1>
-          <p className="text-gray-500 mt-1">Просмотр и редактирование маршрутов движения</p>
-        </div>
-      </div>
-
-      <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <Input
-            type="search"
-            placeholder="Поиск по номеру маршрута..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Добавить маршрут
+        <Button variant="outline" size="icon" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4" />
         </Button>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-purple-700">
+            Управление маршрутами
+          </h1>
+          <p className="text-gray-500 mt-1">
+            Колонна №{userContext.convoyNumber} - Просмотр и редактирование маршрутов движения
+          </p>
+        </div>
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <RouteIcon className="h-5 w-5 text-purple-500" />
-              Список маршрутов
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {error ? (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-700">{error}</div>
-            ) : filteredRoutes.length === 0 ? (
-              <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                <RouteIcon className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                <h3 className="text-lg font-medium text-gray-900 mb-1">
-                  {searchQuery ? "Маршруты не найдены" : "Нет доступных маршрутов"}
-                </h3>
-                <p className="text-gray-500 mb-4">
-                  {searchQuery
-                    ? `По запросу "${searchQuery}" ничего не найдено`
-                    : "В системе нет зарегистрированных маршрутов"}
-                </p>
-                {!searchQuery && (
-                  <Button onClick={() => setIsAddDialogOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Добавить маршрут
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Номер маршрута</TableHead>
-                      <TableHead className="w-[80px]">Действия</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredRoutes.map((route) => (
-                      <TableRow key={route.id} className="group">
-                        <TableCell className="font-medium">№{route.number}</TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openEditDialog(route)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Редактировать
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openDeleteDialog(route)}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Удалить
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RouteIcon className="h-5 w-5 text-purple-500" />
+            Маршруты колонны №{userContext.convoyNumber}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RoutesList
+            routes={routes}
+            busLines={busLines}
+            onAddRoute={openAddDialog}
+            onEditRoute={openEditDialog}
+            onViewRoute={openViewDialog}
+            onCopyRoute={openCopyDialog}
+            onDeleteRoute={handleDeleteRoute}
+            convoyNumber={userContext.convoyNumber}
+          />
+        </CardContent>
+      </Card>
 
-      {/* Диалог добавления маршрута */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Добавить новый маршрут</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="number" className="text-right">
-                Номер маршрута *
-              </Label>
-              <Input id="number" name="number" value={formData.number} onChange={handleChange} className="col-span-3" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-              Отмена
-            </Button>
-            <Button onClick={handleAddRoute}>Добавить</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RouteDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        title="Добавить маршрут"
+        onSubmit={handleAddRoute}
+      />
 
-      {/* Диалог редактирования маршрута */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Редактировать маршрут</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="number" className="text-right">
-                Номер маршрута *
-              </Label>
-              <Input id="number" name="number" value={formData.number} onChange={handleChange} className="col-span-3" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Отмена
-            </Button>
-            <Button onClick={handleEditRoute}>Сохранить</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RouteDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        title="Редактировать маршрут"
+        route={selectedRoute || undefined}
+        onSubmit={handleEditRoute}
+      />
 
-      {/* Диалог удаления маршрута */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Удалить маршрут</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p>Вы уверены, что хотите удалить маршрут №{selectedRoute?.number}?</p>
-            <p className="text-sm text-gray-500 mt-2">Это действие нельзя отменить.</p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Отмена
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteRoute}>
-              Удалить
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ViewRouteDialog
+        open={isViewDialogOpen}
+        onOpenChange={setIsViewDialogOpen}
+        route={selectedRoute}
+        busLines={selectedRoute?.id ? busLines[selectedRoute.id] || [] : []}
+        onEdit={openEditDialog}
+        onCopy={openCopyDialog}
+      />
+
+      <CopyRouteDialog
+        open={isCopyDialogOpen}
+        onOpenChange={setIsCopyDialogOpen}
+        route={selectedRoute}
+        onCopy={handleCopyRoute}
+      />
     </div>
-  )
+  );
 }
-

@@ -1,9 +1,10 @@
-// app/dashboard/admin/page.tsx
 "use client"
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { busDepotService } from "@/app/api/apiService"
+import type { BusDepot } from "@/app/api/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
@@ -18,23 +19,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Bus, MapPin, Users, Plus, Upload, Search, UserPlus } from "lucide-react"
-
-interface BusDepot {
-  id: string
-  name: string
-  city: string
-  address: string
-  logo?: string
-  users: {
-    fleetManager: number
-    seniorDispatcher: number
-    dispatcher: number
-    mechanic: number
-    hr: number
-    taksirovka: number
-  }
-}
+import { Bus, MapPin, Plus, Search, UserPlus } from "lucide-react"
 
 export default function AdminDashboard() {
   const [busDepots, setBusDepots] = useState<BusDepot[]>([])
@@ -42,20 +27,34 @@ export default function AdminDashboard() {
   const [newDepotData, setNewDepotData] = useState({ name: "", city: "", address: "", logo: "" })
   const [searchQuery, setSearchQuery] = useState("")
 
-  // Получение данных с сервера
   useEffect(() => {
     const fetchDepots = async () => {
       try {
-        const res = await fetch("/api/bus-depots")
-        const data = await res.json()
-        setBusDepots(data)
+        const response = await busDepotService.getAll()
+        if (response.isSuccess && response.value) {
+          const depots = response.value.map(depot => ({
+            ...depot,
+            users: depot.users ?? {
+              fleetManager: 0,
+              seniorDispatcher: 0,
+              dispatcher: 0,
+              mechanic: 0,
+              hr: 0,
+              taksirovka: 0,
+            }
+          }));
+          setBusDepots(depots);
+        } else {
+          console.error("Ошибка загрузки парков:", response.error)
+        }
       } catch (err) {
         console.error("Ошибка загрузки парков:", err)
       }
     }
-
+  
     fetchDepots()
   }, [])
+  
 
   const handleDepotFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -64,22 +63,42 @@ export default function AdminDashboard() {
 
   const handleAddDepot = async () => {
     try {
-      const res = await fetch("/api/bus-depots", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newDepotData),
-      })
-
-      if (!res.ok) throw new Error("Ошибка при добавлении парка")
-
-      const createdDepot = await res.json()
-      setBusDepots((prev) => [...prev, createdDepot])
+      const response = await busDepotService.create(newDepotData)
+      if (!response.isSuccess || !response.value) {
+        throw new Error(response.error || "Ошибка при добавлении парка")
+      }
+      const newDepot = {
+        ...response.value,
+        users: {
+          fleetManager: 0,
+          seniorDispatcher: 0,
+          dispatcher: 0,
+          mechanic: 0,
+          hr: 0,
+          taksirovka: 0,
+        }
+      };
+      setBusDepots((prev) => [...prev, newDepot])
       setNewDepotData({ name: "", city: "", address: "", logo: "" })
       setIsAddDepotDialogOpen(false)
-    } catch (err) {
-      console.error("Ошибка добавления парка:", err)
+    } catch (err: any) {
+      console.error("Ошибка добавления парка:", err.message)
     }
   }
+  const handleDeleteDepot = async (id: string) => {
+    if (!confirm("Вы уверены, что хотите удалить этот автобусный парк?")) return
+  
+    try {
+      const response = await busDepotService.delete(id)
+      if (response.isSuccess) {
+        setBusDepots((prev) => prev.filter((depot) => depot.id !== id))
+      } else {
+        console.error("Ошибка удаления парка:", response.error)
+      }
+    } catch (err: any) {
+      console.error("Ошибка удаления парка:", err.message)
+    }
+  }  
 
   const filteredDepots = searchQuery
     ? busDepots.filter(
@@ -91,6 +110,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="container mx-auto p-6">
+      {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-sky-700">Панель администратора</h1>
@@ -107,25 +127,10 @@ export default function AdminDashboard() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-
-          <Link href="/dashboard/admin/registration-requests">
-            <Button variant="outline" className="flex items-center gap-2">
-              <UserPlus className="h-4 w-4" />
-              <span className="hidden sm:inline">Заявки на регистрацию</span>
-              <Badge variant="secondary" className="ml-1">3</Badge>
-            </Button>
-          </Link>
-
-          <Tabs defaultValue="depots" className="w-auto">
-            <TabsList>
-              <TabsTrigger value="depots">Автобусные парки</TabsTrigger>
-              <TabsTrigger value="users">Пользователи</TabsTrigger>
-              <TabsTrigger value="settings">Настройки</TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
       </div>
 
+      {/* Add button */}
       <div className="mb-6 flex justify-between items-center">
         <h2 className="text-xl font-semibold">Автобусные парки</h2>
         <Button onClick={() => setIsAddDepotDialogOpen(true)}>
@@ -134,6 +139,7 @@ export default function AdminDashboard() {
         </Button>
       </div>
 
+      {/* Cards or empty state */}
       {filteredDepots.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
           <Bus className="h-12 w-12 mx-auto text-gray-400 mb-3" />
@@ -154,46 +160,68 @@ export default function AdminDashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredDepots.map((depot) => (
-            <Card key={depot.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-sky-500 to-sky-600 text-white pb-12 relative">
-                <div className="absolute right-4 top-4">
-                  <Avatar className="h-10 w-10 bg-white text-sky-600">
-                    <AvatarImage src={depot.logo} alt={depot.name} />
-                    <AvatarFallback>
-                      <Bus className="h-6 w-6" />
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-                <CardTitle className="text-xl">{depot.name}</CardTitle>
-                <CardDescription className="text-sky-100 flex items-center mt-1">
-                  <MapPin className="h-4 w-4 mr-1" />
-                  {depot.city}, {depot.address}
-                </CardDescription>
-              </CardHeader>
+          {filteredDepots.map((depot) => {
+            const users = depot.users ?? {
+              fleetManager: 0,
+              seniorDispatcher: 0,
+              dispatcher: 0,
+              mechanic: 0,
+              hr: 0,
+              taksirovka: 0,
+            }
+            const totalUsers = Object.values(users).reduce((a, b) => a + b, 0)
 
-              <CardContent className="pt-6">
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <Badge variant="outline">Начальники: {depot.users.fleetManager}</Badge>
-                  <Badge variant="outline">Диспетчеры: {depot.users.dispatcher + depot.users.seniorDispatcher}</Badge>
-                  <Badge variant="outline">Другие: {depot.users.mechanic + depot.users.hr + depot.users.taksirovka}</Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">
-                    Всего пользователей: {Object.values(depot.users).reduce((a, b) => a + b, 0)}
-                  </span>
-                  <Link href={`/dashboard/admin/depot/${depot.id}`}>
-                    <Button variant="ghost" size="sm">
-                      Управлять
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+            return (
+              <Card key={`depot-${depot.id}`}className="overflow-hidden hover:shadow-lg transition-shadow">
+                <CardHeader className="bg-gradient-to-r from-sky-500 to-sky-600 text-white pb-12 relative">
+                  <div className="absolute right-4 top-4">
+                    <Avatar className="h-10 w-10 bg-white text-sky-600">
+                      <AvatarImage src={depot.logo} alt={depot.name} />
+                      <AvatarFallback>
+                        <Bus className="h-6 w-6" />
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                  <CardTitle className="text-xl">{depot.name}</CardTitle>
+                  <CardDescription className="text-sky-100 flex items-center mt-1">
+                    <MapPin className="h-4 w-4 mr-1" />
+                    {depot.city}, {depot.address}
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className="pt-6">
+                  <div className="flex flex-wrap gap-2 mb-4">
+                  {[
+                    { label: "Начальники", value: users.fleetManager },
+                    { label: "Диспетчеры", value: users.dispatcher + users.seniorDispatcher },
+                    { label: "Другие", value: users.mechanic + users.hr + users.taksirovka },
+                  ].map((item, index) => (
+                    <Badge key={`${depot.id}-${item.label}-${index}`} variant="outline">
+                      {item.label}: {item.value}
+                    </Badge>
+                  ))}
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Всего пользователей: {totalUsers}</span>
+                    <div className="flex gap-2">
+                      <Link href={`/dashboard/admin/depot/${depot.id}`}>
+                        <Button variant="ghost" size="sm">
+                          Управлять
+                        </Button>
+                      </Link>
+                      <Button variant="destructive" size="sm" onClick={() => handleDeleteDepot(depot.id)}>
+                        Удалить
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
 
+      {/* Add depot dialog */}
       <Dialog open={isAddDepotDialogOpen} onOpenChange={setIsAddDepotDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

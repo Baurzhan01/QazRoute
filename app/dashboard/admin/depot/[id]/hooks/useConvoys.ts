@@ -1,209 +1,241 @@
-"use client"
+import { useState, useEffect } from "react";
+import { convoyService, authService } from "@/app/api/apiService";
+import { toast } from "@/components/ui/use-toast";
+import type { Convoy, ConvoyFormData, User } from "../types";
 
-import type React from "react"
+interface UseConvoysProps {
+  depotId: string;
+  updateUserConvoy: (userId: string, convoyId: string | undefined, convoyNumber: number | undefined) => void;
+  users: User[];
+}
 
-import { useState } from "react"
-import type { Convoy, ConvoyFormData } from "../types"
-import { toast } from "@/components/ui/use-toast"
-
-export function useConvoys(
-  initialConvoys: Convoy[],
-  depotId: string,
-  updateUserConvoy: (userId: string, convoyId: string | undefined, convoyNumber: number | undefined) => void,
-) {
-  const [convoys, setConvoys] = useState<Convoy[]>(initialConvoys)
-  const [selectedConvoy, setSelectedConvoy] = useState<Convoy | null>(null)
+export const useConvoys = ({ depotId, updateUserConvoy, users }: UseConvoysProps) => {
+  const [managedConvoys, setManagedConvoys] = useState<Convoy[]>([]);
+  const [selectedConvoy, setSelectedConvoy] = useState<Convoy | null>(null);
   const [newConvoyData, setNewConvoyData] = useState<ConvoyFormData>({
     number: "",
-    chiefId: "",
-    mechanicId: "",
-  })
+    chiefId: "not-assigned",
+    mechanicId: "not-assigned",
+  });
 
-  // Обработчик изменения полей формы автоколонны
-  const handleConvoyFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setNewConvoyData((prev) => ({ ...prev, [name]: value }))
-  }
-
-  // Обработчик изменения выпадающих списков
-  const handleSelectChange = (name: string, value: string) => {
-    setNewConvoyData((prev) => ({ ...prev, [name]: value === "not-assigned" ? "" : value }))
-  }
-
-  // Обработчик добавления новой автоколонны
-  const handleAddConvoy = () => {
-    const number = Number.parseInt(newConvoyData.number)
-    if (isNaN(number)) {
-      toast({
-        title: "Ошибка",
-        description: "Номер колонны должен быть числом",
-        variant: "destructive",
-      })
-      return false
-    }
-
-    // Проверяем, нет ли уже колонны с таким номером
-    if (convoys.some((c) => c.number === number)) {
-      toast({
-        title: "Ошибка",
-        description: `Колонна №${number} уже существует`,
-        variant: "destructive",
-      })
-      return false
-    }
-
-    const newConvoy: Convoy = {
-      id: Date.now().toString(),
-      number,
-      busDepotId: depotId,
-      chiefId: newConvoyData.chiefId || undefined,
-      mechanicId: newConvoyData.mechanicId || undefined,
-      busIds: [],
-    }
-
-    // Если назначен начальник колонны, обновляем его данные
-    if (newConvoyData.chiefId) {
-      // Если пользователь уже был начальником другой колонны, освобождаем предыдущую
-      const existingConvoy = convoys.find((c) => c.chiefId === newConvoyData.chiefId)
-      if (existingConvoy) {
-        setConvoys((prev) => prev.map((c) => (c.id === existingConvoy.id ? { ...c, chiefId: undefined } : c)))
-      }
-
-      // Обновляем данные пользователя через callback
-      updateUserConvoy(newConvoyData.chiefId, newConvoy.id, newConvoy.number)
-    }
-
-    setConvoys((prev) => [...prev, newConvoy])
-    setNewConvoyData({ number: "", chiefId: "", mechanicId: "" })
-
-    toast({
-      title: "Автоколонна добавлена",
-      description: `Автоколонна №${number} успешно добавлена`,
-    })
-
-    return true
-  }
-
-  // Обработчик редактирования автоколонны
-  const handleEditConvoy = () => {
-    if (!selectedConvoy) return false
-
-    const number = Number.parseInt(newConvoyData.number)
-    if (isNaN(number)) {
-      toast({
-        title: "Ошибка",
-        description: "Номер колонны должен быть числом",
-        variant: "destructive",
-      })
-      return false
-    }
-
-    // Проверяем, нет ли уже другой колонны с таким номером
-    if (convoys.some((c) => c.number === number && c.id !== selectedConvoy.id)) {
-      toast({
-        title: "Ошибка",
-        description: `Колонна №${number} уже существует`,
-        variant: "destructive",
-      })
-      return false
-    }
-
-    const updatedConvoy = {
-      ...selectedConvoy,
-      number,
-      chiefId: newConvoyData.chiefId || undefined,
-      mechanicId: newConvoyData.mechanicId || undefined,
-    }
-
-    // Если изменился начальник колонны
-    if (selectedConvoy.chiefId !== updatedConvoy.chiefId) {
-      // Если был предыдущий начальник, обновляем его данные
-      if (selectedConvoy.chiefId) {
-        updateUserConvoy(selectedConvoy.chiefId, undefined, undefined)
-      }
-
-      // Если назначен новый начальник, обновляем его данные
-      if (updatedConvoy.chiefId) {
-        // Если пользователь уже был начальником другой колонны, освобождаем предыдущую
-        const existingConvoy = convoys.find((c) => c.chiefId === updatedConvoy.chiefId && c.id !== selectedConvoy.id)
-        if (existingConvoy) {
-          setConvoys((prev) => prev.map((c) => (c.id === existingConvoy.id ? { ...c, chiefId: undefined } : c)))
+  // Загрузка автоколонн по depotId
+  useEffect(() => {
+    const fetchConvoys = async () => {
+      try {
+        const response = await convoyService.getByDepotId(depotId);
+        if (response.isSuccess && response.value) {
+          setManagedConvoys(response.value);
+        } else {
+          toast({ title: "Ошибка", description: "Не удалось загрузить автоколонны: " + response.error, variant: "destructive" });
         }
-
-        // Обновляем данные пользователя через callback
-        updateUserConvoy(updatedConvoy.chiefId, updatedConvoy.id, updatedConvoy.number)
+      } catch (error) {
+        console.error("Ошибка загрузки автоколонн:", error);
+        toast({ title: "Ошибка", description: "Произошла ошибка при загрузке автоколонн", variant: "destructive" });
       }
-    } else if (selectedConvoy.number !== updatedConvoy.number && updatedConvoy.chiefId) {
-      // Если изменился только номер колонны, обновляем данные начальника
-      updateUserConvoy(updatedConvoy.chiefId, updatedConvoy.id, updatedConvoy.number)
+    };
+    if (depotId) fetchConvoys();
+  }, [depotId]);
+
+  const handleConvoyFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewConvoyData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setNewConvoyData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddConvoy = async () => {
+    const { number, chiefId, mechanicId } = newConvoyData;
+    if (!number) {
+      toast({ title: "Ошибка", description: "Заполните номер.", variant: "destructive" });
+      return false;
     }
-
-    setConvoys((prev) => prev.map((convoy) => (convoy.id === selectedConvoy.id ? updatedConvoy : convoy)))
-
-    toast({
-      title: "Автоколонна обновлена",
-      description: `Данные автоколонны №${updatedConvoy.number} успешно обновлены`,
-    })
-
-    return true
-  }
-
-  // Обработчик удаления автоколонны
-  const handleDeleteConvoy = () => {
-    if (!selectedConvoy) return false
-
-    // Если у колонны был начальник, обновляем его данные
-    if (selectedConvoy.chiefId) {
-      updateUserConvoy(selectedConvoy.chiefId, undefined, undefined)
+  
+    const convoyData = {
+      number: Number(number),
+      busDepotId: depotId,
+      chiefId: chiefId === "not-assigned" ? undefined : chiefId,
+      mechanicId: mechanicId === "not-assigned" ? undefined : mechanicId,
+    };
+  
+    // Создаем автоколонну
+    const createResponse = await convoyService.create(convoyData);
+  
+    if (!createResponse.isSuccess || !createResponse.value) {
+      toast({ title: "Ошибка", description: createResponse.error || "Не удалось создать автоколонну", variant: "destructive" });
+      return false;
     }
+  
+    // Получаем полные данные автоколонны по id
+    const convoyId = createResponse.value; // id автоколонны
+    const getResponse = await convoyService.getById(convoyId);
+  
+    if (getResponse.isSuccess && getResponse.value) {
+      const newConvoy = getResponse.value;
+      setManagedConvoys((prev) => [...prev, newConvoy]);
+      setNewConvoyData({ number: "", chiefId: "not-assigned", mechanicId: "not-assigned" });
+  
+      // Обновляем convoyId у пользователей, если они назначены
+      const chief = users.find((u) => u.id === chiefId);
+        if (chiefId && chiefId !== "not-assigned" && chief) {
+          await authService.updateUser(chiefId, {
+            fullName: chief.fullName,
+            role: "FleetManager",
+            convoyId: newConvoy.id,
+          });
+          updateUserConvoy(chiefId, newConvoy.id, newConvoy.number);
+        }
+        const mechanic = users.find((u) => u.id === mechanicId);
+        if (mechanicId && mechanicId !== "not-assigned" && mechanic) {
+          await authService.updateUser(mechanicId, {
+            fullName: mechanic.fullName,
+            role: "Mechanic",
+            convoyId: newConvoy.id,
+          });
+          updateUserConvoy(mechanicId, newConvoy.id, newConvoy.number);
+        }
+  
+      return true;
+    } else {
+      toast({ title: "Ошибка", description: getResponse.error || "Не удалось получить данные автоколонны", variant: "destructive" });
+      return false;
+    }
+  };
 
-    setConvoys((prev) => prev.filter((convoy) => convoy.id !== selectedConvoy.id))
+  const handleEditConvoy = async () => {
+    if (!selectedConvoy) return false;
+  
+    const { number, chiefId, mechanicId } = newConvoyData;
+    const convoyData = {
+      number: Number(number) || selectedConvoy.number,
+      busDepotId: selectedConvoy.busDepotId,
+      chiefId: chiefId === "not-assigned" ? undefined : chiefId,
+      mechanicId: mechanicId === "not-assigned" ? undefined : mechanicId,
+    };
+  
+    const response = await convoyService.update(selectedConvoy.id, convoyData);
+  
+    if (response.isSuccess && response.value) {
+      const updatedConvoy = response.value;
+      setManagedConvoys((prev) =>
+        prev.map((convoy) => (convoy.id === selectedConvoy.id ? updatedConvoy : convoy))
+      );
+  
+      // Обновляем convoyId у пользователей
+      const oldChiefId = selectedConvoy.chiefId;
+      const oldMechanicId = selectedConvoy.mechanicId;
+  
+      if (chiefId && chiefId !== oldChiefId) {
+        const chief = users.find((u: User) => u.id === chiefId);
+        if (chief) {
+          await authService.updateUser(chiefId, {
+            fullName: chief.fullName,
+            role: "FleetManager",
+            convoyId: updatedConvoy.id,
+          });
+          updateUserConvoy(chiefId, updatedConvoy.id, updatedConvoy.number);
+        }
+      }
+      if (oldChiefId && chiefId !== oldChiefId) {
+        const oldChief = users.find((u: User) => u.id === oldChiefId);
+        if (oldChief) {
+          await authService.updateUser(oldChiefId, {
+            fullName: oldChief.fullName,
+            role: "FleetManager",
+            convoyId: undefined,
+          });
+          updateUserConvoy(oldChiefId, undefined, undefined);
+        }
+      }
+  
+      if (mechanicId && mechanicId !== oldMechanicId) {
+        const mechanic = users.find((u: User) => u.id === mechanicId);
+        if (mechanic) {
+          await authService.updateUser(mechanicId, {
+            fullName: mechanic.fullName,
+            role: "Mechanic",
+            convoyId: updatedConvoy.id,
+          });
+          updateUserConvoy(mechanicId, updatedConvoy.id, updatedConvoy.number);
+        }
+      }
+      if (oldMechanicId && mechanicId !== oldMechanicId) {
+        const oldMechanic = users.find((u: User) => u.id === oldMechanicId);
+        if (oldMechanic) {
+          await authService.updateUser(oldMechanicId, {
+            fullName: oldMechanic.fullName,
+            role: "Mechanic",
+            convoyId: undefined,
+          });
+          updateUserConvoy(oldMechanicId, undefined, undefined);
+        }
+      }
+  
+      setNewConvoyData({ number: "", chiefId: "not-assigned", mechanicId: "not-assigned" });
+      setSelectedConvoy(null);
+      return true;
+    } else {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось обновить автоколонну: " + response.error,
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
 
-    toast({
-      title: "Автоколонна удалена",
-      description: `Автоколонна №${selectedConvoy.number} успешно удалена`,
-    })
+  const handleDeleteConvoy = async () => {
+    if (!selectedConvoy) return false;
 
-    return true
-  }
+    const response = await convoyService.delete(selectedConvoy.id);
+    if (response.isSuccess) {
+      setManagedConvoys((prev) => prev.filter((convoy) => convoy.id !== selectedConvoy.id));
+      setSelectedConvoy(null);
+      return true;
+    } else {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось удалить автоколонну: " + response.error,
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
 
-  // Открытие диалога редактирования автоколонны
   const openEditConvoyDialog = (convoy: Convoy) => {
-    setSelectedConvoy(convoy)
-    setNewConvoyData({
+    setSelectedConvoy(convoy);
+    const newData = {
+      id: convoy.id,
       number: convoy.number.toString(),
-      chiefId: convoy.chiefId || "",
-      mechanicId: convoy.mechanicId || "",
-    })
-    return convoy
-  }
+      chiefId: convoy.chiefId || convoy.chief?.id || "not-assigned",
+      mechanicId: convoy.mechanicId || convoy.mechanic?.id || "not-assigned",
+    };
+    setNewConvoyData(newData);
+  };
 
-  // Открытие диалога просмотра автоколонны
   const openViewConvoyDialog = (convoy: Convoy) => {
-    setSelectedConvoy(convoy)
-    return convoy
-  }
+    setSelectedConvoy(convoy);
+  };
 
-  // Обновление автоколонн при изменении пользователя
-  const updateConvoys = (userId: string, oldConvoyId: string | undefined, newConvoyId: string | undefined) => {
-    if (oldConvoyId) {
-      // Освобождаем старую колонну
-      setConvoys((prev) => prev.map((c) => (c.id === oldConvoyId ? { ...c, chiefId: undefined } : c)))
-    }
-
-    if (newConvoyId) {
-      // Назначаем новую колонну
-      setConvoys((prev) => prev.map((c) => (c.id === newConvoyId ? { ...c, chiefId: userId } : c)))
-    }
-  }
+  const updateConvoys = (convoyId: string, userId: string, role: string) => {
+    setManagedConvoys((prev) =>
+      prev.map((convoy) =>
+        convoy.id === convoyId
+          ? {
+              ...convoy,
+              chiefId: role === "fleetManager" ? userId : convoy.chiefId,
+              mechanicId: role === "mechanic" ? userId : convoy.mechanicId,
+            }
+          : convoy
+      )
+    );
+  };
 
   return {
-    convoys,
-    setConvoys,
+    convoys: managedConvoys,
     selectedConvoy,
-    setSelectedConvoy,
     newConvoyData,
-    setNewConvoyData,
     handleConvoyFormChange,
     handleSelectChange,
     handleAddConvoy,
@@ -212,6 +244,5 @@ export function useConvoys(
     openEditConvoyDialog,
     openViewConvoyDialog,
     updateConvoys,
-  }
-}
-
+  };
+};

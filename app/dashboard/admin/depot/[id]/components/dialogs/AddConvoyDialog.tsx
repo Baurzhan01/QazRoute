@@ -1,7 +1,6 @@
-"use client"
+"use client";
 
-import type React from "react"
-
+import type React from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,21 +8,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { ConvoyFormData, User } from "../../types"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { ConvoyFormData, User } from "../../types";
 
 interface AddConvoyDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  formData: ConvoyFormData
-  users: User[]
-  onFormChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-  onSelectChange: (name: string, value: string) => void
-  onSubmit: () => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  formData: ConvoyFormData;
+  users: User[];
+  onFormChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSelectChange: (name: string, value: string) => void;
+  onSubmit: () => void;
 }
 
 export default function AddConvoyDialog({
@@ -35,6 +34,7 @@ export default function AddConvoyDialog({
   onSelectChange,
   onSubmit,
 }: AddConvoyDialogProps) {
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -61,17 +61,22 @@ export default function AddConvoyDialog({
             <Label htmlFor="chiefId" className="text-right">
               Начальник
             </Label>
-            <Select value={formData.chiefId} onValueChange={(value) => onSelectChange("chiefId", value)}>
+            <Select
+              value={formData.chiefId || "not-assigned"}
+              onValueChange={(value) => {
+                onSelectChange("chiefId", value);
+              }}
+            >
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Выберите начальника" />
+                <SelectValue placeholder="Выберите начальника (необязательно)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="not-assigned">Не назначен</SelectItem>
+                <SelectItem key="not-assigned" value="not-assigned">Не назначен</SelectItem>
                 {users
-                  .filter((u) => u.role === "fleet-manager")
+                  .filter((u) => u.role === "fleetManager")
                   .map((user) => (
                     <SelectItem key={user.id} value={user.id}>
-                      {user.name}
+                      {user.fullName}
                     </SelectItem>
                   ))}
               </SelectContent>
@@ -81,17 +86,22 @@ export default function AddConvoyDialog({
             <Label htmlFor="mechanicId" className="text-right">
               Механик
             </Label>
-            <Select value={formData.mechanicId} onValueChange={(value) => onSelectChange("mechanicId", value)}>
+            <Select
+              value={formData.mechanicId || "not-assigned"}
+              onValueChange={(value) => {
+                onSelectChange("mechanicId", value);
+              }}
+            >
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Выберите механика" />
+                <SelectValue placeholder="Выберите механика (необязательно)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="not-assigned">Не назначен</SelectItem>
+                <SelectItem key="not-assigned" value="not-assigned">Не назначен</SelectItem>
                 {users
                   .filter((u) => u.role === "mechanic")
                   .map((user) => (
                     <SelectItem key={user.id} value={user.id}>
-                      {user.name}
+                      {user.fullName}
                     </SelectItem>
                   ))}
               </SelectContent>
@@ -107,6 +117,5 @@ export default function AddConvoyDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
-

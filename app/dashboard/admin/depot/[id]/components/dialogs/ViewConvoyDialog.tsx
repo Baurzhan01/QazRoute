@@ -32,9 +32,17 @@ export default function ViewConvoyDialog({
 }: ViewConvoyDialogProps) {
   if (!convoy) return null
 
-  const chief = users.find((u) => u.id === convoy.chiefId)
-  const mechanic = users.find((u) => u.id === convoy.mechanicId)
+  const chiefName =
+  convoy.chief?.fullName ||
+  users.find((u) => u.id === convoy.chiefId)?.fullName ||
+  "Не назначен";
 
+const mechanicName =
+  convoy.mechanic?.fullName ||
+  users.find((u) => u.id === convoy.mechanicId)?.fullName ||
+  "Не назначен";
+
+const busIds = convoy.busIds || [];
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -49,7 +57,7 @@ export default function ViewConvoyDialog({
               <Building2 className="h-12 w-12 text-sky-500" />
               <div>
                 <h3 className="text-lg font-medium">Автоколонна №{convoy.number}</h3>
-                <p className="text-sm text-gray-500">{convoy.busIds.length} автобусов</p>
+                <p className="text-sm text-gray-500">{busIds.length} автобусов</p>
               </div>
             </div>
 
@@ -59,13 +67,11 @@ export default function ViewConvoyDialog({
                   <Briefcase className="h-5 w-5 text-sky-500" />
                   <div>
                     <p className="text-sm text-gray-500">Начальник колонны</p>
-                    <p className="font-medium">{chief ? chief.name : "Не назначен"}</p>
+                    <p className="font-medium">{chiefName}</p>
                   </div>
                 </div>
-                {chief && (
-                  <Badge variant="outline" className="bg-sky-50">
-                    Назначен
-                  </Badge>
+                {convoy.chiefId && (
+                  <Badge variant="outline" className="bg-sky-50">Назначен</Badge>
                 )}
               </div>
 
@@ -74,26 +80,22 @@ export default function ViewConvoyDialog({
                   <Wrench className="h-5 w-5 text-purple-500" />
                   <div>
                     <p className="text-sm text-gray-500">Механик</p>
-                    <p className="font-medium">{mechanic ? mechanic.name : "Не назначен"}</p>
+                    <p className="font-medium">{mechanicName}</p>
                   </div>
                 </div>
-                {mechanic && (
-                  <Badge variant="outline" className="bg-purple-50">
-                    Назначен
-                  </Badge>
+                {convoy.mechanicId && (
+                  <Badge variant="outline" className="bg-purple-50">Назначен</Badge>
                 )}
               </div>
             </div>
 
             <div className="border-t pt-4">
               <h4 className="font-medium mb-2">Автобусы в колонне</h4>
-              {convoy.busIds.length > 0 ? (
+              {busIds.length > 0 ? (
                 <div className="space-y-2">
-                  {convoy.busIds.map((busId, index) => (
+                  {busIds.map((busId, index) => (
                     <div key={busId} className="flex items-center gap-2">
-                      <Badge variant="outline" className="bg-green-50">
-                        {index + 1}
-                      </Badge>
+                      <Badge variant="outline" className="bg-green-50">{index + 1}</Badge>
                       <span>Автобус ID: {busId}</span>
                     </div>
                   ))}
@@ -114,12 +116,7 @@ export default function ViewConvoyDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Закрыть
             </Button>
-            <Button
-              onClick={() => {
-                onOpenChange(false)
-                onEdit(convoy)
-              }}
-            >
+            <Button onClick={() => { onOpenChange(false); onEdit(convoy); }}>
               <Edit className="mr-2 h-4 w-4" />
               Редактировать
             </Button>
@@ -129,4 +126,3 @@ export default function ViewConvoyDialog({
     </Dialog>
   )
 }
-

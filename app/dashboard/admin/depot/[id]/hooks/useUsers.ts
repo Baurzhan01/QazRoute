@@ -1,214 +1,249 @@
-"use client"
+import { useState, useMemo, useEffect } from "react";
+import type { User, Convoy, UserFormData } from "../types";
+import type { UpdateUserRequest, RegisterRequest } from "@/app/api/types";
+import { toast } from "@/components/ui/use-toast";
+import { authService } from "@/app/api/apiService";
 
-import type React from "react"
+interface UseUsersProps {
+  initialUsers: User[];
+  updateUserConvoy: (userId: string, convoyId: string | undefined, convoyNumber: number | undefined) => void;
+}
 
-import { useState } from "react"
-import type { User, UserFormData } from "../types"
-import { toast } from "@/components/ui/use-toast"
-
-export function useUsers(
-  initialUsers: User[],
-  updateConvoys: (userId: string, oldConvoyId: string | undefined, newConvoyId: string | undefined) => void,
-) {
-  const [users, setUsers] = useState<User[]>(initialUsers)
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  const [selectedUserRole, setSelectedUserRole] = useState<string | null>(null)
+export function useUsers({ initialUsers, updateUserConvoy }: UseUsersProps) {
+  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUserRole, setSelectedUserRole] = useState<User["role"] | null>(null);
   const [newUserData, setNewUserData] = useState<UserFormData>({
-    name: "",
+    fullName: "",
     email: "",
     login: "",
     password: "",
-    role: "",
+    role: "fleetManager",
     position: "",
-    convoyId: "",
-  })
+    busDepotId: "",
+    convoyId: undefined,
+  });
+  
+  // Синхронизация users с initialUsers только при реальном изменении
+  useEffect(() => {
+    if (JSON.stringify(users) !== JSON.stringify(initialUsers)) {
+      setUsers(initialUsers);
+    }
+  }, [initialUsers]);
 
   // Группировка пользователей по ролям
-  const usersByRole = {
-    fleetManager: users.filter((user) => user.role === "fleet-manager"),
-    seniorDispatcher: users.filter((user) => user.role === "senior-dispatcher"),
-    dispatcher: users.filter((user) => user.role === "dispatcher"),
-    mechanic: users.filter((user) => user.role === "mechanic"),
-    hr: users.filter((user) => user.role === "hr"),
-    taksirovka: users.filter((user) => user.role === "taksirovka"),
-  }
+  const usersByRole = useMemo(() => {
+    const result = users.reduce<Record<User["role"], User[]>>(
+      (acc, user) => {
+        const normalizedRole = (user.role.charAt(0).toLowerCase() + user.role.slice(1)) as User["role"];
+        if (!acc[normalizedRole]) {
+          acc[normalizedRole] = [];
+        }
+        acc[normalizedRole].push(user);
+        return acc;
+      },
+      {
+        fleetManager: [],
+        mechanic: [],
+        admin: [],
+        mechanicOnDuty: [],
+        dispatcher: [],
+        seniorDispatcher: [],
+        hr: [],
+        taskInspector: [],
+      }
+    );
+    return result;
+  }, [users]);
 
-  // Обработчик изменения полей формы пользователя
   const handleUserFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setNewUserData((prev) => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setNewUserData((prev) => ({ ...prev, [name]: value }));
+  };
 
-  // Обработчик изменения выпадающих списков
   const handleSelectChange = (name: string, value: string) => {
-    setNewUserData((prev) => ({ ...prev, [name]: value }))
-  }
+    setNewUserData((prev) => ({ ...prev, [name]: value }));
+  };
 
-  // Обработчик добавления нового пользователя
-  const handleAddUser = (convoys: any[]) => {
-    const newUser: User = {
-      id: Date.now().toString(),
-      name: newUserData.name,
+  const handleAddUser = async (convoys: Convoy[]) => {
+    console.log("handleAddUser: данные перед проверкой:", newUserData);
+    if (!newUserData.fullName || !newUserData.email || !newUserData.login || !newUserData.password || !newUserData.role) {
+      console.error("handleAddUser: не заполнены обязательные поля:", newUserData);
+      toast({
+        title: "Ошибка",
+        description: "Пожалуйста, заполните все обязательные поля",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    // Преобразуем роль в PascalCase для отправки на сервер
+    const roleInPascalCase = (newUserData.role.charAt(0).toUpperCase() + newUserData.role.slice(1)) as User["role"];
+
+    const userData: RegisterRequest = {
+      fullName: newUserData.fullName,
       email: newUserData.email,
-      role: newUserData.role,
-      position: newUserData.position,
-      avatar: "",
+      login: newUserData.login,
+      password: newUserData.password,
+      role: roleInPascalCase,
+      busDepotId: newUserData.busDepotId,
+      convoyId: newUserData.convoyId === "not-assigned" ? undefined : newUserData.convoyId,
+    };
+
+    console.log("handleAddUser: отправляемые данные на сервер:", userData);
+    const response = await authService.register(userData);
+    console.log("handleAddUser: ответ от сервера:", response);
+
+    if (!response.isSuccess) {
+      console.error("handleAddUser: ошибка сервера:", response.error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось добавить пользователя: " + response.error,
+        variant: "destructive",
+      });
+      return false;
     }
 
-    // Если выбрана роль начальника колонны и указана колонна
-    if (newUserData.role === "fleet-manager" && newUserData.convoyId && newUserData.convoyId !== "not-assigned") {
-      const convoy = convoys.find((c) => c.id === newUserData.convoyId)
-      if (convoy) {
-        newUser.convoyId = newUserData.convoyId
-        newUser.convoyNumber = convoy.number
-        newUser.position = `Начальник колонны №${convoy.number}`
-
-        // Обновляем автоколонну через callback
-        updateConvoys(newUser.id, undefined, newUserData.convoyId)
-      }
-    }
-
-    setUsers((prev) => [...prev, newUser])
-    setNewUserData({ name: "", email: "", login: "", password: "", role: "", position: "", convoyId: "" })
-
-    toast({
-      title: "Пользователь добавлен",
-      description: `Пользователь ${newUser.name} успешно добавлен`,
-    })
-
-    return true
-  }
-
-  // Обработчик редактирования пользователя
-  const handleEditUser = (convoys: any[]) => {
-    if (!selectedUser) return false
-
-    const updatedUser = {
-      ...selectedUser,
-      name: newUserData.name,
-      email: newUserData.email,
-      role: newUserData.role,
-      position: newUserData.position,
-    }
-
-    // Если изменилась роль с/на начальника колонны или изменилась колонна
-    if (newUserData.role === "fleet-manager") {
-      // Если выбрана новая колонна
-      if (newUserData.convoyId && newUserData.convoyId !== "not-assigned") {
-        const convoy = convoys.find((c) => c.id === newUserData.convoyId)
-        if (convoy) {
-          // Если пользователь уже был начальником другой колонны, освобождаем предыдущую
-          if (selectedUser.convoyId && selectedUser.convoyId !== newUserData.convoyId) {
-            // Обновляем автоколонну через callback
-            updateConvoys(selectedUser.id, selectedUser.convoyId, newUserData.convoyId)
-          } else if (!selectedUser.convoyId) {
-            // Если пользователь не был начальником колонны, просто назначаем
-            updateConvoys(selectedUser.id, undefined, newUserData.convoyId)
-          }
-
-          // Обновляем данные пользователя
-          updatedUser.convoyId = newUserData.convoyId
-          updatedUser.convoyNumber = convoy.number
-          updatedUser.position = `Начальник колонны №${convoy.number}`
-        }
-      } else {
-        // Если не выбрана колонна, но пользователь был начальником
-        if (selectedUser.convoyId) {
-          // Освобождаем колонну
-          updateConvoys(selectedUser.id, selectedUser.convoyId, undefined)
-
-          // Удаляем информацию о колонне у пользователя
-          delete updatedUser.convoyId
-          delete updatedUser.convoyNumber
-        }
-      }
-    } else if (selectedUser.role === "fleet-manager" && newUserData.role !== "fleet-manager") {
-      // Если пользователь был начальником колонны, а теперь нет
-      if (selectedUser.convoyId) {
-        // Освобождаем колонну
-        updateConvoys(selectedUser.id, selectedUser.convoyId, undefined)
-
-        // Удаляем информацию о колонне у пользователя
-        delete updatedUser.convoyId
-        delete updatedUser.convoyNumber
-      }
-    }
-
-    setUsers((prev) => prev.map((user) => (user.id === selectedUser.id ? updatedUser : user)))
-
-    toast({
-      title: "Пользователь обновлен",
-      description: `Данные пользователя ${updatedUser.name} успешно обновлены`,
-    })
-
-    return true
-  }
-
-  // Открытие диалога редактирования пользователя
-  const openEditUserDialog = (user: User) => {
-    setSelectedUser(user)
     setNewUserData({
-      name: user.name,
+      fullName: "",
+      email: "",
+      login: "",
+      password: "",
+      role: "fleetManager",
+      position: "",
+      busDepotId: newUserData.busDepotId,
+      convoyId: undefined,
+    });
+
+    return true;
+  };
+
+  const handleEditUser = async (convoys: Convoy[]) => {
+    console.log("handleEditUser: данные перед проверкой:", newUserData);
+    if (!selectedUser || !newUserData.fullName || !newUserData.role) {
+      console.error("handleEditUser: не заполнены обязательные поля:", newUserData);
+      toast({
+        title: "Ошибка",
+        description: "Пожалуйста, заполните все обязательные поля",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+   // Преобразуем роль в PascalCase для отправки на сервер
+  const roleInPascalCase = (newUserData.role.charAt(0).toUpperCase() + newUserData.role.slice(1)) as User["role"];
+
+  const userData: UpdateUserRequest = {
+    fullName: newUserData.fullName,
+    email: selectedUser.email,
+    role: roleInPascalCase,
+    busDepotId: selectedUser.busDepotId || "",
+    convoyId: newUserData.convoyId === "not-assigned" ? undefined : newUserData.convoyId,
+    convoyNumber: newUserData.convoyNumber,
+  };
+
+  console.log("handleEditUser: отправляемые данные на сервер:", userData);
+  const response = await authService.updateUser(selectedUser.id, userData);
+  console.log("handleEditUser: ответ от сервера:", response);
+
+  if (!response.isSuccess || !response.value) {
+    console.error("handleEditUser: ошибка сервера:", response.error);
+    toast({
+      title: "Ошибка",
+      description: "Не удалось обновить пользователя: " + response.error,
+      variant: "destructive",
+    });
+    return false;
+  }
+
+   // Обновляем пользователя, проверяя наличие role в ответе
+  const updatedRole = response.value.role
+    ? (response.value.role.charAt(0).toLowerCase() + response.value.role.slice(1)) as User["role"]
+    : selectedUser.role;
+
+  // Находим convoyNumber на основе convoyId
+  const convoy = convoys.find(c => c.id === response.value?.convoyId);
+  const updatedUser: User = {
+    ...selectedUser,
+    ...response.value,
+    role: updatedRole,
+    convoyNumber: convoy ? convoy.number : undefined, // Добавляем convoyNumber
+  };
+  setUsers((prev) => prev.map((user) => (user.id === selectedUser.id ? updatedUser : user)));
+  setSelectedUser(null);
+  setNewUserData({
+    fullName: "",
+    email: "",
+    login: "",
+    password: "",
+    role: "fleetManager",
+    position: "",
+    busDepotId: newUserData.busDepotId,
+    convoyId: undefined,
+  });
+  return true;
+};
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return false;
+
+    const response = await authService.deleteUser(selectedUser.id);
+    if (response.isSuccess) {
+      setUsers((prev) => prev.filter((user) => user.id !== selectedUser.id));
+      setSelectedUser(null);
+      return true;
+    } else {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось удалить пользователя: " + response.error,
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const openEditUserDialog = (user: User) => {
+    setSelectedUser(user);
+    setNewUserData({
+      fullName: user.fullName,
       email: user.email,
       login: "",
       password: "",
       role: user.role,
       position: user.position || "",
-      convoyId: user.convoyId || "",
-    })
-    return user
-  }
+      busDepotId: user.busDepotId || "",
+      convoyId: user.convoyId,
+      convoyNumber: user.convoyNumber,
+    });
+  };
 
-  // Открытие диалога просмотра пользователей по роли
   const openViewUsersDialog = (role: string) => {
-    setSelectedUserRole(role)
-    return role
-  }
+    setSelectedUserRole(role as User["role"] | null);
+  };
 
-  // Обновление пользователя при изменении автоколонны
-  const updateUserConvoy = (userId: string, convoyId: string | undefined, convoyNumber: number | undefined) => {
+  const handleUserConvoyUpdate = (userId: string, convoyId: string | undefined, convoyNumber: number | undefined) => {
+    console.log("handleUserConvoyUpdate: обновление convoyId для пользователя:", { userId, convoyId, convoyNumber });
     setUsers((prev) =>
-      prev.map((user) => {
-        if (user.id === userId) {
-          const updatedUser = { ...user }
-
-          if (convoyId && convoyNumber) {
-            updatedUser.convoyId = convoyId
-            updatedUser.convoyNumber = convoyNumber
-            updatedUser.position = `Начальник колонны №${convoyNumber}`
-          } else {
-            delete updatedUser.convoyId
-            delete updatedUser.convoyNumber
-            // Если была должность с номером колонны, убираем номер
-            if (updatedUser.position?.includes("№")) {
-              updatedUser.position = updatedUser.position.replace(/№\d+/, "")
-            }
-          }
-
-          return updatedUser
-        }
-        return user
-      }),
-    )
-  }
+      prev.map((user) => (user.id === userId ? { ...user, convoyId } : user))
+    );
+    updateUserConvoy(userId, convoyId, convoyNumber);
+  };
 
   return {
     users,
-    setUsers,
     usersByRole,
     selectedUser,
-    setSelectedUser,
     selectedUserRole,
-    setSelectedUserRole,
     newUserData,
     setNewUserData,
+    setSelectedUser,
     handleUserFormChange,
     handleSelectChange,
     handleAddUser,
     handleEditUser,
+    handleDeleteUser,
     openEditUserDialog,
     openViewUsersDialog,
-    updateUserConvoy,
-  }
+    handleUserConvoyUpdate,
+  };
 }
-

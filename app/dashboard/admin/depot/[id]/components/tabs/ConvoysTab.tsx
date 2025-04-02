@@ -14,6 +14,8 @@ interface ConvoysTabProps {
 }
 
 export default function ConvoysTab({ convoys, users, onEditConvoy, onViewConvoy, onAddConvoy }: ConvoysTabProps) {
+  console.log("Convoys IDs:", [...new Set(convoys.map(c => c.id))]); // Проверка уникальности
+
   return (
     <div className="space-y-6">
       <div className="mb-6 flex justify-between items-center">
@@ -37,11 +39,16 @@ export default function ConvoysTab({ convoys, users, onEditConvoy, onViewConvoy,
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {convoys.map((convoy) => (
-            <ConvoyCard key={convoy.id} convoy={convoy} users={users} onEdit={onEditConvoy} onView={onViewConvoy} />
+            <ConvoyCard
+              key={convoy.id}
+              convoy={convoy}
+              users={users}
+              onEdit={onEditConvoy}
+              onView={onViewConvoy}
+            />
           ))}
         </div>
       )}
     </div>
   )
 }
-

@@ -8,13 +8,34 @@ import { Bus, Users, Route, Calendar, FileText, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import BusTable from "./components/BusTable"
+import { busDepotService } from "@/service/busDepotService";
+
 
 export default function FleetManagerDashboard() {
   const [isLoaded, setIsLoaded] = useState(false)
+  const [convoyNumber, setConvoyNumber] = useState<number | null>(null);
+  const [busDepotName, setBusDepotName] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsLoaded(true)
-  }, [])
+    setIsLoaded(true);
+  
+    const storedConvoyNumber = localStorage.getItem("convoyNumber");
+    const storedDepotId = localStorage.getItem("busDepotId");
+  
+    if (storedConvoyNumber) setConvoyNumber(Number(storedConvoyNumber));
+  
+    if (storedDepotId) {
+      busDepotService.getById(storedDepotId).then(response => {
+        if (response.isSuccess && response.value) {
+          setBusDepotName(response.value.name);
+          console.log(`Bus depot name: "${response.value.name}"`);
+        }
+      }).catch(err => {
+        console.error("Ошибка при получении имени автопарка:", err);
+      });
+    }
+  }, []);
+  
 
   // Анимация для карточек
   const containerVariants = {
@@ -41,8 +62,13 @@ export default function FleetManagerDashboard() {
   return (
     <div className="flex flex-col gap-4 p-4 md:p-8">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight text-sky-700">Панель управления автопарком</h1>
-        <p className="text-gray-500">Добро пожаловать! Вот обзор состояния вашего автопарка.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-sky-700">
+          Панель управления {busDepotName ? `автопарком ${busDepotName}` : "автопарком"}
+        </h1>
+        <p className="text-gray-500">
+          Добро пожаловать! Вот обзор состояния вашей колонны
+          {convoyNumber !== null && ` №${convoyNumber}`}.
+        </p>
       </div>
 
       <Tabs defaultValue="overview" className="w-full">

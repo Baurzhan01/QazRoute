@@ -13,8 +13,9 @@ interface ConvoyCardProps {
 }
 
 export default function ConvoyCard({ convoy, users, onEdit, onView }: ConvoyCardProps) {
-  const chief = users.find((u) => u.id === convoy.chiefId)
-  const mechanic = users.find((u) => u.id === convoy.mechanicId)
+  // Используем данные из convoy.chief и convoy.mechanic, если они есть
+  const chiefName = convoy.chief?.fullName || users.find((u) => u.id === convoy.chiefId)?.fullName || "Не назначен";
+  const mechanicName = convoy.mechanic?.fullName || users.find((u) => u.id === convoy.mechanicId)?.fullName || "Не назначен";
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
@@ -23,7 +24,7 @@ export default function ConvoyCard({ convoy, users, onEdit, onView }: ConvoyCard
           <Building2 className="h-5 w-5" />
           Автоколонна №{convoy.number}
         </CardTitle>
-        <CardDescription className="text-sky-100">{convoy.busIds.length} автобусов</CardDescription>
+        <CardDescription className="text-sky-100">{convoy.busIds?.length || convoy.buses?.length || 0} автобусов</CardDescription>
       </CardHeader>
 
       <CardContent className="pt-6">
@@ -32,7 +33,7 @@ export default function ConvoyCard({ convoy, users, onEdit, onView }: ConvoyCard
             <Briefcase className="h-5 w-5 text-sky-500" />
             <div>
               <p className="text-sm text-gray-500">Начальник колонны</p>
-              <p className="font-medium">{chief ? chief.name : "Не назначен"}</p>
+              <p className="font-medium">{chiefName}</p>
             </div>
           </div>
 
@@ -40,7 +41,7 @@ export default function ConvoyCard({ convoy, users, onEdit, onView }: ConvoyCard
             <Wrench className="h-5 w-5 text-purple-500" />
             <div>
               <p className="text-sm text-gray-500">Механик</p>
-              <p className="font-medium">{mechanic ? mechanic.name : "Не назначен"}</p>
+              <p className="font-medium">{mechanicName}</p>
             </div>
           </div>
         </div>
@@ -59,4 +60,3 @@ export default function ConvoyCard({ convoy, users, onEdit, onView }: ConvoyCard
     </Card>
   )
 }
-
