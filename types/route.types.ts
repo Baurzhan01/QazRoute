@@ -1,7 +1,23 @@
 import { BusLine } from "@/app/dashboard/fleet-manager/routes/types";
-
 // types/route.types.ts
 export type RouteStatus = "Workday" | "Saturday" | "Sunday";
+export type DayType = "workdays" | "saturday" | "sunday"
+
+export interface Station {
+  id: string
+  name: string
+  convoyId: string
+  convoyNumber: number
+}
+
+export interface RouteFormData {
+  name: string
+  exitNumbers: string
+  orderInSchedule: string
+  additionalInfo: string
+  stationId: string
+  dayType: DayType
+}
 
 export interface Route {
   id?: string;
@@ -24,6 +40,7 @@ export interface UpdateRouteRequest {
   routeStatus: RouteStatus;
   number: string;
   queue: number;
+  busLineNumbers: string[];
 }
 
 export interface ApiResponse<T> {

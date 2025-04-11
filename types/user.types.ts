@@ -21,3 +21,9 @@ export interface User {
     value: T | null;
   }
   
+  export interface UserContext {
+    userId: string;
+    userName: string;
+    convoyId: string;
+    convoyNumber: number;
+  }

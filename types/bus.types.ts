@@ -1,20 +1,32 @@
+import { Driver } from "./driver.types";
+
 // types/bus.types.ts
-export enum BusStatus {
-    OnWork = 'OnWork',
-    UnderRepair = 'UnderRepair',
-    LongTermRepair = 'LongTermRepair',
-    OutOfService = 'OutOfService',
-  }
+export type BusStatus = "OnWork" | "UnderRepair" | "LongTermRepair" | "DayOff" | "Decommissioned"
   
 export interface Bus {
-    id?: string;
+    id: string;
     govNumber: string;
     garageNumber: string;
     additionalInfo: string;
-    busLineId: string;
+    // busLineId: string;
     busStatus: BusStatus;
     convoyId: string;
   }
+
+  export interface BusWithDrivers extends Bus {
+    drivers: Pick<Driver, "id" | "serviceNumber" | "fullName">[]
+  }
+  
+  
+  export interface BusStatsData {
+    OnWork: number
+    UnderRepair: number
+    LongTermRepair: number
+    DayOff: number
+    Decommissioned: number
+    total: number
+  }
+  
   
   export interface CreateBusRequest {
     govNumber: string;
@@ -24,6 +36,11 @@ export interface Bus {
     busStatus: BusStatus;
     convoyId: string;
   }
+
+  export interface CreateBusRequestWithDrivers extends CreateBusRequest {
+    driverIds: string[]
+  }
+  
   
   export interface UpdateBusRequest {
     govNumber: string;
@@ -38,5 +55,9 @@ export interface Bus {
     error: string | null;
     statusCode: number;
     value: T | null;
+  }
+  export interface PaginatedBusesResponse {
+    items: BusWithDrivers[]
+    totalCount: number
   }
   

@@ -36,21 +36,20 @@ export const busLineService = {
 
   createMultiple: async (data: { routeId: string; busLines: CreateBusLineRequest[] }): Promise<ApiResponse<BusLine[]>> => {
     try {
+      console.log("📦 Отправка на /bus-lines/bulk:", data);
       const response = await apiClient.post<ApiResponse<BusLine[]>>('/bus-lines/bulk', data);
       return response.data;
     } catch (error: any) {
-      const errorDetails = error.response
-        ? {
-            status: error.response.status,
-            data: error.response.data,
-            headers: error.response.headers,
-          }
-        : { message: error.message };
-      console.error("Ошибка при создании выходов:", errorDetails);
-      throw new Error(`Не удалось создать выходы: ${JSON.stringify(errorDetails)}`);
+      console.error("❌ Ошибка при создании выходов (bulk):", error);
+      if (error.response) {
+        console.error("ℹ️ Ответ сервера:", error.response.data);
+        throw new Error(`Ошибка 400: ${JSON.stringify(error.response.data)}`);
+      } else {
+        throw new Error(`Неизвестная ошибка: ${error.message}`);
+      }
     }
   },
-
+  
   update: async (id: string, data: UpdateBusLineRequest): Promise<ApiResponse<BusLine>> => {
     const response = await apiClient.put<ApiResponse<BusLine>>(`/bus-lines/${id}`, data);
     return response.data;

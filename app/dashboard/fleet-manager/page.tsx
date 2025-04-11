@@ -28,7 +28,6 @@ export default function FleetManagerDashboard() {
       busDepotService.getById(storedDepotId).then(response => {
         if (response.isSuccess && response.value) {
           setBusDepotName(response.value.name);
-          console.log(`Bus depot name: "${response.value.name}"`);
         }
       }).catch(err => {
         console.error("Ошибка при получении имени автопарка:", err);

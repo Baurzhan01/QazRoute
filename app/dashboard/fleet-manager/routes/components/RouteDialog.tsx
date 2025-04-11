@@ -32,14 +32,24 @@ export default function RouteDialog({
   });
 
   useEffect(() => {
-    console.log("Route prop changed:", route);
-    setFormData({
-      number: route?.number || "",
-      queue: route?.queue || 0,
-      routeStatus: route ? toFrontendStatus(route.routeStatus) : "Будни",
-      exitNumbers: "",
-    });
+    console.log("route", route)
+    if (route) {
+      setFormData({
+        number: route.number || "",
+        queue: route.queue || 0,
+        routeStatus: toFrontendStatus(route.routeStatus),
+        exitNumbers: route?.busLines?.map((line) => line.number).join(", ") || "",
+      });
+    } else {
+      setFormData({
+        number: "",
+        queue: 0,
+        routeStatus: "Будни",
+        exitNumbers: "",
+      });
+    }
   }, [route]);
+  
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,7 +112,6 @@ export default function RouteDialog({
               </SelectContent>
             </Select>
           </div>
-          {!route && (
             <div>
               <Label htmlFor="exitNumbers">Номера выходов</Label>
               <Input
@@ -113,7 +122,6 @@ export default function RouteDialog({
                 required
               />
             </div>
-          )}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Отмена

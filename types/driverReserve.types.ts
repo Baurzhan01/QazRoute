@@ -1,3 +1,5 @@
+import { DriverStatusCount } from "./driver.types";
+
 // types/driverReserve.types.ts
 export interface Driver {
     id?: string;
@@ -5,16 +7,17 @@ export interface Driver {
     serviceNumber: string;
     address: string;
     phone: string;
-    birthDate: {
-      year: number;
-      month: number;
-      day: number;
-      dayOfWeek?: number;
-    };
+    birthDate: string 
     additionalInfo: string;
     driverStatus: string;
     busId?: string;
+    lastBusId?: string // 
     convoyId?: string;
+  }
+  export interface PaginatedDriversResponse {
+    items: Driver[]
+    totalCount: number
+    statusCounts: DriverStatusCount
   }
   export interface ApiResponse<T> {
     isSuccess: boolean;

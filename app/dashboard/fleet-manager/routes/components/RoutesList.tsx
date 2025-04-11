@@ -118,7 +118,6 @@ export default function RoutesList({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredRoutes.map((route) => {
                 const routeBusLinesResponse = route.id ? busLines[route.id] || [] : [];
-                console.log(`BusLines for route ${route.id}:`, routeBusLinesResponse);
                 return (
                   <RouteCard
                     key={route.id}

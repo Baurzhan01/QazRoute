@@ -1,35 +1,60 @@
-// services/busService.ts
-import apiClient from '../app/api/apiClient';
-import type { ApiResponse, Bus, CreateBusRequest, UpdateBusRequest } from '../types/bus.types';
+import apiClient from "@/app/api/apiClient"
+import type { Bus, BusWithDrivers } from "@/types/bus.types"
+import type { PaginatedBusesResponse } from "@/types/bus.types"
 
 export const busService = {
-  getAll: async (): Promise<ApiResponse<Bus[]>> => {
-    const response = await apiClient.get<ApiResponse<Bus[]>>('/buses');
-    return response.data;
+  // Получить все автобусы (общий список, редко используется)
+  getAll: async () => (await apiClient.get("/buses")).data,
+
+  getByConvoy: async (convoyId: string) => {
+    const res = await apiClient.get(`/buses/convoy/${convoyId}`)
+    return res.data?.value ?? []
   },
 
-  getById: async (id: string): Promise<ApiResponse<Bus>> => {
-    const response = await apiClient.get<ApiResponse<Bus>>(`/buses/${id}`);
-    return response.data;
-  },
+  // Получить автобус по ID
+  getById: async (id: string) =>
+    (await apiClient.get(`/buses/${id}`)).data,
 
-  getByConvoyId: async (convoyId: string): Promise<ApiResponse<Bus[]>> => {
-    const response = await apiClient.get<ApiResponse<Bus[]>>(`/buses/convoy/${convoyId}`);
-    return response.data;
-  },
+  // Получить автобус с назначенными водителями
+  getWithDrivers: async (id: string) =>
+    (await apiClient.get(`/buses/with-drivers/${id}`)).data,
 
-  create: async (data: CreateBusRequest): Promise<ApiResponse<Bus>> => {
-    const response = await apiClient.post<ApiResponse<Bus>>('/buses', data);
-    return response.data;
-  },
+  // Получить статистику по статусам
+  getStatusStats: async (convoyId: string) =>
+    (await apiClient.get(`/buses/bus-status-stats/${convoyId}`)).data,
 
-  update: async (id: string, data: UpdateBusRequest): Promise<ApiResponse<Bus>> => {
-    const response = await apiClient.put<ApiResponse<Bus>>(`/buses/${id}`, data);
-    return response.data;
+  // Создать автобус с привязкой водителей
+  create: async (bus: Omit<Bus, "id"> & { driverIds: string[] }): Promise<string> => {
+    const res = await apiClient.post("/buses", bus)
+    return res.data.value // <-- это строка ID
   },
+  // Обновить автобус
+  update: async (id: string, bus: Omit<Bus, "id">) =>
+    (await apiClient.put(`/buses/${id}`, bus)).data,
 
-  delete: async (id: string): Promise<ApiResponse<void>> => {
-    const response = await apiClient.delete<ApiResponse<void>>(`/buses/${id}`);
-    return response.data;
-  },
-};
+  // Удалить автобус
+  delete: async (id: string) =>
+    (await apiClient.delete(`/buses/${id}`)).data,
+
+  // Назначить водителей автобусу
+  assignDrivers: async (id: string, driverIds: string[]) =>
+    (await apiClient.post(`/buses/${id}/assign-drivers`, { driverIds })).data,
+
+  // Удалить водителя с автобуса
+  removeDriver: async (busId: string, driverId: string) =>
+    (await apiClient.delete(`/buses/${busId}/remove-driver/${driverId}`)).data,
+
+  // Фильтрация автобусов с пагинацией
+  // busService.ts
+
+filter: async (params: {
+  convoyId: string
+  status?: string | null
+  search?: string
+  page: number
+  pageSize: number
+}): Promise<PaginatedBusesResponse> => {
+  const res = await apiClient.post("/buses/filter", params)
+  return res.data.value
+}
+}

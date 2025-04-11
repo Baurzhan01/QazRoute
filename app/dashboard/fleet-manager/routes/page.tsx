@@ -16,6 +16,7 @@ import CopyRouteDialog from "./components/CopyRouteDialog";
 import { routeService } from "@/service/routeService";
 import { busLineService } from "@/service/busLineService";
 import { FrontendRouteStatus, toBackendStatus } from "./utils/routeStatusUtils";
+import { log } from "console";
 
 export default function RoutesPage() {
   const router = useRouter();
@@ -43,7 +44,6 @@ export default function RoutesPage() {
     try {
       setLoading(true);
       const routesResponse = await routeService.getByConvoyId(convoyId);
-      console.log("Fetched routes after update:", routesResponse);
       if (!routesResponse.isSuccess) {
         throw new Error(routesResponse.error || "Не удалось загрузить маршруты");
       }
@@ -53,24 +53,27 @@ export default function RoutesPage() {
       const busLinesMap: { [routeId: string]: BusLine[] } = {};
 
       for (const route of fetchedRoutes) {
-        const busLinesResponse = await busLineService.getByRouteId(route.id || "");
-        if (busLinesResponse.isSuccess && busLinesResponse.value) {
-          route.busLines = busLinesResponse.value;
-          busLinesMap[route.id || ""] = busLinesResponse.value; // ✅ сохраняем в map
-        } else {
+        try {
+          const busLinesResponse = await busLineService.getByRouteId(route.id || "");
+          if (busLinesResponse.isSuccess && busLinesResponse.value) {
+            route.busLines = busLinesResponse.value;
+            busLinesMap[route.id || ""] = busLinesResponse.value;
+          } else {
+            route.busLines = [];
+            busLinesMap[route.id || ""] = [];
+          }
+        } catch (error) {
+          console.warn(`⚠️ Не удалось загрузить выходы для маршрута "${route.number}" (id: ${route.id})`, error);
           route.busLines = [];
           busLinesMap[route.id || ""] = [];
         }
       }
+      
 
       setRoutes(fetchedRoutes);
       setBusLines(busLinesMap); // ✅ теперь данные видны в ViewRouteDialog
 
-      console.log("Fetched routes with busLines:", fetchedRoutes.map((route) => ({
-        id: route.id,
-        number: route.number,
-        busLines: route.busLines || [],
-      })));
+    
       setRoutes(fetchedRoutes);
     } catch (error) {
       console.error("Ошибка при загрузке данных:", error);
@@ -153,13 +156,12 @@ export default function RoutesPage() {
       };
   
       const routeResponse = await routeService.create(newRoute);
-      console.log(`routeResponse: ${routeResponse}`);
       if (!routeResponse.isSuccess || !routeResponse.value) {
         throw new Error(routeResponse.error || "Не удалось добавить маршрут");
       }
-      const createdRoute = routeResponse.value
+      const createdRouteId = routeResponse.value; 
       // Проверяем, что createdRoute не null и имеет id
-      if (!createdRoute ) {
+      if (!createdRouteId ) {
         throw new Error("Не удалось получить ID созданного маршрута");
       }
   
@@ -174,7 +176,7 @@ export default function RoutesPage() {
   
       // Отправляем данные в формате { routeId, busLines }
       const requestData = {
-        routeId: createdRoute, // Передаем только ID маршрута (строку)
+        routeId: createdRouteId, // Передаем только ID маршрута (строку)
         busLines: busLinesData,
       };
       const busLinesResponse = await busLineService.createMultiple(requestData);
@@ -203,27 +205,66 @@ export default function RoutesPage() {
 
   const handleEditRoute = async (formData: RouteFormData) => {
     try {
-      console.log("Selected route before edit:", selectedRoute);
-      if (!selectedRoute || !selectedRoute.id) {
-        console.warn("No selected route or route ID, aborting edit");
-        return;
-      }
+      if (!selectedRoute || !selectedRoute.id) return;
   
-      console.log("Form data for update:", formData);
       const updatedRoute = {
         convoyId: userContext.convoyId,
         routeStatus: toBackendStatus(formData.routeStatus as FrontendRouteStatus),
         number: formData.number,
         queue: formData.queue,
+        busLineNumbers: formData.exitNumbers.split(",").map((n) => n.trim()),
       };
-      console.log("Updated route data:", updatedRoute);
   
       const response = await routeService.update(selectedRoute.id, updatedRoute);
-      console.log("Update response:", response);
       if (!response.isSuccess || !response.value) {
         throw new Error(response.error || "Не удалось обновить маршрут");
       }
   
+      // ❌ Проблема: не обновляются или теряются выходы (busLines)
+      // ✅ Решение: добавить поддержку редактирования выходов маршрута
+  
+      const oldNumbers = selectedRoute.busLines?.map((line) => line.number.trim()) ?? [];
+      const newNumbers = formData.exitNumbers.split(",").map((n) => n.trim());
+  
+      const added = newNumbers.filter((n) => !oldNumbers.includes(n));
+      const removed = oldNumbers.filter((n) => !newNumbers.includes(n));
+  
+      // Удаляем выходы, которых больше нет
+      for (const old of selectedRoute.busLines ?? []) {
+        if (removed.includes(old.number)) {
+          try {
+            if (!selectedRoute?.id) return;
+              await busLineService.getByRouteId(selectedRoute.id);
+          } catch (err) {
+            console.warn("⚠️ Ошибка удаления выхода:", old.number, err);
+          }
+        }
+      }
+  
+      // Добавляем новые выходы
+      for (const number of added) {
+        const alreadyExists = selectedRoute.busLines?.some((line) => line.number === number);
+        if (alreadyExists) {
+          console.warn(`⚠️ Выход с номером "${number}" уже существует. Пропускаем создание.`);
+          continue;
+        }
+      
+        const createPayload = {
+          number,
+          exitTime: "00:00:00",
+          endTime: "00:00:00",
+          shiftChangeTime: null,
+        };
+      
+        try {
+          await busLineService.createMultiple({
+            routeId: selectedRoute.id,
+            busLines: [createPayload],
+          });
+        } catch (err) {
+          console.warn("⚠️ Ошибка добавления выхода:", number, err);
+        }
+      }
       await fetchRoutes(userContext.convoyId);
       setIsEditDialogOpen(false);
   
@@ -240,6 +281,7 @@ export default function RoutesPage() {
       });
     }
   };
+  
 
   const handleCopyRoute = async (route: Route, newRouteStatus: string) => {
     try {
