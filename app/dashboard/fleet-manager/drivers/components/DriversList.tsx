@@ -77,11 +77,7 @@ export default function DriversList({
     )
   }
 
-  // Клиентская пагинация
-  const paginatedDrivers = drivers.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  )
+  const startIndex = (currentPage - 1) * pageSize
 
   return (
     <>
@@ -126,28 +122,28 @@ export default function DriversList({
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5 text-amber-500" />
               {inReserve ? "Резерв водителей" : "Список водителей"}
-              <span className="text-sm font-normal text-gray-500 ml-2">(всего: {drivers.length})</span>
+              <span className="text-sm font-normal text-gray-500 ml-2">(всего: {totalItems})</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             {error ? (
               <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-700">{error}</div>
-            ) : paginatedDrivers.length === 0 ? (
+            ) : drivers.length === 0 ? (
               <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
                 <Users className="h-12 w-12 mx-auto text-gray-400 mb-3" />
                 <h3 className="text-lg font-medium text-gray-900 mb-1">
                   {searchQuery
                     ? "Водители не найдены"
                     : inReserve
-                    ? "Нет водителей в резерве"
-                    : "Нет доступных водителей"}
+                      ? "Нет водителей в резерве"
+                      : "Нет доступных водителей"}
                 </h3>
                 <p className="text-gray-500 mb-4">
                   {searchQuery
                     ? `По запросу "${searchQuery}" ничего не найдено`
                     : inReserve
-                    ? "В резерве нет водителей"
-                    : "В системе нет зарегистрированных водителей"}
+                      ? "В резерве нет водителей"
+                      : "В системе нет зарегистрированных водителей"}
                 </p>
                 {!searchQuery && !inReserve && (
                   <Button onClick={onAddClick}>
@@ -172,11 +168,11 @@ export default function DriversList({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedDrivers.map((driver, index) => (
+                    {drivers.map((driver, index) => (
                       <DriverRow
                         key={driver.id}
                         driver={driver}
-                        rowNumber={(currentPage - 1) * pageSize + index + 1}
+                        rowNumber={startIndex + index + 1}
                         busInfo={driver.busId ? busInfo[driver.busId] : null}
                         onEdit={() => onEditClick(driver)}
                         onDelete={() => onDeleteClick(driver)}

@@ -64,9 +64,13 @@ export default function DriverRow({
         <DriverStatusBadge status={driver.driverStatus} />
       </TableCell>
       <TableCell>
-        {busInfo ? (
-          <div className="flex items-center">
-            <span className="text-xs bg-gray-100 px-2 py-1 rounded">{busInfo.garageNumber}</span>
+        {driver.buses && driver.buses.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {driver.buses.map((bus) => (
+              <span key={bus.id} className="text-xs bg-gray-100 px-2 py-1 rounded">
+                {bus.garageNumber}
+              </span>
+            ))}
           </div>
         ) : (
           <span className="text-xs text-gray-500">Не назначен</span>

@@ -141,4 +141,3 @@ export default function ReserveTable({ departures, onAddAssignment, onRemoveAssi
     </div>
   )
 }
-

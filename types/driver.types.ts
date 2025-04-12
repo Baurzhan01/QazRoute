@@ -34,14 +34,16 @@ export interface Driver {
   serviceNumber: string
   address: string
   phone: string
-  birthDate: string // ← вот так
+  birthDate: string
   additionalInfo: string
   driverStatus: DriverStatus
-  busId?: string | null 
+  busId?: string | null
   lastBusId?: string | null
   convoyId?: string
   inReserve?: boolean
+  buses?: Bus[] // 🔥 добавь это
 }
+
 
 
 // Для создания водителя (POST /drivers)

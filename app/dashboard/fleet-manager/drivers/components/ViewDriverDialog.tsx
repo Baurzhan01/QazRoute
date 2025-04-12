@@ -10,10 +10,9 @@ interface ViewDriverDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   driver: Driver | null
-  busInfo: any
 }
 
-export default function ViewDriverDialog({ open, onOpenChange, driver, busInfo }: ViewDriverDialogProps) {
+export default function ViewDriverDialog({ open, onOpenChange, driver,  }: ViewDriverDialogProps) {
   if (!driver) return null
 
   // Получаем инициалы для аватара
@@ -97,11 +96,15 @@ export default function ViewDriverDialog({ open, onOpenChange, driver, busInfo }
                   <div className="flex items-start gap-3">
                     <Bus className="h-5 w-5 text-gray-500 mt-0.5" />
                     <div>
-                      <div className="text-sm font-medium text-gray-500">Автобус</div>
-                      {busInfo ? (
-                        <div>
-                          <span className="font-medium">{busInfo.garageNumber}</span>
-                          <span className="text-sm text-gray-500 ml-2">(гос. номер: {busInfo.govNumber})</span>
+                      <div className="text-sm font-medium text-gray-500">Назначен на автобусы</div>
+                      {driver.buses && driver.buses.length > 0 ? (
+                        <div className="space-y-1">
+                          {driver.buses.map((bus) => (
+                            <div key={bus.id}>
+                              <span className="font-medium">{bus.garageNumber}</span>
+                              <span className="text-sm text-gray-500 ml-2">(гос. номер: {bus.govNumber})</span>
+                            </div>
+                          ))}
                         </div>
                       ) : (
                         <div className="text-gray-500">Не назначен</div>

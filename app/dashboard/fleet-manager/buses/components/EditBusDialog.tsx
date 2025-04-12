@@ -57,13 +57,13 @@ export default function EditBusDialog({ bus, open, onClose, refetch }: EditBusDi
 
         const res = await driverService.filter(filter)
 
-        if (res.isSuccess && Array.isArray(res.value)) {
+        if (res.isSuccess && res.value && "items" in res.value) {
           const assignedIds = new Set((bus.drivers || []).map(d => d.id))
-          const filtered = res.value.filter(d => d.id && !assignedIds.has(d.id))
-          setAvailable(filtered)
+          const availableDrivers = res.value.items.filter(d => d.id && !assignedIds.has(d.id))
+          setAvailable(availableDrivers)
         } else {
-          console.error("❌ Ошибка или value не массив:", res)
-        }
+          console.error("❌ Ошибка при получении водителей:", res)
+        }        
       } catch (e) {
         console.error("🚨 Ошибка загрузки водителей:", e)
       }

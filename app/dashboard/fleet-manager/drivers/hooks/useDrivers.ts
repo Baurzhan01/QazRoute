@@ -74,6 +74,7 @@
         }
       }
       fetchStatusStats()
+      
     }, [convoyId])
 
     const fetchDrivers = useCallback(async () => {
@@ -128,8 +129,10 @@
             setTotalItems(totalCount)
             setTotalPages(Math.ceil(totalCount / pageSize))
 
-            const countsWithTotal = calculateDriverTotal(statusCounts)
-            setStatusCounts(countsWithTotal)
+            if (statusCounts) {
+              const countsWithTotal = calculateDriverTotal(statusCounts)
+              setStatusCounts(countsWithTotal)
+            }
 
             const busInfoMap: Record<string, any> = {}
             for (const driver of items) {
