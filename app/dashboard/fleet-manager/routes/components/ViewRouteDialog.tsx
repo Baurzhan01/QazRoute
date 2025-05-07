@@ -3,10 +3,10 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { Route } from "@/types/route.types";
-import type { BusLine } from "@/types/busLine.types";
 import { Calendar, RouteIcon, ListOrdered, Hash } from "lucide-react";
 import { toFrontendStatus, getStatusColor } from "../utils/routeStatusUtils";
+import type { Route } from "@/types/route.types";
+import type { BusLine } from "@/types/busLine.types";
 
 interface ViewRouteDialogProps {
   open: boolean;
@@ -32,56 +32,80 @@ export default function ViewRouteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] animate-fadeIn">
         <DialogHeader>
           <div className="flex justify-between items-center">
-            <DialogTitle className="flex items-center gap-2">
-              <RouteIcon className="h-5 w-5" />
+            <DialogTitle className="flex items-center gap-2 text-primary">
+              <RouteIcon className="h-6 w-6" />
               Маршрут №{route.number}
             </DialogTitle>
             <Badge className={statusColor}>{frontendStatus}</Badge>
           </div>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="flex items-start gap-3">
-            <ListOrdered className="h-5 w-5 text-gray-500 mt-0.5" />
-            <div>
-              <p className="font-medium">Порядок в разнорядке</p>
-              <p className="text-gray-600">{route.queue}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Hash className="h-5 w-5 text-gray-500 mt-0.5" />
-            <div>
-              <p className="font-medium">Выходы</p>
-              {busLines.length > 0 ? (
-                <ul className="text-gray-600">
+
+        {/* Основной контент */}
+        <div className="space-y-6 py-6">
+          <InfoBlock
+            icon={<ListOrdered className="h-5 w-5 text-muted-foreground" />}
+            title="Порядок в разнорядке"
+            content={route.queue.toString()}
+          />
+          <InfoBlock
+            icon={<Hash className="h-5 w-5 text-muted-foreground" />}
+            title="Выходы"
+            content={
+              busLines.length > 0 ? (
+                <ul className="text-muted-foreground list-disc list-inside">
                   {busLines.map((busLine) => (
-                    <li key={busLine.id}>№{busLine.number}</li>
+                    <li key={busLine.id}>Выход №{busLine.number}</li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-gray-600">Нет выходов</p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Calendar className="h-5 w-5 text-gray-500 mt-0.5" />
-            <div>
-              <p className="font-medium">Тип дня</p>
-              <p className="text-gray-600">{frontendStatus}</p>
-            </div>
-          </div>
+                "Нет выходов"
+              )
+            }
+          />
+          <InfoBlock
+            icon={<Calendar className="h-5 w-5 text-muted-foreground" />}
+            title="Тип дня"
+            content={frontendStatus}
+          />
         </div>
-        <div className="flex justify-between">
+
+        {/* Действия */}
+        <div className="flex justify-between pt-4 border-t">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Закрыть
+          </Button>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Закрыть
+            <Button variant="secondary" onClick={() => onCopy(route)}>
+              Копировать
             </Button>
             <Button onClick={() => onEdit(route)}>Редактировать</Button>
           </div>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Маленький компонент для аккуратных блоков информации
+function InfoBlock({
+  icon,
+  title,
+  content,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  content: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="mt-1">{icon}</div>
+      <div>
+        <p className="font-semibold">{title}</p>
+        <div className="text-muted-foreground">{content}</div>
+      </div>
+    </div>
   );
 }

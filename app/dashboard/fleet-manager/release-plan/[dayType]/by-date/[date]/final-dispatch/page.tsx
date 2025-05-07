@@ -1,139 +1,125 @@
 "use client"
 
-import { useParams } from "next/navigation"
-import { useState, useEffect, useMemo } from "react"
-import { Button } from "@/components/ui/button"
-import { motion } from "framer-motion"
-import { ArrowLeft, Printer, Download, FileText } from "lucide-react"
-import Link from "next/link"
-import { formatDateLabel, parseDate } from "../../../../utils/dateUtils"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { FinalDispatchData } from "../../../../types/finalDispatch"
-import { getMockFinalDispatch } from "../../../mock/finalDispatchMock"
+import { useEffect, useState } from "react"
+import { useParams, useRouter } from "next/navigation"
 import FinalDispatchTable from "../../../../components/FinalDispatchTable"
-import { routeService } from "@/app/api/apiService"
+import FinalDispatchExport from "./components/FinalDispatchExport"
+import { releasePlanService } from "@/service/releasePlanService"
+import type { FinalDispatchData } from "@/types/releasePlanTypes"
+import { prepareFinalDispatchData } from "../../../../utils/dispatchMapper"
+import { formatDate, formatDateLabel, formatDayOfWeek } from "../../../../utils/dateUtils"
+import { Button } from "@/components/ui/button"
+import { getAuthData } from "@/lib/auth-utils"
+import apiClient from "@/app/api/apiClient"
 
 export default function FinalDispatchPage() {
+  const [data, setData] = useState<FinalDispatchData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [depotName, setDepotName] = useState<string>("")
+
   const params = useParams()
-  const dateString = params.date as string
-  const dayType = params.dayType as string
+  const router = useRouter()
 
-  // Memoize the date object to prevent recreation on each render
-  const date = useMemo(() => parseDate(dateString), [dateString])
+  const dateParam = params?.date as string | undefined
+  const dayType = params?.dayType as string | undefined
 
-  const [dispatchData, setDispatchData] = useState<FinalDispatchData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const handleGoBack = () => {
+    router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateParam}`)
+  }
 
-  // Загрузка данных
+  useEffect(() => {
+    const fetchDepotName = async () => {
+      const authData = getAuthData()
+      const depotId = authData?.busDepotId
+
+      if (!depotId) return
+
+      try {
+        const { data } = await apiClient.get(`/bus-depots/${depotId}`)
+        if (data?.isSuccess && data.value?.name) {
+          setDepotName(data.value.name)
+        }
+      } catch (err) {
+        console.error("Ошибка загрузки данных автобусного парка", err)
+      }
+    }
+
+    fetchDepotName()
+  }, [])
+
   useEffect(() => {
     const fetchData = async () => {
+      if (!dateParam) {
+        setError("Дата не указана в параметрах URL")
+        return
+      }
+
       setLoading(true)
+      setError(null)
+
       try {
-        // Получаем моковые данные
-        const data = getMockFinalDispatch(date)
+        const date = new Date(dateParam)
+        if (isNaN(date.getTime())) throw new Error("Некорректная дата")
 
-        // Пытаемся получить маршруты из API, но не блокируем работу, если API недоступен
-        try {
-          const routesResponse = await routeService.getAll()
+        const formattedDate = formatDate(date)
 
-          // Если API вернуло маршруты, можно использовать их для формирования разнарядки
-          if (routesResponse.isSuccess && routesResponse.value) {
-            console.log("Получены маршруты из API:", routesResponse.value.length)
-            // В будущем здесь можно добавить логику для формирования разнарядки
-            // на основе полученных маршрутов
-          }
-        } catch (apiError) {
-          console.warn("API недоступен, используются моковые данные:", apiError)
-          // Продолжаем работу с моковыми данными
-        }
+        const [dispatchResult, reserveResult] = await Promise.all([
+          releasePlanService.getFullDispatchByDate(formattedDate),
+          releasePlanService.getReserveAssignmentsByDate(formattedDate)
+        ])
 
-        // Устанавливаем данные и завершаем загрузку
-        setDispatchData(data)
-        setLoading(false)
-      } catch (error) {
-        console.error("Ошибка при загрузке данных:", error)
+        if (!dispatchResult.isSuccess || !dispatchResult.value) throw new Error(dispatchResult.error || "Ошибка загрузки разнарядки")
+        if (!reserveResult.isSuccess || !reserveResult.value) throw new Error(reserveResult.error || "Ошибка загрузки резерва")
+
+        const prepared = prepareFinalDispatchData({
+          ...dispatchResult.value,
+          reserves: reserveResult.value
+        })
+
+        setData(prepared)
+      } catch (err: any) {
+        console.error(err)
+        setError(err.message || "Неизвестная ошибка")
+      } finally {
         setLoading(false)
       }
     }
 
     fetchData()
-  }, [date])
+  }, [dateParam])
 
-  // Обработчик печати
-  const handlePrint = () => {
-    window.print()
-  }
-
-  // Обработчик экспорта в PDF
-  const handleExport = () => {
-    // Здесь должна быть логика экспорта в PDF
-    alert("Экспорт в PDF")
-  }
-
-  if (loading) {
-    return (
-      <div className="flex flex-col gap-4 p-4 md:p-8">
-        <div className="flex items-center gap-2 mb-6">
-          <Link href={`/dashboard/fleet-manager/release-plan/${dayType}/${dateString}`}>
-            <Button variant="outline" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-blue-700">Итоговая разнарядка</h1>
-            <p className="text-gray-500 mt-1">{formatDateLabel(date)}</p>
-          </div>
-        </div>
-        <div className="h-96 bg-gray-200 animate-pulse rounded-lg"></div>
-      </div>
-    )
-  }
+  const displayDate = dateParam ? new Date(dateParam) : null
 
   return (
-    <div className="flex flex-col gap-4 p-4 md:p-8">
-      <div className="flex items-center gap-2 mb-6">
-        <Link href={`/dashboard/fleet-manager/release-plan/${dayType}/${dateString}`}>
-          <Button variant="outline" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
+    <div className="flex flex-col gap-6">
+      <div className="sticky top-0 z-10 bg-white border-b py-4 px-6 flex items-center justify-between shadow-sm">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-blue-700">Итоговая разнарядка</h1>
-          <p className="text-gray-500 mt-1">{formatDateLabel(date)}</p>
+          <h2 className="text-3xl font-bold">
+            План выпуска автобусов {depotName && `· ${depotName}`}
+          </h2>
+          {displayDate && (
+            <p className="text-gray-600">
+              {formatDayOfWeek(displayDate)}, {formatDateLabel(displayDate)}
+            </p>
+          )}
+        </div>
+
+        <div className="flex gap-3">
+          {data && displayDate && (
+            <FinalDispatchExport date={displayDate} data={data} depotName={depotName} />
+          )}
+          <Button variant="secondary" onClick={handleGoBack}>
+            ← Назад к маршрутам
+          </Button>
         </div>
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <Card>
-          <CardHeader className="bg-blue-500 text-white flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              План выпуска автобусов
-            </CardTitle>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-white border-white hover:bg-blue-600"
-                onClick={handleExport}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Экспорт в PDF
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-white border-white hover:bg-blue-600"
-                onClick={handlePrint}
-              >
-                <Printer className="mr-2 h-4 w-4" />
-                Печать
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">{dispatchData && <FinalDispatchTable data={dispatchData} />}</CardContent>
-        </Card>
-      </motion.div>
+      <div className="p-6">
+        {loading && <p className="text-gray-500">Загрузка данных...</p>}
+        {error && <p className="text-red-500">Ошибка: {error}</p>}
+        {!loading && !error && data && <FinalDispatchTable data={data}  />}
+      </div>
     </div>
   )
 }

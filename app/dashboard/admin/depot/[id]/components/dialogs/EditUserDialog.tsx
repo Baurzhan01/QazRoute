@@ -21,7 +21,7 @@ interface EditUserDialogProps {
   formData: UserFormData
   convoys: Convoy[]
   onFormChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-  onSelectChange: (name: string, value: string) => void
+  onSelectChange: (name: keyof UserFormData, value: string | undefined) => void
   onSubmit: () => void
 }
 
@@ -44,28 +44,15 @@ export default function EditUserDialog({
 
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="fullName" className="text-right">
-              ФИО
-            </Label>
+            <Label htmlFor="fullName" className="text-right">ФИО</Label>
             <Input id="fullName" name="fullName" value={formData.fullName} onChange={onFormChange} className="col-span-3" />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="email" className="text-right">
-              Email
-            </Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={onFormChange}
-              className="col-span-3"
-            />
+            <Label htmlFor="email" className="text-right">Email</Label>
+            <Input id="email" name="email" type="email" value={formData.email} onChange={onFormChange} className="col-span-3" />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="role" className="text-right">
-              Роль
-            </Label>
+            <Label htmlFor="role" className="text-right">Роль</Label>
             <Select value={formData.role} onValueChange={(value) => onSelectChange("role", value)}>
               <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Выберите роль" />
@@ -83,15 +70,13 @@ export default function EditUserDialog({
 
           {(formData.role === "fleetManager" || formData.role === "mechanic") && (
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="convoyId" className="text-right">
-                Автоколонна
-              </Label>
-              <Select value={formData.convoyId} onValueChange={(value) => onSelectChange("convoyId", value)}>
+              <Label htmlFor="convoyId" className="text-right">Автоколонна</Label>
+              <Select value={formData.convoyId ?? "not-assigned"} onValueChange={(value) => onSelectChange("convoyId", value === "not-assigned" ? undefined : value)}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Выберите автоколонну (необязательно)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem key="not-assigned" value="not-assigned">Не назначена</SelectItem>
+                  <SelectItem value="not-assigned">Не назначена</SelectItem>
                   {convoys.map((convoy) => (
                     <SelectItem key={convoy.id} value={convoy.id}>
                       Автоколонна №{convoy.number}
@@ -104,24 +89,14 @@ export default function EditUserDialog({
 
           {formData.role !== "fleetManager" && formData.role !== "mechanic" && (
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="position" className="text-right">
-                Должность
-              </Label>
-              <Input
-                id="position"
-                name="position"
-                value={formData.position}
-                onChange={onFormChange}
-                className="col-span-3"
-              />
+              <Label htmlFor="position" className="text-right">Должность</Label>
+              <Input id="position" name="position" value={formData.position} onChange={onFormChange} className="col-span-3" />
             </div>
           )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Отмена
-          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
           <Button onClick={onSubmit}>Сохранить</Button>
         </DialogFooter>
       </DialogContent>

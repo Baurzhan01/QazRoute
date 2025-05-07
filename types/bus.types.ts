@@ -13,6 +13,17 @@ export interface Bus {
     convoyId: string;
   }
 
+  export interface DisplayBus {
+    id: string
+    garageNumber: string
+    govNumber: string
+    stateNumber?: string
+    status: BusStatus
+    isAssigned: boolean
+    assignedRoute?: string
+    assignedDeparture?: number
+}
+
   export interface BusWithDrivers extends Bus {
     drivers: Pick<Driver, "id" | "serviceNumber" | "fullName">[]
   }

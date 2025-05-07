@@ -19,6 +19,16 @@ export interface RouteFormData {
   dayType: DayType
 }
 
+export interface RouteAssignment {
+  routeNumber: string
+  garageNumber: string
+  stateNumber: string
+  departureTime: string
+  scheduleTime: string
+  endTime: string
+  additionalInfo: string
+}
+
 export interface Route {
   id?: string;
   convoyId: string;

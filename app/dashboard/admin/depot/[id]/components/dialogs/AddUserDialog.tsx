@@ -21,7 +21,7 @@ interface AddUserDialogProps {
   formData: UserFormData
   convoys: Convoy[]
   onFormChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-  onSelectChange: (name: string, value: string) => void
+  onSelectChange: (name: keyof UserFormData, value: string) => void
   onSubmit: () => void
 }
 

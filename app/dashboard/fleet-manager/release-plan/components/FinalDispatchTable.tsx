@@ -1,104 +1,104 @@
 "use client"
 
 import React from "react"
-import type { FinalDispatchData } from "../types/finalDispatch"
+import type { FinalDispatchData, RouteGroup, RouteAssignment, ReserveAssignment } from "@/types/releasePlanTypes"
+import { getAuthData } from "@/lib/auth-utils"
 
 interface FinalDispatchTableProps {
   data: FinalDispatchData
 }
 
 export default function FinalDispatchTable({ data }: FinalDispatchTableProps) {
+  const { routeGroups = [], reserveAssignments = [], date } = data
+  const displayDate = new Date(date)
+
+  const authData = getAuthData()
+  const convoyNumber = authData?.convoyNumber ?? "—"
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
-        <thead>
-          <tr>
-            <th rowSpan={2} className="border p-2 text-left w-24">
-              № выхода
-            </th>
-            <th rowSpan={2} className="border p-2 text-left w-28">
-              Гар. номер
-            </th>
-            <th rowSpan={2} className="border p-2 text-left w-32">
-              Государ. номер
-            </th>
-            <th colSpan={5} className="border p-2 text-center">
-              План на 1-ю смену
-            </th>
-            <th colSpan={3} className="border p-2 text-center">
-              План на 2-ю смену
-            </th>
-            <th rowSpan={2} className="border p-2 text-left w-28">
-              Конец работы
-            </th>
-          </tr>
-          <tr>
-            <th className="border p-2 text-left w-48">ФИО</th>
-            <th className="border p-2 text-left w-28">Таб. номер</th>
-            <th className="border p-2 text-left w-28">Время выхода</th>
-            <th className="border p-2 text-left w-28">По графику</th>
-            <th className="border p-2 text-left w-48">Дополнительная информация</th>
-            <th className="border p-2 text-left w-24">Пересм.</th>
-            <th className="border p-2 text-left w-48">ФИО</th>
-            <th className="border p-2 text-left w-28">Таб. номер</th>
-          </tr>
-        </thead>
-        <tbody>
-          {/* Отображаем все маршруты */}
-          {data.routeGroups.map((group) => (
-            <React.Fragment key={group.routeId}>
-              {/* Заголовок маршрута */}
-              <tr className="bg-gray-100">
-                <td colSpan={12} className="font-bold text-lg p-2">
-                  Маршрут № {group.routeNumber}
-                </td>
-              </tr>
+    <div id="final-dispatch-table" className="flex flex-col gap-6">
+      <div className="text-center space-y-1">
+        <h2 className="text-2xl font-bold">Итоговый план выпуска автобусов</h2>
+        <p className="text-gray-600 text-lg">{displayDate.toLocaleDateString()}</p>
+        <p className="text-gray-700 font-semibold">Автоколонна: № {convoyNumber}</p>
+      </div>
 
-              {/* Строки с назначениями */}
-              {group.assignments.map((assignment, index) => (
-                <tr key={`${group.routeId}-${index}`}>
-                  <td className="border p-2 font-bold">{index + 1}</td>
-                  <td className="border p-2">{assignment.garageNumber}</td>
-                  <td className="border p-2">{assignment.stateNumber}</td>
-                  <td className="border p-2">{assignment.driver.fullName}</td>
-                  <td className="border p-2">{assignment.driver.personnelNumber}</td>
-                  <td className="border p-2">{assignment.departureTime}</td>
-                  <td className="border p-2">{assignment.scheduleTime}</td>
-                  <td className="border p-2">{assignment.additionalInfo}</td>
-                  <td className="border p-2"></td>
-                  <td className="border p-2">{assignment.shift2Driver?.fullName || ""}</td>
-                  <td className="border p-2">{assignment.shift2Driver?.personnelNumber || ""}</td>
-                  <td className="border p-2">{assignment.endTime}</td>
-                </tr>
-              ))}
-            </React.Fragment>
-          ))}
-
-          {/* Отображаем резерв */}
-          <tr className="bg-gray-100">
-            <td colSpan={12} className="font-bold text-lg p-2">
-              Резерв
-            </td>
-          </tr>
-
-          {data.reserveAssignments.map((assignment, index) => (
-            <tr key={`reserve-${index}`}>
-              <td className="border p-2 font-bold">{assignment.sequenceNumber}</td>
-              <td className="border p-2">{assignment.garageNumber}</td>
-              <td className="border p-2">{assignment.stateNumber}</td>
-              <td className="border p-2">{assignment.driver.fullName}</td>
-              <td className="border p-2">{assignment.driver.personnelNumber}</td>
-              <td className="border p-2">{assignment.departureTime}</td>
-              <td className="border p-2">{assignment.scheduleTime}</td>
-              <td className="border p-2">{assignment.additionalInfo}</td>
-              <td className="border p-2"></td>
-              <td className="border p-2">{assignment.shift2Driver?.fullName || ""}</td>
-              <td className="border p-2">{assignment.shift2Driver?.personnelNumber || ""}</td>
-              <td className="border p-2">{assignment.endTime}</td>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead className="sticky top-0 bg-sky-600 text-white z-10">
+            <tr>
+              <th className="border p-2 w-16">№</th>
+              <th className="border p-2 w-28">Гар. номер</th>
+              <th className="border p-2 w-32">Гос. номер</th>
+              <th className="border p-2">ФИО</th>
+              <th className="border p-2">Таб. номер</th>
+              <th className="border p-2">Время выхода</th>
+              <th className="border p-2">По графику</th>
+              <th className="border p-2">Доп. информация</th>
+              <th className="border p-2">Пересм.</th>
+              <th className="border p-2">ФИО</th>
+              <th className="border p-2">Таб. номер</th>
+              <th className="border p-2">Конец работы</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {routeGroups.length === 0 && (
+              <tr>
+                <td colSpan={12} className="border p-4 text-center text-gray-500">Нет данных по маршрутам</td>
+              </tr>
+            )}
+
+            {routeGroups.map((group: RouteGroup) => (
+              <React.Fragment key={group.routeId}>
+                <tr className="bg-sky-100 font-semibold text-sky-900">
+                  <td colSpan={12} className="p-2">Маршрут № {group.routeNumber}</td>
+                </tr>
+
+                {group.assignments.map((assignment: RouteAssignment, index: number) => (
+                  <tr key={`${group.routeId}-${index}`} className="even:bg-gray-50">
+                    <td className="border p-2 text-center">{index + 1}</td>
+                    <td className="border p-2">{assignment.garageNumber}</td>
+                    <td className="border p-2">{assignment.stateNumber}</td>
+                    <td className="border p-2">{assignment.driver?.fullName ?? "—"}</td>
+                    <td className="border p-2 text-center">{assignment.driver?.serviceNumber ?? "—"}</td>
+                    <td className="border p-2">{assignment.departureTime}</td>
+                    <td className="border p-2">{assignment.scheduleTime}</td>
+                    <td className="border p-2">{assignment.additionalInfo ?? "—"}</td>
+                    <td className="border p-2">{assignment.additionalInfo ?? "—"}</td>
+                    <td className="border p-2">{assignment.shift2Driver?.fullName ?? "—"}</td>
+                    <td className="border p-2 text-center">{assignment.shift2Driver?.serviceNumber ?? "—"}</td>
+                    <td className="border p-2">{assignment.endTime}</td>
+                  </tr>
+                ))}
+              </React.Fragment>
+            ))}
+
+            {reserveAssignments.length > 0 && (
+              <>
+                <tr className="bg-yellow-50 font-semibold text-yellow-900">
+                  <td colSpan={12} className="p-2">Резерв</td>
+                </tr>
+                {reserveAssignments.map((assignment: ReserveAssignment, index: number) => (
+                  <tr key={`reserve-${index}`} className="even:bg-gray-50">
+                    <td className="border p-2 text-center">{assignment.sequenceNumber}</td>
+                    <td className="border p-2">{assignment.garageNumber}</td>
+                    <td className="border p-2">{assignment.stateNumber}</td>
+                    <td className="border p-2">{assignment.driver?.fullName ?? "—"}</td>
+                    <td className="border p-2 text-center">{assignment.driver?.serviceNumber ?? "—"}</td>
+                    <td className="border p-2">{assignment.departureTime}</td>
+                    <td className="border p-2">{assignment.scheduleTime}</td>
+                    <td className="border p-2">{assignment.additionalInfo ?? "—"}</td>
+                    <td className="border p-2">—</td>
+                    <td className="border p-2">—</td>
+                    <td className="border p-2">—</td>
+                    <td className="border p-2">{assignment.endTime}</td>
+                  </tr>
+                ))}
+              </>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

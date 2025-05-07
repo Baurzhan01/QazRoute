@@ -36,7 +36,9 @@ export default function EditConvoyDialog({
 }: EditConvoyDialogProps) {
   console.log("EditConvoyDialog: formData:", formData);
 
-  const availableUsers = users.filter((u) => !u.convoyId || u.convoyId === formData.id);
+  const availableUsers = Array.isArray(users)
+  ? users.filter((u) => !u.convoyId || u.convoyId === formData.id)
+  : [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

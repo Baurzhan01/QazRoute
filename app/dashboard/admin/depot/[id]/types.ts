@@ -17,6 +17,16 @@ export interface BusDepot {
   address: string;
   logo?: string;
 }
+export type UserRole = 
+  | "fleetManager"
+  | "mechanic"
+  | "admin"
+  | "mechanicOnDuty"
+  | "dispatcher"
+  | "seniorDispatcher"
+  | "hr"
+  | "taskInspector";
+
 
 // Обновленный интерфейс Convoy
 export interface Convoy {

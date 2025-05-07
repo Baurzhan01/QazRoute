@@ -2,64 +2,43 @@
 
 import { useState, useEffect } from "react"
 import type { CalendarMonth } from "../types/plan"
-import { getCurrentMonth, getNextMonth } from "../mock/calendarMock"
+import { generateCalendarMonth } from "../utils/generateCalendar"
 
 export function useCalendar() {
   const [currentMonth, setCurrentMonth] = useState<CalendarMonth | null>(null)
   const [nextMonth, setNextMonth] = useState<CalendarMonth | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Инициализация календаря
+  // Генерация начального месяца и следующего
   useEffect(() => {
     setLoading(true)
 
-    // Имитация загрузки данных
-    setTimeout(() => {
-      setCurrentMonth(getCurrentMonth())
-      setNextMonth(getNextMonth())
-      setLoading(false)
-    }, 500)
+    const now = new Date()
+    const current = generateCalendarMonth(now.getFullYear(), now.getMonth())
+    const next = generateCalendarMonth(
+      now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear(),
+      now.getMonth() === 11 ? 0 : now.getMonth() + 1
+    )
+
+    setCurrentMonth(current)
+    setNextMonth(next)
+    setLoading(false)
   }, [])
 
-  // Функция для изменения месяца (перемотка вперед)
+  // Перемотка месяца вперёд
   const goToNextMonth = () => {
     if (!currentMonth || !nextMonth) return
-
     setLoading(true)
 
-    // Имитация загрузки данных
-    setTimeout(() => {
-      // Текущий месяц становится предыдущим
-      setCurrentMonth(nextMonth)
+    const newCurrent = nextMonth
+    const newNext = generateCalendarMonth(
+      nextMonth.month === 11 ? nextMonth.year + 1 : nextMonth.year,
+      nextMonth.month === 11 ? 0 : nextMonth.month + 1
+    )
 
-      // Вычисляем следующий месяц после текущего следующего
-      let newNextMonth
-      if (nextMonth.month === 11) {
-        newNextMonth = {
-          ...nextMonth,
-          year: nextMonth.year + 1,
-          month: 0,
-        }
-      } else {
-        newNextMonth = {
-          ...nextMonth,
-          month: nextMonth.month + 1,
-        }
-      }
-
-      // Вызываем функцию для генерации данных календаря
-      const newNextMonthData = {
-        ...newNextMonth,
-        days: [], // Здесь будет генерация дней
-        workdays: [],
-        saturdays: [],
-        sundays: [],
-        holidays: [],
-      }
-
-      setNextMonth(newNextMonthData)
-      setLoading(false)
-    }, 500)
+    setCurrentMonth(newCurrent)
+    setNextMonth(newNext)
+    setLoading(false)
   }
 
   return {
@@ -69,4 +48,3 @@ export function useCalendar() {
     goToNextMonth,
   }
 }
-

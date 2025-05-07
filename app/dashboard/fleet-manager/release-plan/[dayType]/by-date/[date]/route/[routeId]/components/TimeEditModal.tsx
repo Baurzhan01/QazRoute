@@ -1,48 +1,67 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import type { TimeEditModalProps } from "../types"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useState, useEffect } from "react";
 
-export default function TimeEditModal({ isOpen, onClose, onSave, currentTime, title }: TimeEditModalProps) {
-  const [time, setTime] = useState(currentTime)
+interface TimeEditModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (time: string) => void;
+  currentTime: string;
+  title?: string;
+}
+
+export default function TimeEditModal({
+  isOpen,
+  onClose,
+  onSave,
+  currentTime,
+  title = "Изменить время",
+}: TimeEditModalProps) {
+  const [value, setValue] = useState(currentTime);
+
+  useEffect(() => {
+    if (isOpen) {
+      setValue(currentTime);
+    }
+  }, [isOpen, currentTime]);
 
   const handleSave = () => {
-    onSave(time)
-    onClose()
-  }
+    if (!value.match(/^\d{2}:\d{2}$/)) {
+      alert("Введите время в формате ЧЧ:ММ");
+      return;
+    }
+
+    onSave(value);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[400px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="time" className="text-right">
-              Время
-            </Label>
-            <Input
-              id="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="col-span-3"
-              placeholder="HH:MM"
-            />
-          </div>
+
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Введите время в формате <b>ЧЧ:ММ</b> (например, 08:30 или 16:45)
+          </p>
+
+          <Input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="08:00"
+            maxLength={5}
+          />
         </div>
+
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Отмена
-          </Button>
+          <Button variant="outline" onClick={onClose}>Отмена</Button>
           <Button onClick={handleSave}>Сохранить</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
-

@@ -1,41 +1,58 @@
 "use client"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Printer, Download, FileText } from "lucide-react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { formatDateLabel } from "../utils/dateUtils"
-import type { FinalDispatch } from "../types/plan"
+import type { FinalDispatchData, RouteGroup, RouteAssignment } from "@/types/finalDispatch.types"
 
 interface FinalDispatchDialogProps {
   open: boolean
   onClose: () => void
-  dispatch: FinalDispatch
+  dispatch: FinalDispatchData
 }
 
-export default function FinalDispatchDialog({ open, onClose, dispatch }: FinalDispatchDialogProps) {
+export default function FinalDispatchDialog({
+  open,
+  onClose,
+  dispatch,
+}: FinalDispatchDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Итоговая разнарядка на {formatDateLabel(dispatch.date)}
+            Итоговая разнарядка на {formatDateLabel(new Date(dispatch.date))}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* 🔵 Маршруты */}
           <div className="bg-gray-50 p-4 rounded-lg">
             <h3 className="font-bold text-lg mb-4">Маршруты</h3>
-
             <div className="space-y-6">
-              {dispatch.routeAssignments.map((route) => (
-                <div key={route.id} className="border rounded-lg overflow-hidden">
+              {dispatch.routeGroups.map((route: RouteGroup) => (
+                <div key={route.routeId} className="border rounded-lg overflow-hidden">
                   <div className="bg-blue-50 p-3 border-b flex items-center">
                     <div className="w-8 h-8 bg-blue-500 text-white flex items-center justify-center font-bold rounded-md mr-3">
-                      {route.order}
+                      {route.routeNumber}
                     </div>
-                    <h4 className="font-bold text-lg">Маршрут № {route.number}</h4>
-                    {route.name && <span className="ml-2 text-gray-600">({route.name})</span>}
+                    <h4 className="font-bold text-lg">Маршрут № {route.routeNumber}</h4>
                   </div>
 
                   <Table>
@@ -50,29 +67,25 @@ export default function FinalDispatchDialog({ open, onClose, dispatch }: FinalDi
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {route.buses
-                        .filter((bus) => !bus.isReserve)
-                        .map((bus) => (
-                          <TableRow key={bus.busId}>
-                            <TableCell className="font-medium">{bus.garageNumber}</TableCell>
-                            <TableCell>{bus.govNumber || "—"}</TableCell>
-                            <TableCell>
-                              {bus.driver ? (
-                                <div>
-                                  <div className="font-bold">№ {bus.driver.personnelNumber}</div>
-                                  <div className="text-sm text-gray-600">
-                                    {bus.driver.lastName} {bus.driver.firstName} {bus.driver.middleName}
-                                  </div>
-                                </div>
-                              ) : (
-                                "Не назначен"
-                              )}
-                            </TableCell>
-                            <TableCell>{bus.driver?.shifts[0]?.departureTime || "—"}</TableCell>
-                            <TableCell>{bus.driver?.shifts[1]?.departureTime || "—"}</TableCell>
-                            <TableCell>{bus.endTime || "—"}</TableCell>
-                          </TableRow>
-                        ))}
+                      {route.assignments.map((a: RouteAssignment, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{a.garageNumber || "—"}</TableCell>
+                          <TableCell>{a.stateNumber || "—"}</TableCell>
+                          <TableCell>
+                            {a.driver ? (
+                              <>
+                                <div className="font-bold">№ {a.driver.serviceNumber}</div>
+                                <div className="text-sm text-gray-600">{a.driver.fullName}</div>
+                              </>
+                            ) : (
+                              "Не назначен"
+                            )}
+                          </TableCell>
+                          <TableCell>{a.departureTime || "—"}</TableCell>
+                          <TableCell>{a.scheduleTime || "—"}</TableCell>
+                          <TableCell>{a.endTime || "—"}</TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 </div>
@@ -80,8 +93,8 @@ export default function FinalDispatchDialog({ open, onClose, dispatch }: FinalDi
             </div>
           </div>
 
-          {/* Резервные водители */}
-          {dispatch.reserveDrivers.length > 0 && (
+          {/* 🟠 Резервные водители */}
+          {dispatch.reserveAssignments.length > 0 && (
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-bold text-lg mb-4">Резерв водителей</h3>
               <Table>
@@ -92,12 +105,10 @@ export default function FinalDispatchDialog({ open, onClose, dispatch }: FinalDi
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {dispatch.reserveDrivers.map((driver) => (
-                    <TableRow key={driver.id}>
-                      <TableCell className="font-bold">№ {driver.personnelNumber}</TableCell>
-                      <TableCell>
-                        {driver.lastName} {driver.firstName} {driver.middleName}
-                      </TableCell>
+                  {dispatch.reserveAssignments.map((r, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-bold">№ {r.driver.serviceNumber}</TableCell>
+                      <TableCell>{r.driver.fullName}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

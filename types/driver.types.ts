@@ -26,7 +26,6 @@ export type DriverStatusCount = {
   total: number
 }
 
-  
 
 export interface Driver {
   id?: string
@@ -44,7 +43,16 @@ export interface Driver {
   buses?: Bus[] // 🔥 добавь это
 }
 
-
+export interface DisplayDriver {
+  id: string
+  fullName: string
+  serviceNumber: string
+  driverStatus: DriverStatus
+  isAssigned?: boolean
+  assignedRoute?: string
+  assignedDeparture?: number
+  busIds?: string[];
+}
 
 // Для создания водителя (POST /drivers)
 export interface CreateDriverRequest extends Omit<Driver, "id" | "photo" | "inReserve"> {}

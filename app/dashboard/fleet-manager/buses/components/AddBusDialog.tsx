@@ -1,23 +1,26 @@
-// "use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Check, UserPlus } from "lucide-react"
-import type { Bus } from "@/types/bus.types"
-import type { Driver, DriverFilterRequest } from "@/types/driver.types"
-import { getBusStatusLabel } from "@/app/dashboard/fleet-manager/buses/utils/busStatusUtils"
-import { driverService } from "@/service/driverService"
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Search, Check, UserMinus, Loader2 } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
+
+import type { Bus } from "@/types/bus.types";
+import type { Driver, DriverFilterRequest } from "@/types/driver.types";
+import { driverService } from "@/service/driverService";
+import { getBusStatusLabel } from "../utils/busStatusUtils";
 
 interface AddBusDialogProps {
-  open: boolean
-  onClose: () => void
-  onAdd: (bus: Omit<Bus, "id">, driverIds: string[]) => void
+  open: boolean;
+  onClose: () => void;
+  onAdd: (bus: Omit<Bus, "id">, driverIds: string[]) => void;
 }
 
 export default function AddBusDialog({ open, onClose, onAdd }: AddBusDialogProps) {
@@ -26,107 +29,86 @@ export default function AddBusDialog({ open, onClose, onAdd }: AddBusDialogProps
     govNumber: "",
     busStatus: "OnWork",
     additionalInfo: "",
-    convoyId: "", // ✅ временно пусто, заполним ниже
-    // busLineId: "",
-  })
-  
+    convoyId: "",
+  });
 
-  const [activeTab, setActiveTab] = useState("info")
-  const [driverSearchQuery, setDriverSearchQuery] = useState("")
-  const [availableDrivers, setAvailableDrivers] = useState<Driver[]>([])
-  const [selectedDrivers, setSelectedDrivers] = useState<Driver[]>([])
+  const [activeTab, setActiveTab] = useState("info");
+  const [availableDrivers, setAvailableDrivers] = useState<Driver[]>([]);
+  const [selectedDrivers, setSelectedDrivers] = useState<Driver[]>([]);
+  const [loadingDrivers, setLoadingDrivers] = useState(false);
+  const [driverSearchQuery, setDriverSearchQuery] = useState("");
 
   useEffect(() => {
-    if (activeTab !== "drivers") return
-    if (!formData.convoyId) return
-  
-    const filter: DriverFilterRequest = {
-      convoyId: formData.convoyId,
-      fullName: null,
-      serviceNumber: null,
-      address: null,
-      phone: null,
-      driverStatus: null,
-      page: 1,
-      pageSize: 1000,
+    const authData = localStorage.getItem("authData");
+    if (authData) {
+      const { convoyId } = JSON.parse(authData);
+      setFormData((prev) => ({ ...prev, convoyId: convoyId || "" }));
     }
-  
-    driverService.filter(filter).then((res) => {
-      if (res.isSuccess && Array.isArray(res.value)) {
-        const drivers = res.value
-        setAvailableDrivers(
-          drivers.filter((driver) =>
-            !selectedDrivers.some((d) => d.id === driver.id)
-          )
-        )
-      } else {
-        console.warn("🚫 Ошибка при загрузке водителей или пустой список")
-      }
-    })
-  }, [activeTab, selectedDrivers, formData.convoyId])
-  
-  
+  }, []);
 
   useEffect(() => {
-    const authData = localStorage.getItem("authData")
-    if (!authData) return
-  
-    const { convoyId } = JSON.parse(authData)
-  
-    if (!convoyId) return
-  
-    setFormData((prev) => ({
-      ...prev,
-      convoyId,
-    }))
-  }, [])
+    if (activeTab !== "drivers" || !formData.convoyId) return;
+
+    const loadDrivers = async () => {
+      try {
+        setLoadingDrivers(true);
+        const res = await driverService.filter({
+          convoyId: formData.convoyId,
+          page: 1,
+          pageSize: 1000,
+          fullName: null,
+          serviceNumber: null,
+          address: null,
+          phone: null,
+          driverStatus: null,
+        });
+
+        if (res.isSuccess && res.value && Array.isArray(res.value.items)) {
+          setAvailableDrivers(res.value.items);
+        } else {
+          toast({ title: "Ошибка", description: "Не удалось загрузить водителей.", variant: "destructive" });
+        }
+      } catch (error) {
+        console.error(error);
+        toast({ title: "Ошибка", description: "Ошибка при загрузке водителей.", variant: "destructive" });
+      } finally {
+        setLoadingDrivers(false);
+      }
+    };
+
+    loadDrivers();
+  }, [activeTab, formData.convoyId]);
 
   const handleChange = (field: keyof Omit<Bus, "id">, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }))
-  }
-
-  const filteredAvailableDrivers = availableDrivers.filter((driver) => {
-    if (!driverSearchQuery) return true
-
-    const searchLower = driverSearchQuery.toLowerCase()
-    return (
-      driver.serviceNumber.toLowerCase().includes(searchLower) ||
-      driver.fullName.toLowerCase().includes(searchLower)
-    )
-  })
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleAssignDriver = (driver: Driver) => {
-    setSelectedDrivers((prev) => [...prev, driver])
-    setAvailableDrivers((prev) => prev.filter((d) => d.id !== driver.id))
-  }
+    setSelectedDrivers((prev) => [...prev, driver]);
+    setAvailableDrivers((prev) => prev.filter((d) => d.id !== driver.id));
+  };
 
   const handleRemoveDriver = (driver: Driver) => {
-    setSelectedDrivers((prev) => prev.filter((d) => d.id !== driver.id))
-    setAvailableDrivers((prev) => [...prev, driver])
-  }
+    setAvailableDrivers((prev) => [...prev, driver]);
+    setSelectedDrivers((prev) => prev.filter((d) => d.id !== driver.id));
+  };
 
   const handleSubmit = () => {
-    if (!formData.garageNumber) return
+    if (!formData.garageNumber.trim()) {
+      toast({ title: "Ошибка", description: "Гаражный номер обязателен.", variant: "destructive" });
+      return;
+    }
+    onAdd(formData, selectedDrivers.map((d) => d.id!));
+    setFormData((prev) => ({ ...prev, garageNumber: "", govNumber: "", additionalInfo: "" }));
+    setSelectedDrivers([]);
+    setActiveTab("info");
+  };
 
-    onAdd(
-      formData,
-      selectedDrivers.map((d) => d.id!).filter(Boolean)
-    )    
-
-    setFormData({
-      garageNumber: "",
-      govNumber: "",
-      busStatus: "OnWork",
-      additionalInfo: "",
-      convoyId: formData.convoyId,
-      // busLineId: "",
-    })
-    setSelectedDrivers([])
-    setActiveTab("info")
-  }
+  const filteredAvailableDrivers = availableDrivers.filter((driver) => {
+    if (!driverSearchQuery) return true;
+    const search = driverSearchQuery.toLowerCase();
+    return driver.fullName.toLowerCase().includes(search) || driver.serviceNumber.toLowerCase().includes(search);
+  });
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -141,144 +123,88 @@ export default function AddBusDialog({ open, onClose, onAdd }: AddBusDialogProps
             <TabsTrigger value="drivers">Водители</TabsTrigger>
           </TabsList>
 
+          {/* Информация об автобусе */}
           <TabsContent value="info" className="space-y-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="garageNumber" className="text-right">
-                Гаражный номер *
-              </Label>
-              <Input
-                id="garageNumber"
-                value={formData.garageNumber}
-                onChange={(e) => handleChange("garageNumber", e.target.value)}
-                className="col-span-3"
-              />
+            <div className="space-y-2">
+              <Label htmlFor="garageNumber">Гаражный номер *</Label>
+              <Input id="garageNumber" value={formData.garageNumber} onChange={(e) => handleChange("garageNumber", e.target.value)} />
             </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="govNumber" className="text-right">
-                Гос. номер
-              </Label>
-              <Input
-                id="govNumber"
-                value={formData.govNumber}
-                onChange={(e) => handleChange("govNumber", e.target.value)}
-                className="col-span-3"
-              />
+            <div className="space-y-2">
+              <Label htmlFor="govNumber">Гос. номер</Label>
+              <Input id="govNumber" value={formData.govNumber} onChange={(e) => handleChange("govNumber", e.target.value)} />
             </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="busStatus" className="text-right">
-                Статус
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor="busStatus">Статус</Label>
               <Select value={formData.busStatus} onValueChange={(value) => handleChange("busStatus", value)}>
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger id="busStatus">
                   <SelectValue placeholder="Выберите статус" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="OnWork">{getBusStatusLabel("OnWork")}</SelectItem>
-                  <SelectItem value="UnderRepair">{getBusStatusLabel("UnderRepair")}</SelectItem>
-                  <SelectItem value="LongTermRepair">{getBusStatusLabel("LongTermRepair")}</SelectItem>
-                  <SelectItem value="DayOff">{getBusStatusLabel("DayOff")}</SelectItem>
-                  <SelectItem value="Decommissioned">{getBusStatusLabel("Decommissioned")}</SelectItem>
+                  <SelectItem value="OnWork">На линии</SelectItem>
+                  <SelectItem value="UnderRepair">На ремонте</SelectItem>
+                  <SelectItem value="LongTermRepair">Длительный ремонт</SelectItem>
+                  <SelectItem value="DayOff">Выходной</SelectItem>
+                  <SelectItem value="Decommissioned">Списан</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="additionalInfo" className="text-right pt-2">
-                Дополнительная информация
-              </Label>
-              <Textarea
-                id="additionalInfo"
-                value={formData.additionalInfo}
-                onChange={(e) => handleChange("additionalInfo", e.target.value)}
-                className="col-span-3 min-h-[100px]"
-                placeholder="Введите дополнительную информацию об автобусе..."
-              />
+            <div className="space-y-2">
+              <Label htmlFor="additionalInfo">Дополнительная информация</Label>
+              <Textarea id="additionalInfo" value={formData.additionalInfo} onChange={(e) => handleChange("additionalInfo", e.target.value)} className="min-h-[100px]" />
             </div>
           </TabsContent>
 
+          {/* Назначение водителей */}
           <TabsContent value="drivers" className="space-y-4 py-4">
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium mb-2">Назначенные водители</h3>
+            <Input placeholder="Поиск по табельному номеру или ФИО..." value={driverSearchQuery} onChange={(e) => setDriverSearchQuery(e.target.value)} />
+
+            {/* Назначенные */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold">Назначенные водители:</h3>
+              <ScrollArea className="h-48 rounded-md border p-2">
                 {selectedDrivers.length > 0 ? (
-                  <div className="space-y-2 max-h-[200px] overflow-y-auto border rounded-md p-2">
-                    {selectedDrivers.map((driver) => (
-                      <div key={driver.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                        <div>
-                          <p className="font-bold">№ {driver.serviceNumber}</p>
-                          <p className="text-sm text-gray-600">{driver.fullName}</p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveDriver(driver)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <UserPlus className="h-4 w-4 rotate-45" />
-                        </Button>
-                      </div>
-                    ))}
+                  selectedDrivers.map((driver) => (
+                    <Button key={driver.id} variant="secondary" className="w-full justify-between" onClick={() => handleRemoveDriver(driver)}>
+                      № {driver.serviceNumber} — {driver.fullName}
+                      <UserMinus className="h-4 w-4 text-red-500" />
+                    </Button>
+                  ))
+                ) : (
+                  <p className="text-center text-sm text-gray-500">Нет назначенных водителей</p>
+                )}
+              </ScrollArea>
+            </div>
+
+            {/* Доступные */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold">Доступные водители:</h3>
+              <ScrollArea className="h-48 rounded-md border p-2">
+                {loadingDrivers ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 italic">Нет назначенных водителей</p>
-                )}
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium mb-2">Доступные водители</h3>
-                <div className="relative mb-2">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                    <Search className="h-4 w-4 text-gray-400" />
-                  </div>
-                  <Input
-                    type="text"
-                    placeholder="Поиск по табельному номеру или ФИО..."
-                    className="pl-10"
-                    value={driverSearchQuery}
-                    onChange={(e) => setDriverSearchQuery(e.target.value)}
-                  />
-                </div>
-
-                <div className="max-h-[200px] overflow-y-auto border rounded-md p-2">
-                  {filteredAvailableDrivers.length > 0 ? (
-                    <div className="space-y-2">
-                      {filteredAvailableDrivers.map((driver) => (
-                        <div key={driver.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                          <div>
-                            <p className="font-bold">№ {driver.serviceNumber}</p>
-                            <p className="text-sm text-gray-600">{driver.fullName}</p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleAssignDriver(driver)}
-                            className="text-green-500 hover:text-green-700 hover:bg-green-50"
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
+                  filteredAvailableDrivers.length > 0 ? (
+                    filteredAvailableDrivers.map((driver) => (
+                      <Button key={driver.id} variant="outline" className="w-full justify-between" onClick={() => handleAssignDriver(driver)}>
+                        № {driver.serviceNumber} — {driver.fullName}
+                        <Check className="h-4 w-4 text-green-500" />
+                      </Button>
+                    ))
                   ) : (
-                    <p className="text-sm text-gray-500 italic text-center py-2">
-                      {driverSearchQuery ? "Водители не найдены" : "Нет доступных водителей"}
-                    </p>
-                  )}
-                </div>
-              </div>
+                    <p className="text-center text-sm text-gray-500">Нет доступных водителей</p>
+                  )
+                )}
+              </ScrollArea>
             </div>
           </TabsContent>
         </Tabs>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Отмена
-          </Button>
+          <Button variant="outline" onClick={onClose}>Отмена</Button>
           <Button onClick={handleSubmit}>Добавить</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

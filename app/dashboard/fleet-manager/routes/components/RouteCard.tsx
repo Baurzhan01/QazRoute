@@ -3,10 +3,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RouteIcon, Edit, Eye, Copy, Trash } from "lucide-react";
+import { Eye, Edit, Copy, Trash, RouteIcon } from "lucide-react";
 import type { Route } from "@/types/route.types";
 import type { BusLine } from "@/types/busLine.types";
-import { toFrontendStatus, getStatusColor, getStatusGradient } from "../utils/routeStatusUtils";
+import { getStatusGradient, getStatusColor, toFrontendStatus } from "../utils/routeStatusUtils";
 
 interface RouteCardProps {
   route: Route;
@@ -30,46 +30,69 @@ export default function RouteCard({
   const statusColor = getStatusColor(frontendStatus);
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300">
-      <CardHeader className={`bg-gradient-to-r ${statusGradient} text-white`}>
-        <div className="flex justify-between items-start">
-          <CardTitle className="flex items-center gap-2">
+    <Card className="overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
+      {/* Верхняя часть с цветной плашкой */}
+      <CardHeader
+        className={`bg-gradient-to-r ${statusGradient} text-white flex flex-col gap-2`}
+      >
+        <div className="flex justify-between items-center">
+          <CardTitle className="flex items-center gap-2 text-white">
             <RouteIcon className="h-5 w-5" />
             Маршрут №{route.number}
           </CardTitle>
           <Badge className={statusColor}>{frontendStatus}</Badge>
         </div>
       </CardHeader>
-      <CardContent className="pt-4">
-        <div className="space-y-3">
+
+      {/* Основная информация */}
+      <CardContent className="flex flex-col gap-4 pt-4">
+        <div className="space-y-2">
           <div>
-            <p className="text-sm text-gray-500">Порядок в разнорядке:</p>
-            <p className="font-medium">{route.queue}</p>
+            <p className="text-sm text-muted-foreground">Порядок в разнорядке:</p>
+            <p className="font-semibold">{route.queue}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Выходы:</p>
-            <p className="font-medium">{busLines.length}</p>
+            <p className="text-sm text-muted-foreground">Количество выходов:</p>
+            <p className="font-semibold">{busLines.length}</p>
           </div>
         </div>
-      </CardContent>
-      <CardContent className="border-t pt-3 flex justify-between">
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => onView(route)}>
-            <Eye className="mr-2 h-4 w-4" />
+
+        {/* Кнопки действий */}
+        <div className="flex flex-wrap gap-2 pt-4 border-t">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => onView(route)}
+          >
+            <Eye className="h-4 w-4 mr-2" />
             Просмотр
           </Button>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => onEdit(route)}>
-            <Edit className="mr-2 h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => onEdit(route)}
+          >
+            <Edit className="h-4 w-4 mr-2" />
             Редактировать
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
+            className="flex-1"
+            onClick={() => onCopy(route)}
+          >
+            <Copy className="h-4 w-4 mr-2" />
+            Копировать
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="flex-1"
             onClick={() => route.id && onDelete(route.id)}
-            className="text-red-500 hover:text-red-700">
-            <Trash className="mr-2 h-4 w-4" />
+          >
+            <Trash className="h-4 w-4 mr-2" />
             Удалить
           </Button>
         </div>

@@ -1,39 +1,25 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import {
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  Edit,
-  Trash2,
-  UserPlus,
-  BusIcon,
-} from "lucide-react"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import type { BusWithDrivers } from "@/types/bus.types"
-import { getBusStatusInfo } from "@/app/dashboard/fleet-manager/buses/utils/busStatusUtils"
-import { Skeleton } from "@/components/ui/skeleton"
-import { formatShortName } from "../utils/formatShortName"
+import { ChevronLeft, ChevronRight, Eye, Edit, Trash2, UserPlus, BusIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "./StatusBadge";
+import { formatShortName } from "../utils/formatShortName";
+import type { BusWithDrivers } from "@/types/bus.types";
+
+import { AnimatePresence, motion } from "framer-motion"; // <-- добавляем анимацию
 
 interface BusListProps {
-  buses: BusWithDrivers[]
-  loading: boolean
-  currentPage: number
-  totalPages: number
-  onPageChange: (page: number) => void
-  onView: (id: string) => void
-  onEdit: (id: string) => void
-  onDelete: (id: string) => void
-  onAssignDriver: (id: string) => void
+  buses: BusWithDrivers[];
+  loading: boolean;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  onView: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+  onAssignDriver: (id: string) => void;
 }
 
 export default function BusList({
@@ -49,12 +35,12 @@ export default function BusList({
 }: BusListProps) {
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 animate-pulse">
         {[...Array(5)].map((_, index) => (
           <Skeleton key={index} className="h-12 rounded-lg" />
         ))}
       </div>
-    )
+    );
   }
 
   if (buses.length === 0) {
@@ -63,7 +49,7 @@ export default function BusList({
         <h3 className="text-lg font-medium text-gray-900 mb-1">Автобусы не найдены</h3>
         <p className="text-gray-500">Попробуйте изменить параметры поиска или добавьте новый автобус</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -79,12 +65,18 @@ export default function BusList({
               <TableHead className="w-[120px] text-right">Действия</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {buses.map((bus) => {
-              const { color, label } = getBusStatusInfo(bus.busStatus)
 
-              return (
-                <TableRow key={bus.id} className="hover:bg-gray-50">
+          <TableBody>
+            <AnimatePresence>
+              {buses.map((bus) => (
+                <motion.tr
+                  key={bus.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="hover:bg-gray-50"
+                >
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <BusIcon className="h-5 w-5 text-gray-400" />
@@ -97,12 +89,8 @@ export default function BusList({
                       <div className="space-y-1">
                         {bus.drivers.map((driver) => (
                           <div key={driver.id}>
-                            <span className="font-bold">
-                              № {driver.serviceNumber || "—"}
-                            </span>{" "}
-                            <span className="text-gray-600">
-                              {formatShortName(driver.fullName) || "Без имени"}
-                            </span>
+                            <span className="font-bold">№ {driver.serviceNumber || "—"}</span>{" "}
+                            <span className="text-gray-600">{formatShortName(driver.fullName)}</span>
                           </div>
                         ))}
                       </div>
@@ -119,7 +107,7 @@ export default function BusList({
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge className={`${color.bg} ${color.text}`}>{label}</Badge>
+                    <StatusBadge status={bus.busStatus} />
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
@@ -129,15 +117,21 @@ export default function BusList({
                       <Button variant="ghost" size="icon" onClick={() => onEdit(bus.id)}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => onDelete(bus.id)}>
-                        <Trash2 className="h-4 w-4 text-red-500" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-500"
+                        onClick={() => onDelete(bus.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>
-                </TableRow>
-              )
-            })}
+                </motion.tr>
+              ))}
+            </AnimatePresence>
           </TableBody>
+
         </Table>
       </div>
 
@@ -155,7 +149,7 @@ export default function BusList({
 
           <div className="flex items-center space-x-1">
             {[...Array(totalPages)].map((_, index) => {
-              const page = index + 1
+              const page = index + 1;
               return (
                 <Button
                   key={page}
@@ -166,7 +160,7 @@ export default function BusList({
                 >
                   {page}
                 </Button>
-              )
+              );
             })}
           </div>
 
@@ -181,5 +175,5 @@ export default function BusList({
         </div>
       )}
     </div>
-  )
+  );
 }

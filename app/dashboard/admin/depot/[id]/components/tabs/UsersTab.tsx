@@ -8,12 +8,28 @@ import type { User } from "../../types";
 interface UsersTabProps {
   usersByRole: Partial<Record<User["role"], User[]>>;
   onEditUser: (user: User) => void;
-  onViewUsers: (role: string) => void;
+  onViewUsers: (role: User["role"]) => void;
   onAddUser: () => void;
-  onDeleteUser: (userId: string) => void; // Добавляем пропс для удаления
+  onDeleteUser: (userId: string) => void;
 }
 
-export default function UsersTab({ usersByRole, onEditUser, onViewUsers, onAddUser, onDeleteUser }: UsersTabProps) {
+export default function UsersTab({
+  usersByRole,
+  onEditUser,
+  onViewUsers,
+  onAddUser,
+  onDeleteUser,
+}: UsersTabProps) {
+
+  const roles: { key: User["role"]; icon: React.ElementType; label: string }[] = [
+    { key: "fleetManager", icon: Briefcase, label: "Начальники колонн" },
+    { key: "seniorDispatcher", icon: Clock, label: "Старшие диспетчеры" },
+    { key: "dispatcher", icon: Clock, label: "Диспетчеры" },
+    { key: "mechanic", icon: Wrench, label: "Механики" },
+    { key: "hr", icon: Users, label: "Отдел кадров" },
+    { key: "taskInspector", icon: FileText, label: "Отдел таксировки" },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="mb-6 flex justify-between items-center">
@@ -25,60 +41,18 @@ export default function UsersTab({ usersByRole, onEditUser, onViewUsers, onAddUs
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <UserCard
-          title={<div className="flex items-center gap-2"><Briefcase className="h-5 w-5" /> Начальники колонн</div>}
-          role="fleetManager"
-          users={usersByRole.fleetManager || []}
-          onEdit={onEditUser}
-          onViewAll={onViewUsers}
-          onAddUser={onAddUser}
-          onDelete={onDeleteUser} // Передаем обработчик удаления
-        />
-        <UserCard
-          title={<div className="flex items-center gap-2"><Clock className="h-5 w-5" /> Старшие диспетчеры</div>}
-          role="seniorDispatcher"
-          users={usersByRole.seniorDispatcher || []}
-          onEdit={onEditUser}
-          onViewAll={onViewUsers}
-          onAddUser={onAddUser}
-          onDelete={onDeleteUser}
-        />
-        <UserCard
-          title={<div className="flex items-center gap-2"><Clock className="h-5 w-5" /> Диспетчеры</div>}
-          role="dispatcher"
-          users={usersByRole.dispatcher || []}
-          onEdit={onEditUser}
-          onViewAll={onViewUsers}
-          onAddUser={onAddUser}
-          onDelete={onDeleteUser}
-        />
-        <UserCard
-          title={<div className="flex items-center gap-2"><Wrench className="h-5 w-5" /> Механики</div>}
-          role="mechanic"
-          users={usersByRole.mechanic || []}
-          onEdit={onEditUser}
-          onViewAll={onViewUsers}
-          onAddUser={onAddUser}
-          onDelete={onDeleteUser}
-        />
-        <UserCard
-          title={<div className="flex items-center gap-2"><Users className="h-5 w-5" /> Отдел кадров</div>}
-          role="hr"
-          users={usersByRole.hr || []}
-          onEdit={onEditUser}
-          onViewAll={onViewUsers}
-          onAddUser={onAddUser}
-          onDelete={onDeleteUser}
-        />
-        <UserCard
-          title={<div className="flex items-center gap-2"><FileText className="h-5 w-5" /> Отдел таксировки</div>}
-          role="taskInspector"
-          users={usersByRole.taskInspector || []}
-          onEdit={onEditUser}
-          onViewAll={onViewUsers}
-          onAddUser={onAddUser}
-          onDelete={onDeleteUser}
-        />
+        {roles.map(({ key, icon: Icon, label }) => (
+          <UserCard
+            key={key}
+            title={<div className="flex items-center gap-2"><Icon className="h-5 w-5" /> {label}</div>}
+            role={key}
+            users={usersByRole[key] || []}
+            onEdit={onEditUser}
+            onViewAll={onViewUsers}
+            onAddUser={onAddUser}
+            onDelete={onDeleteUser}
+          />
+        ))}
       </div>
     </div>
   );

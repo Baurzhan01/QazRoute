@@ -13,6 +13,7 @@ import type {
   FleetStats,
   FleetStatus,
   UpdateUserRequest,
+  CreateDepotRequest,
 } from "./types";
 
 // Новая сущность BusLine
@@ -168,26 +169,37 @@ export const busService = {
 
 // Автобусные парки
 export const busDepotService = {
+  // Получить все автобусные парки
   getAll: async (): Promise<ApiResponse<BusDepot[]>> => {
     return fetchApi<BusDepot[]>("/bus-depots");
   },
 
+  // Получить автобусный парк по ID
   getById: async (id: string): Promise<ApiResponse<BusDepot>> => {
     return fetchApi<BusDepot>(`/bus-depots/${id}`);
   },
 
-  create: async (depot: Omit<BusDepot, "id">): Promise<ApiResponse<BusDepot>> => {
+  // Создать новый автобусный парк (CreateDepotRequest -> только name, city, address)
+  create: async (depot: CreateDepotRequest): Promise<ApiResponse<BusDepot>> => {
     return fetchApi<BusDepot>("/bus-depots", "POST", depot);
   },
 
+  // Обновить существующий автобусный парк (если нужно)
   update: async (id: string, depot: Omit<BusDepot, "id">): Promise<ApiResponse<BusDepot>> => {
     return fetchApi<BusDepot>(`/bus-depots/${id}`, "PUT", depot);
   },
 
+  // Удалить автобусный парк
   delete: async (id: string): Promise<ApiResponse<void>> => {
     return fetchApi<void>(`/bus-depots/${id}`, "DELETE");
   },
+
+  // Получить всех пользователей парка (если необходимо)
+  getAllUsers: async (): Promise<ApiResponse<User[]>> => {
+    return fetchApi<User[]>("/users");
+  },
 };
+
 
 // Автоколонны
 export const convoyService = {

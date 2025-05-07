@@ -8,10 +8,13 @@ export const routeService = {
     return response.data;
   },
 
-  getByConvoyId: async (convoyId: string): Promise<ApiResponse<Route[]>> => {
-    const response = await apiClient.get<ApiResponse<Route[]>>(`/routes/by-convoy/${convoyId}`);
-    return response.data;
-  },
+ // Новый: передаём опционально статус
+ getByConvoyId: async (convoyId: string, status?: string): Promise<ApiResponse<Route[]>> => {
+  const params = status ? { status } : {}; // 🔥 если статус undefined — передаём пустой объект
+  const response = await apiClient.get<ApiResponse<Route[]>>(`/routes/by-convoy/${convoyId}`, { params });
+  return response.data;
+},
+
 
   getById: async (id: string): Promise<ApiResponse<Route>> => {
     const response = await apiClient.get<ApiResponse<Route>>(`/routes/${id}`);

@@ -7,6 +7,17 @@ export interface ApiResponse<T> {
   value: T | null;
 }
 
+export type UserRole = 
+  | "fleetManager"
+  | "mechanic"
+  | "admin"
+  | "mechanicOnDuty"
+  | "dispatcher"
+  | "seniorDispatcher"
+  | "hr"
+  | "taskInspector";
+
+
 export interface Bus {
   id?: string;
   govNumber: string;
@@ -19,20 +30,19 @@ export interface Bus {
 }
 
 export interface BusDepot {
-  id: string;
-  name: string;
-  city: string;
-  address: string;
-  logo?: string;
-  convoyIds?: string[];
-  users?: {
-    fleetManager: number;
-    seniorDispatcher: number;
-    dispatcher: number;
-    mechanic: number;
-    hr: number;
-    taksirovka: number;
-  };
+  id: string
+  name: string
+  city: string
+  address: string
+  fleetManagerCount: number
+  mechanicCount: number
+  otherEmployeesCount: number
+  employeesCount: number
+}
+export interface CreateDepotRequest {
+  name: string
+  city: string
+  address: string
 }
 
 export interface Convoy {

@@ -108,4 +108,3 @@ export default function MonthSelector({ currentMonth, nextMonth, onNext, loading
     </div>
   )
 }
-

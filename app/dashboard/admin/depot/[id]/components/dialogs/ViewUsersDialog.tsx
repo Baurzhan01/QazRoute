@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -36,29 +36,10 @@ import { getRoleCardTitle, getRoleName, getRoleKey } from "../../utils/roleUtils
 interface ViewUsersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  role:
-    | "fleetManager"
-    | "mechanic"
-    | "admin"
-    | "mechanicOnDuty"
-    | "dispatcher"
-    | "seniorDispatcher"
-    | "hr"
-    | "taskInspector"
-    | null;
+  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" | "taskInspector" | null;
   usersByRole: Record<string, User[]>;
   onEdit: (user: User) => void;
-  onAddUser: (
-    role:
-      | "fleetManager"
-      | "mechanic"
-      | "admin"
-      | "mechanicOnDuty"
-      | "dispatcher"
-      | "seniorDispatcher"
-      | "hr"
-      | "taskInspector",
-  ) => void;
+  onAddUser: (role: ViewUsersDialogProps["role"]) => void;
   onDelete: (userId: string) => Promise<void>;
 }
 
@@ -78,6 +59,7 @@ export default function ViewUsersDialog({
 
   const roleKey = getRoleKey(role);
   const users = roleKey ? usersByRole[roleKey] : [];
+  const showConvoyColumn = role === "fleetManager" || role === "mechanic";
 
   const handleOpenDeleteDialog = (user: User) => {
     setUserToDelete(user);
@@ -92,15 +74,18 @@ export default function ViewUsersDialog({
     setUserToDelete(null);
   };
 
+  const handleAddUser = () => {
+    onOpenChange(false);
+    onAddUser(role);
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>{getRoleCardTitle(role)}</DialogTitle>
-            <DialogDescription>
-              Список всех пользователей с ролью {getRoleName(role)}
-            </DialogDescription>
+            <DialogDescription>Список всех пользователей с ролью {getRoleName(role)}</DialogDescription>
           </DialogHeader>
 
           <div className="py-4">
@@ -110,7 +95,7 @@ export default function ViewUsersDialog({
                   <TableHead>ФИО</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Должность</TableHead>
-                  {(role === "fleetManager" || role === "mechanic") && <TableHead>Автоколонна</TableHead>}
+                  {showConvoyColumn && <TableHead>Автоколонна</TableHead>}
                   <TableHead className="text-right">Действия</TableHead>
                 </TableRow>
               </TableHeader>
@@ -120,37 +105,22 @@ export default function ViewUsersDialog({
                     <TableCell className="font-medium">{user.fullName}</TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>{user.position}</TableCell>
-                    {(role === "fleetManager" || role === "mechanic") && (
-                        console.log("Номер колонны: ",user.convoyNumber),
+                    {showConvoyColumn && (
                       <TableCell>
-                      {user.convoyNumber ? (
-                        <Badge variant="outline" className="bg-sky-50">
-                          Автоколонна №{user.convoyNumber}
-                        </Badge>
-                      ) : (
-                        "Не назначена"
-                      )}
-                    </TableCell>
+                        {user.convoyNumber ? (
+                          <Badge variant="outline" className="bg-sky-50">Автоколонна №{user.convoyNumber}</Badge>
+                        ) : (
+                          <p className="text-gray-500">Не назначена</p>
+                        )}
+                      </TableCell>
                     )}
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            onEdit(user);
-                            onOpenChange(false);
-                          }}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => { onEdit(user); onOpenChange(false); }}>
                           <Edit className="mr-2 h-4 w-4" />
                           Редактировать
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleOpenDeleteDialog(user)}
-                        >
+                        <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleOpenDeleteDialog(user)}>
                           Удалить
                         </Button>
                       </div>
@@ -163,18 +133,9 @@ export default function ViewUsersDialog({
             {users.length === 0 && (
               <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300 mt-4">
                 <Users className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                <h3 className="text-lg font-medium text-gray-900 mb-1">
-                  Нет пользователей
-                </h3>
-                <p className="text-gray-500 mb-4">
-                  В этой категории пока нет пользователей
-                </p>
-                <Button
-                  onClick={() => {
-                    onOpenChange(false);
-                    onAddUser(role);
-                  }}
-                >
+                <h3 className="text-lg font-medium text-gray-900 mb-1">Нет пользователей</h3>
+                <p className="text-gray-500 mb-4">В этой категории пока нет пользователей</p>
+                <Button onClick={handleAddUser}>
                   <UserPlus className="mr-2 h-4 w-4" />
                   Добавить пользователя
                 </Button>
@@ -183,15 +144,8 @@ export default function ViewUsersDialog({
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Закрыть
-            </Button>
-            <Button
-              onClick={() => {
-                onOpenChange(false);
-                onAddUser(role);
-              }}
-            >
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Закрыть</Button>
+            <Button onClick={handleAddUser}>
               <UserPlus className="mr-2 h-4 w-4" />
               Добавить пользователя
             </Button>
@@ -199,27 +153,17 @@ export default function ViewUsersDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Диалог подтверждения удаления */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Подтверждение удаления</AlertDialogTitle>
             <AlertDialogDescription>
-              Вы уверены, что хотите удалить пользователя{" "}
-              <span className="font-semibold">{userToDelete?.fullName}</span>?
-              Это действие нельзя отменить.
+              Вы уверены, что хотите удалить пользователя <span className="font-semibold">{userToDelete?.fullName}</span>? Это действие нельзя отменить.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setUserToDelete(null)}>
-              Отмена
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Удалить
-            </AlertDialogAction>
+            <AlertDialogCancel onClick={() => setUserToDelete(null)}>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700">Удалить</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

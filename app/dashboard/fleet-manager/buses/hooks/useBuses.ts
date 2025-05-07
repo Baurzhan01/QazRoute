@@ -1,105 +1,125 @@
-import { useEffect, useState, useCallback } from "react"
-import { busService } from "@/service/busService"
-import type { Bus, BusWithDrivers } from "@/types/bus.types"
+"use client";
 
-export const useBuses = (selectedStatus: string | null) => {
-  const convoyId: string | null = (() => {
-    if (typeof window === "undefined") return null
-    const authData = localStorage.getItem("authData")
-    if (!authData) return null
-    const parsed = JSON.parse(authData)
-    return parsed?.convoyId ?? null
-  })()
+import { useEffect, useState, useCallback } from "react";
+import { busService } from "@/service/busService";
+import type { Bus, BusWithDrivers } from "@/types/bus.types";
+import { toast } from "@/components/ui/use-toast";
+import { useAuthData } from "./useAuthData";
+import { useDebounce } from "./useDebounce";
 
-  const [buses, setBuses] = useState<BusWithDrivers[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const pageSize = 10
+export const useBuses = (selectedStatus: string | null, searchQuery: string) => {
+  const { getConvoyId } = useAuthData();
+  const convoyId = getConvoyId();
+
+  const [buses, setBuses] = useState<BusWithDrivers[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const debouncedSearch = useDebounce(searchQuery, 400);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const pageSize = 10;
 
   const fetchBuses = useCallback(async () => {
-    if (!convoyId) return
-
+    if (!convoyId) return;
     try {
-      setLoading(true)
-      const result = await busService.filter({
+      setLoading(true);
+
+      const params: {
+        convoyId: string;
+        page: number;
+        pageSize: number;
+        busStatus?: string | null;
+        govNumber?: string | null;
+        garageNumber?: string | null;
+      } = {
         convoyId,
-        status: selectedStatus,
-        search: searchQuery,
         page: currentPage,
         pageSize,
-      })
+        busStatus: selectedStatus || null,
+      };
 
-      setBuses(result.items || [])
-      setTotalPages(Math.ceil(result.totalCount / pageSize))
+      if (debouncedSearch) {
+        if (/^\d+$/.test(debouncedSearch)) {
+          params.garageNumber = debouncedSearch;
+        } else {
+          params.govNumber = debouncedSearch;
+        }
+      }
+
+      console.log("🚍 Параметры запроса:", params);
+
+      const result = await busService.filter(params);
+
+      setBuses(result.items || []);
+      setTotalPages(Math.ceil((result.totalCount ?? 0) / pageSize));
     } catch (err) {
-      console.error("Ошибка при получении автобусов:", err)
+      console.error("Ошибка при загрузке автобусов:", err);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось загрузить список автобусов. Попробуйте позже.",
+        variant: "destructive",
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [convoyId, selectedStatus, searchQuery, currentPage, pageSize])
+  }, [convoyId, selectedStatus, debouncedSearch, currentPage, pageSize]);
 
   useEffect(() => {
-    fetchBuses()
-  }, [fetchBuses])
+    fetchBuses();
+  }, [fetchBuses]);
 
-  const handleAddBus = async (
-    newBus: Omit<Bus, "id">,
-    driverIds: string[] = []
-  ): Promise<BusWithDrivers | null> => {
+  const handleAddBus = async (newBus: Omit<Bus, "id">, driverIds: string[] = []) => {
     try {
-      const createdId = await busService.create({ ...newBus, driverIds: [] })
-      if (!createdId) {
-        console.error("❌ Автобус не создан или не имеет ID")
-        return null
+      const createdId = await busService.create({ ...newBus, driverIds });
+      if (createdId) {
+        await fetchBuses();
       }
-
-      if (driverIds.length > 0) {
-        await busService.assignDrivers(createdId, driverIds)
-      }
-
-      await fetchBuses() // 🔁 обновим список с сервера
-      return await busService.getWithDrivers(createdId)
+      return createdId;
     } catch (err) {
-      console.error("🚨 Ошибка при добавлении автобуса:", err)
-      return null
+      console.error("Ошибка при добавлении автобуса:", err);
+      return null;
     }
-  }
+  };
 
   const handleUpdateBus = async (updated: Bus) => {
-    await busService.update(updated.id, updated)
-    await fetchBuses()
-  }
+    try {
+      await busService.update(updated.id, updated);
+      await fetchBuses();
+    } catch (err) {
+      console.error("Ошибка при обновлении автобуса:", err);
+    }
+  };
 
   const handleDeleteBus = async (id: string) => {
-    await busService.delete(id)
-    await fetchBuses()
-  }
+    try {
+      await busService.delete(id);
+      await fetchBuses();
+    } catch (err) {
+      console.error("Ошибка при удалении автобуса:", err);
+    }
+  };
 
   const assignDriverToBus = async (driverId: string, busId: string) => {
-    await busService.assignDrivers(busId, [driverId])
-    await fetchBuses()
-  }
+    await busService.assignDrivers(busId, [driverId]);
+    await fetchBuses();
+  };
 
   const removeDriverFromBus = async (driverId: string, busId: string) => {
-    await busService.removeDriver(busId, driverId)
-    await fetchBuses()
-  }
+    await busService.removeDriver(busId, driverId);
+    await fetchBuses();
+  };
 
-  const getBusWithDrivers = (id: string): BusWithDrivers | undefined =>
-    buses.find((bus) => bus.id === id)
+  const getBusWithDrivers = (id: string) => buses.find((bus) => bus.id === id);
 
   const refetchBuses = useCallback(() => {
-    fetchBuses()
-  }, [fetchBuses])
+    fetchBuses();
+  }, [fetchBuses]);
 
   return {
     buses,
     totalPages,
     currentPage,
-    searchQuery,
-    setSearchQuery,
     setCurrentPage,
     handleAddBus,
     handleUpdateBus,
@@ -108,6 +128,6 @@ export const useBuses = (selectedStatus: string | null) => {
     removeDriverFromBus,
     getBusWithDrivers,
     loading,
-    refetchBuses
-  }
-}
+    refetchBuses,
+  };
+};

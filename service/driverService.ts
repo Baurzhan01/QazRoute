@@ -1,5 +1,5 @@
 import apiClient from "@/app/api/apiClient"
-import type { Driver, ApiResponse, CreateDriverRequest, UpdateDriverRequest, DriverFilterRequest, PaginatedDriversResponse, DriverStatusCount } from "@/types/driver.types"
+import type { Driver, ApiResponse, CreateDriverRequest, UpdateDriverRequest, DriverFilterRequest, PaginatedDriversResponse, DriverStatusCount, DisplayDriver } from "@/types/driver.types"
 
 export const driverService = {
   // Получить всех водителей
@@ -43,7 +43,11 @@ export const driverService = {
     const response = await apiClient.put<ApiResponse<Driver>>(`/drivers/${id}`, data)
     return response.data
   },
-
+  getFreeDrivers: (date: string, convoyId: string) =>
+    apiClient.get<{ isSuccess: boolean; value: DisplayDriver[] }>(`/drivers/free-drivers`, {
+      params: { date, convoyId },
+    }).then((res) => res.data),
+  
   // Удалить водителя
   delete: async (id: string): Promise<ApiResponse<void>> => {
     const response = await apiClient.delete<ApiResponse<void>>(`/drivers/${id}`)

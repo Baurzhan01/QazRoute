@@ -1,147 +1,123 @@
-import type { ApiResponse } from "../types"
+// releasePlanService.ts
+
+import apiClient from "@/app/api/apiClient"
+import type { RouteDispatchDetails } from "@/types/schedule.types"
+import type { ApiResponse } from "@/types/api.types"
 import type {
-  CalendarMonth,
-  DayPlan,
-  RouteDetails,
-  FinalDispatch,
-  BusAssignment,
+  DateDto,
+  DispatchRouteCreateRequest,
+  DispatchRouteUpdateRequest,
+  ReserveAssignmentDto,
   ReserveAssignment,
-  AvailableBus,
-  AvailableDriver,
-} from "./releasePlanTypes"
+  DispatchBusLineDto,
+  BusLineAssignmentRequest
+} from "@/types/releasePlanTypes"
 
-const API_BASE_URL = "https://localhost:7250/api"
 
-// Вспомогательная функция для обработки ответов API
-async function handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(errorText || `Ошибка HTTP: ${response.status}`)
-  }
 
-  return (await response.json()) as ApiResponse<T>
-}
-
-// Вспомогательная функция для выполнения запросов
-async function fetchApi<T>(
-  endpoint: string,
-  method = "GET",
-  body?: any,
-  headers: HeadersInit = {},
-): Promise<ApiResponse<T>> {
-  const requestHeaders: HeadersInit = {
-    "Content-Type": "application/json",
-    ...headers,
-  }
-
-  const token = localStorage.getItem("authToken")
-  if (token) {
-    requestHeaders["Authorization"] = `Bearer ${token}`
-  }
-
-  const config: RequestInit = {
-    method,
-    headers: requestHeaders,
-    credentials: "include",
-  }
-
-  if (body && method !== "GET") {
-    config.body = JSON.stringify(body)
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config)
-  return handleResponse<T>(response)
-}
-
-// API сервис для работы с планом выпуска
 export const releasePlanService = {
-  // Получение данных календаря для месяца
-  getCalendarMonth: async (year: number, month: number): Promise<ApiResponse<CalendarMonth>> => {
-    return fetchApi<CalendarMonth>(`/release-plan/calendar/${year}/${month}`)
-  },
-
-  // Получение плана на конкретный день
-  getDayPlan: async (date: string): Promise<ApiResponse<DayPlan>> => {
-    return fetchApi<DayPlan>(`/release-plan/day/${date}`)
-  },
-
-  // Получение деталей маршрута на конкретный день
-  getRouteDetails: async (routeId: string, date: string): Promise<ApiResponse<RouteDetails>> => {
-    return fetchApi<RouteDetails>(`/release-plan/route/${routeId}/date/${date}`)
-  },
-
-  // Получение итоговой разнарядки на день
-  getFinalDispatch: async (date: string): Promise<ApiResponse<FinalDispatch>> => {
-    return fetchApi<FinalDispatch>(`/release-plan/final-dispatch/${date}`)
-  },
-
-  // Сохранение назначений на маршрут
-  saveRouteAssignments: async (
+  createDispatchRoute: async (
+    convoyId: string,
     routeId: string,
+    date: string
+  ): Promise<ApiResponse<string>> => {
+    const payload = { convoyId, routeId, date }
+
+    try {
+      const { data } = await apiClient.post(`/dispatches/route`, payload)
+      return data
+    } catch (error: any) {
+      console.error("❌ Ошибка при создании разнарядки:", error)
+      throw new Error(error.response?.data?.error || "Не удалось создать разнарядку")
+    }
+  },
+
+
+assignReserve: async (date: string, assignments: { driverId: string | null; busId: string | null }[]) =>
+  apiClient.post(`/dispatches/reserve/${date}/assignments`, assignments).then((res) => res.data),
+
+
+  updateDispatchRoute: async (
+    payload: DispatchRouteUpdateRequest
+  ): Promise<ApiResponse<string>> => {
+    const { data } = await apiClient.put(`/dispatches/route`, payload)
+    return data
+  },
+
+  saveReserveAssignments: (date: string, assignments: { driverId: string | null; busId: string | null }[]) =>
+    apiClient.post(`/dispatches/reserve/${date}/assignments`, assignments),
+  
+  
+  getRouteDetails: async (
+    routeId: string,
+    date: string
+  ): Promise<ApiResponse<RouteDispatchDetails>> => {
+    try {
+      const response = await apiClient.get<ApiResponse<RouteDispatchDetails>>(
+        `/dispatches/route/${routeId}/date/${date}`
+      )
+      return response.data
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        console.warn(`🔍 Разнарядка не найдена по маршруту ${routeId} на дату ${date}`)
+        return {
+          isSuccess: false,
+          statusCode: 404,
+          error: "Not Found",
+          value: null,
+        }
+      }
+
+      console.error("❌ Ошибка при получении разнарядки:", error)
+      throw new Error(error.response?.data?.error || "Не удалось получить разнарядку")
+    }
+  },
+
+  assignToReserve: async (
     date: string,
-    assignments: BusAssignment[],
+    payload: ReserveAssignmentDto[]
   ): Promise<ApiResponse<boolean>> => {
-    return fetchApi<boolean>(`/release-plan/route/${routeId}/date/${date}/assignments`, "POST", assignments)
+    const { data } = await apiClient.post(`/dispatches/reserve/${date}/assignments`, payload)
+    return data
   },
 
-  // Сохранение назначений в резерв
-  saveReserveAssignments: async (date: string, assignments: ReserveAssignment[]): Promise<ApiResponse<boolean>> => {
-    return fetchApi<boolean>(`/release-plan/reserve/${date}/assignments`, "POST", assignments)
+  removeFromReserve: async (
+    date: string,
+    payload: ReserveAssignmentDto[]
+  ): Promise<ApiResponse<boolean>> => {
+    const { data } = await apiClient.delete(`/dispatches/reserve/${date}/assignments`, { data: payload })
+    return data
   },
 
-  // Получение списка доступных автобусов на дату
-  getAvailableBuses: async (date: string): Promise<ApiResponse<AvailableBus[]>> => {
-    return fetchApi<AvailableBus[]>(`/release-plan/available-buses/${date}`)
+  assignToBusLine: async (
+    date: string,
+    payload: DispatchBusLineDto
+  ): Promise<ApiResponse<boolean>> => {
+    const { data } = await apiClient.post(`/dispatches/${date}/assign-to-busline`, payload)
+    return data
   },
 
-  // Получение списка доступных водителей на дату
-  getAvailableDrivers: async (date: string): Promise<ApiResponse<AvailableDriver[]>> => {
-    return fetchApi<AvailableDriver[]>(`/release-plan/available-drivers/${date}`)
+  updateBusLineAssignment: async (
+    date: string,
+    payload: BusLineAssignmentRequest
+  ): Promise<ApiResponse<boolean>> => {
+    const { data } = await apiClient.put(`/dispatches/${date}/busline-assignment`, payload)
+    return data
   },
 
-  // Подтверждение итоговой разнарядки
-  confirmFinalDispatch: async (date: string): Promise<ApiResponse<boolean>> => {
-    return fetchApi<boolean>(`/release-plan/final-dispatch/${date}/confirm`, "POST")
+  getReserveAssignmentsByDate: async (date: string): Promise<ApiResponse<ReserveAssignment[]>> => {
+    const { data } = await apiClient.get(`/dispatches/reserve/${date}/all`)
+    return data
+  },
+  
+
+  getReservesByDate: async (date: string): Promise<ApiResponse<any>> => {
+    const { data } = await apiClient.get(`/dispatches/reserve/${date}/all`)
+    return data
   },
 
-  // Экспорт итоговой разнарядки в PDF
-  exportFinalDispatchToPdf: async (date: string): Promise<Blob> => {
-    const requestHeaders: HeadersInit = {
-      "Content-Type": "application/json",
-    }
-
-    const token = localStorage.getItem("authToken")
-    if (token) {
-      requestHeaders["Authorization"] = `Bearer ${token}`
-    }
-
-    const response = await fetch(`${API_BASE_URL}/release-plan/final-dispatch/${date}/export-pdf`, {
-      method: "GET",
-      headers: requestHeaders,
-      credentials: "include",
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(errorText || `Ошибка HTTP: ${response.status}`)
-    }
-
-    return await response.blob()
-  },
-
-  // Получение праздничных дней на год
-  getHolidays: async (year: number): Promise<ApiResponse<{ date: string; name: string }[]>> => {
-    return fetchApi<{ date: string; name: string }[]>(`/release-plan/holidays/${year}`)
-  },
-
-  // Добавление/редактирование праздничного дня
-  saveHoliday: async (date: string, name: string): Promise<ApiResponse<boolean>> => {
-    return fetchApi<boolean>(`/release-plan/holidays`, "POST", { date, name })
-  },
-
-  // Удаление праздничного дня
-  deleteHoliday: async (date: string): Promise<ApiResponse<boolean>> => {
-    return fetchApi<boolean>(`/release-plan/holidays/${date}`, "DELETE")
-  },
-}
-
+  getFullDispatchByDate: async (date: string): Promise<ApiResponse<any>> => {
+    const { data } = await apiClient.get(`/dispatches/${date}/full`)
+    return data
+  }
+} as const

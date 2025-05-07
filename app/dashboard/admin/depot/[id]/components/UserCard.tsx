@@ -12,34 +12,41 @@ interface UserCardProps {
   role: User["role"];
   users: User[];
   onEdit: (user: User) => void;
-  onViewAll: (role: string) => void;
+  onViewAll: (role: User["role"]) => void;
   onAddUser: () => void;
   onDelete: (userId: string) => void;
 }
 
-export default function UserCard({ title, role, users, onEdit, onViewAll, onAddUser, onDelete }: UserCardProps) {
+export default function UserCard({
+  title,
+  role,
+  users,
+  onEdit,
+  onViewAll,
+  onAddUser,
+  onDelete,
+}: UserCardProps) {
+  const roleColorClass = {
+    fleetManager: "text-sky-100",
+    seniorDispatcher: "text-amber-100",
+    dispatcher: "text-green-100",
+    mechanic: "text-purple-100",
+    hr: "text-rose-100",
+    taskInspector: "text-blue-100",
+    admin: "text-gray-100",
+    mechanicOnDuty: "text-indigo-100",
+  }[role];
+  
+
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <CardHeader className={`bg-gradient-to-r ${getRoleCardGradient(role)} text-white`}>
         <CardTitle className="flex items-center gap-2">{title}</CardTitle>
-        <CardDescription
-          className={
-            role === "fleetManager"
-              ? "text-sky-100"
-              : role === "seniorDispatcher"
-                ? "text-amber-100"
-                : role === "dispatcher"
-                  ? "text-green-100"
-                  : role === "mechanic"
-                    ? "text-purple-100"
-                    : role === "hr"
-                      ? "text-rose-100"
-                      : "text-blue-100"
-          }
-        >
-          {users.length} пользователей
+        <CardDescription className={roleColorClass}>
+          {users.length} {users.length === 1 ? "пользователь" : "пользователей"}
         </CardDescription>
       </CardHeader>
+
       <CardContent className="pt-6">
         <div className="space-y-4">
           {users.length > 0 ? (
@@ -48,7 +55,14 @@ export default function UserCard({ title, role, users, onEdit, onViewAll, onAddU
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10 border border-gray-200">
                     <AvatarImage src={user.avatar} alt={user.fullName} />
-                    <AvatarFallback>{user.fullName.substring(0, 2)}</AvatarFallback>
+                    <AvatarFallback>
+                      {user.fullName.trim()
+                        ? user.fullName
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                        : "??"}
+                    </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="font-medium">{user.fullName}</p>
@@ -70,6 +84,7 @@ export default function UserCard({ title, role, users, onEdit, onViewAll, onAddU
           )}
         </div>
       </CardContent>
+
       <CardFooter className="border-t pt-4 flex justify-between">
         {users.length > 1 && (
           <Button variant="ghost" size="sm" onClick={() => onViewAll(role)}>

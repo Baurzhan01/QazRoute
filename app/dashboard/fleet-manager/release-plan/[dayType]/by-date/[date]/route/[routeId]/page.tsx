@@ -1,429 +1,195 @@
-"use client"
+"use client";
 
-import { useParams, useRouter } from "next/navigation"
-import { useState, useEffect, useMemo } from "react"
-import { Button } from "@/components/ui/button"
-import { motion } from "framer-motion"
-import { ArrowLeft, Save, BusIcon } from "lucide-react"
-import Link from "next/link"
-import { useRouteDetails } from "../../../../../hooks/usePlanByDay"
-import { formatDateLabel, parseDate } from "../../../../../utils/dateUtils"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { toast } from "@/components/ui/use-toast"
-import type { Departure, Bus, Driver, Schedule } from "./types"
-import { MOCK_BUSES, ASSIGNED_DRIVERS, INITIAL_DEPARTURES, MOCK_SCHEDULES } from "./mockData"
-import DepartureTable from "./components/DepartureTable"
-import AssignmentDialog from "./components/AssignmentDialog"
-import TimeEditModal from "./components/TimeEditModal"
-import SecondShiftModal from "./components/SecondShiftModal"
-import EditAssignmentModal from "./components/EditAssignmentModal"
+import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import type { LocalDeparture } from "@/types/releasePlanTypes";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { motion } from "framer-motion";
+import { ArrowLeft, Save, BusIcon } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
+import { useRouteAssignments } from "../../../../../hooks/useRouteAssignments";
+import { releasePlanService } from "@/service/releasePlanService";
+import DepartureTable from "./components/DepartureTable";
+import AssignmentDialog from "./components/AssignmentDialog";
+import TimeEditModal from "./components/TimeEditModal";
+import SecondShiftModal from "./components/SecondShiftModal";
+import EditAssignmentModal from "./components/EditAssignmentModal";
+import { useFilteredBuses } from "../../../../../hooks/useFilteredBuses";
+import { useFilteredDrivers } from "../../../../../hooks/useFilteredDrivers";
+import type { DisplayBus } from "@/types/bus.types";
+import type { DisplayDriver } from "@/types/driver.types";
+import { getAuthData } from "@/lib/auth-utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 export default function RouteDetailsPage() {
-  const params = useParams()
-  const router = useRouter()
-  const routeId = params.routeId as string
-  const dateString = params.date as string
-  const dayType = params.dayType as string
+  const params = useParams();
+  const router = useRouter();
+  const routeId = params.routeId as string;
+  const dateString = params.date as string;
+  const dayType = params.dayType as string;
 
-  // Memoize the date object to prevent recreation on each render
-  const date = useMemo(() => parseDate(dateString), [dateString])
+  const [date] = useState<Date>(() => new Date(dateString));
 
-  const { routeDetails, loading, error } = useRouteDetails(routeId, date)
-  const [departures, setDepartures] = useState<Departure[]>([])
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [isTimeEditModalOpen, setIsTimeEditModalOpen] = useState(false)
-  const [isSecondShiftModalOpen, setIsSecondShiftModalOpen] = useState(false)
-  const [isEditAssignmentModalOpen, setIsEditAssignmentModalOpen] = useState(false)
-  const [selectedDeparture, setSelectedDeparture] = useState<Departure | null>(null)
-  const [selectedBus, setSelectedBus] = useState<Bus | null>(null)
-  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null)
-  const [driverSearchQuery, setDriverSearchQuery] = useState("")
-  const [busSearchQuery, setBusSearchQuery] = useState("")
-  const [timeEditType, setTimeEditType] = useState<"departureTime" | "scheduleTime" | "endTime">("departureTime")
-  const [currentTimeValue, setCurrentTimeValue] = useState("")
-  const [schedules, setSchedules] = useState<Schedule[]>([])
+  const auth = getAuthData();
+  const { data, isLoading, refetch } = useRouteAssignments(routeId, date);
 
-  // Инициализация данных
+  const [assignedBusesInRoute, setAssignedBusesInRoute] = useState<Record<string, { routeNumber: string; departureNumber: number }>>({});
+  const [assignedDriversInRoute, setAssignedDriversInRoute] = useState<Record<string, { routeNumber: string; departureNumber: number }>>({});
+  const [departures, setDepartures] = useState<LocalDeparture[]>([]);
+  const [selectedDeparture, setSelectedDeparture] = useState<LocalDeparture | null>(null);
+  const [selectedBus, setSelectedBus] = useState<DisplayBus | null>(null);
+  const [selectedDriver, setSelectedDriver] = useState<DisplayDriver | null>(null);
+  const [busSearchQuery, setBusSearchQuery] = useState("");
+  const [driverSearchQuery, setDriverSearchQuery] = useState("");
+  const [timeEditType, setTimeEditType] = useState<"departureTime" | "scheduleTime" | "endTime">("departureTime");
+  const [currentTimeValue, setCurrentTimeValue] = useState("");
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isTimeEditModalOpen, setIsTimeEditModalOpen] = useState(false);
+  const [isSecondShiftModalOpen, setIsSecondShiftModalOpen] = useState(false);
+  const [isEditAssignmentModalOpen, setIsEditAssignmentModalOpen] = useState(false);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+
+  const selectedBusIds = selectedBus ? [selectedBus.id] : [];
+  const assignedBusIds = Object.keys(assignedBusesInRoute);
+  const assignedDriverIds = Object.keys(assignedDriversInRoute);
+
+  const filteredBuses = useFilteredBuses(data?.buses ?? [], busSearchQuery, assignedBusIds);
+  const filteredDrivers = useFilteredDrivers(data?.drivers ?? [], assignedDriverIds, selectedBusIds, driverSearchQuery);
+
   useEffect(() => {
-    // Загружаем начальные данные
-    setDepartures(INITIAL_DEPARTURES)
-    setSchedules(MOCK_SCHEDULES)
+    if (data?.departures) {
+      const updated: LocalDeparture[] = data.departures.map((d) => ({
+        ...d,
+        shift2AdditionalInfo: d.shift2AdditionalInfo ?? "",
+        shift2Time: d.shift2Time ?? "",
+        isModified: false,
+      }));
 
-    // В реальном приложении здесь будет загрузка данных из API
-    // const fetchSchedules = async () => {
-    //   try {
-    //     const response = await releasePlanService.getSchedules(routeId);
-    //     if (response.isSuccess && response.value) {
-    //       setSchedules(response.value);
-    //     }
-    //   } catch (error) {
-    //     console.error("Ошибка при загрузке графиков:", error);
-    //   }
-    // };
-    // fetchSchedules();
-  }, [routeId])
+      const busesInRoute = updated.reduce((acc, d) => {
+        if (d.bus?.id) acc[d.bus.id] = { routeNumber: data?.routeNumber || "", departureNumber: d.departureNumber };
+        return acc;
+      }, {} as Record<string, { routeNumber: string; departureNumber: number }>);
 
-  // Фильтрация автобусов по поисковому запросу
-  const filteredBuses = useMemo(() => {
-    if (!busSearchQuery) return MOCK_BUSES
+      const driversInRoute = updated.reduce((acc, d) => {
+        if (d.driver?.id) acc[d.driver.id] = { routeNumber: data?.routeNumber || "", departureNumber: d.departureNumber };
+        return acc;
+      }, {} as Record<string, { routeNumber: string; departureNumber: number }>);
 
-    return MOCK_BUSES.filter(
-      (bus) =>
-        bus.garageNumber.toLowerCase().includes(busSearchQuery.toLowerCase()) ||
-        bus.stateNumber.toLowerCase().includes(busSearchQuery.toLowerCase()),
-    )
-  }, [busSearchQuery])
-
-  // Фильтрация водителей по поисковому запросу
-  const filteredDrivers = useMemo(() => {
-    if (!selectedBus) return []
-
-    let drivers = selectedBus.drivers
-
-    if (driverSearchQuery) {
-      drivers = drivers.filter(
-        (driver) =>
-          driver.personnelNumber.includes(driverSearchQuery) ||
-          driver.fullName.toLowerCase().includes(driverSearchQuery.toLowerCase()),
-      )
+      setAssignedBusesInRoute(busesInRoute);
+      setAssignedDriversInRoute(driversInRoute);
+      setDepartures(updated);
     }
+  }, [data?.departures]);
 
-    // Проверяем, назначен ли водитель на другой маршрут
-    return drivers.map((driver) => {
-      const assignedDriver = ASSIGNED_DRIVERS.find((d) => d.personnelNumber === driver.personnelNumber)
-      if (assignedDriver) {
-        return {
-          ...driver,
-          isAssigned: true,
-          assignedRoute: assignedDriver.assignedRoute,
-          assignedDeparture: assignedDriver.assignedDeparture,
+  useEffect(() => {
+    const createIfMissing = async () => {
+      if (!data?.departures?.length && auth?.convoyId && routeId && dateString) {
+        try {
+          await releasePlanService.createDispatchRoute(auth.convoyId, routeId, dateString);
+          await refetch();
+        } catch (error: any) {
+          if (error?.message?.includes("Разнарядка уже есть")) {
+            await refetch();
+          } else {
+            toast({ title: "Ошибка создания разнарядки", variant: "destructive" });
+          }
         }
       }
-      return driver
-    })
-  }, [selectedBus, driverSearchQuery])
+    };
 
-  // Открытие диалога добавления автобуса и водителя
-  const handleOpenAddDialog = (departure: Departure) => {
-    setSelectedDeparture(departure)
-    setSelectedBus(null)
-    setSelectedDriver(null)
-    setBusSearchQuery("")
-    setDriverSearchQuery("")
-    setIsAddDialogOpen(true)
-  }
+    createIfMissing();
+  }, [data?.departures, auth?.convoyId, routeId, dateString, refetch]);
 
-  // Открытие модального окна редактирования времени
-  const handleOpenTimeEditModal = (departure: Departure, type: "departureTime" | "scheduleTime" | "endTime") => {
-    setSelectedDeparture(departure)
-    setTimeEditType(type)
-    setCurrentTimeValue(departure[type])
-    setIsTimeEditModalOpen(true)
-  }
-
-  // Открытие модального окна добавления второй смены
-  const handleOpenSecondShiftModal = (departure: Departure) => {
-    setSelectedDeparture(departure)
-    setIsSecondShiftModalOpen(true)
-  }
-
-  // Открытие модального окна редактирования назначения
-  const handleOpenEditAssignmentModal = (departure: Departure) => {
-    setSelectedDeparture(departure)
-    setIsEditAssignmentModalOpen(true)
-  }
-
-  // Выбор автобуса
-  const handleSelectBus = (bus: Bus) => {
-    setSelectedBus(bus)
-    setSelectedDriver(null)
-    setDriverSearchQuery("")
-  }
-
-  // Выбор водителя
-  const handleSelectDriver = (driver: Driver) => {
-    // Проверяем, не назначен ли водитель на другой маршрут
-    if (driver.isAssigned) {
-      toast({
-        title: "Водитель уже назначен",
-        description: `Водитель ${driver.fullName} уже назначен на маршрут ${driver.assignedRoute}, выход ${driver.assignedDeparture}`,
-        variant: "destructive",
-      })
-      return
+  const handleSaveAllAssignments = async () => {
+    if (!data?.dispatchRouteId) {
+      toast({ title: "Не найден ID разнарядки", variant: "destructive" });
+      return;
     }
-
-    setSelectedDriver(driver)
-  }
-
-  // Сохранение назначения
-  const handleSaveAssignment = () => {
-    if (!selectedDeparture || !selectedBus) {
-      toast({
-        title: "Ошибка",
-        description: "Выберите автобус",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Обновляем выход с выбранным автобусом и водителем
-    setDepartures((prev) =>
-      prev.map((dep) => {
-        if (dep.id === selectedDeparture.id) {
-          return {
-            ...dep,
-            bus: selectedBus,
-            driver: selectedDriver || undefined,
-          }
-        }
-        return dep
-      }),
-    )
-
-    setIsAddDialogOpen(false)
-
-    toast({
-      title: "Успешно",
-      description: `Автобус ${selectedBus.garageNumber} назначен на выход ${selectedDeparture.departureNumber}`,
-    })
-  }
-
-  // Сохранение времени
-  const handleSaveTime = (time: string) => {
-    if (!selectedDeparture) return
-
-    setDepartures((prev) =>
-      prev.map((dep) => {
-        if (dep.id === selectedDeparture.id) {
-          return {
-            ...dep,
-            [timeEditType]: time,
-          }
-        }
-        return dep
-      }),
-    )
-
-    // В реальном приложении здесь будет API запрос
-    // try {
-    //   await releasePlanService.updateDepartureTime(routeId, dateString, selectedDeparture.id, time);
-    // } catch (error) {
-    //   console.error("Ошибка при обновлении времени:", error);
-    // }
-
-    toast({
-      title: "Успешно",
-      description: "Время обновлено",
-    })
-  }
-
-  // Сохранение второй смены
-  const handleSaveSecondShift = (driverId: string, shiftChangeTime: string) => {
-    if (!selectedDeparture) return
-
-    // Находим водителя по ID
-    const driver = MOCK_BUSES.flatMap((bus) => bus.drivers).find((d) => d.id === driverId)
-
-    if (!driver) {
-      toast({
-        title: "Ошибка",
-        description: "Водитель не найден",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Обновляем выход с водителем второй смены
-    setDepartures((prev) =>
-      prev.map((dep) => {
-        if (dep.id === selectedDeparture.id) {
-          return {
-            ...dep,
-            shift2Driver: driver,
-            shift2Time: shiftChangeTime,
-          }
-        }
-        return dep
-      }),
-    )
-
-    // В реальном приложении здесь будет API запрос
-    // try {
-    //   await releasePlanService.addSecondShift(
-    //     routeId,
-    //     dateString,
-    //     selectedDeparture.id,
-    //     driverId,
-    //     shiftChangeTime
-    //   );
-    // } catch (error) {
-    //   console.error("Ошибка при добавлении второй смены:", error);
-    // }
-
-    toast({
-      title: "Успешно",
-      description: `Водитель ${driver.fullName} назначен на вторую смену`,
-    })
-  }
-
-  // Обновление назначения
-  const handleUpdateAssignment = (updatedDeparture: Departure) => {
-    setDepartures((prev) =>
-      prev.map((dep) => {
-        if (dep.id === updatedDeparture.id) {
-          return updatedDeparture
-        }
-        return dep
-      }),
-    )
-
-    toast({
-      title: "Успешно",
-      description: "Назначение обновлено",
-    })
-  }
-
-  // Удаление назначения
-  const handleRemoveAssignment = (departureId: string) => {
-    setDepartures((prev) =>
-      prev.map((dep) => {
-        if (dep.id === departureId) {
-          return {
-            ...dep,
-            bus: undefined,
-            driver: undefined,
-            shift2Driver: undefined,
-            shift2Time: undefined,
-          }
-        }
-        return dep
-      }),
-    )
-
-    toast({
-      title: "Успешно",
-      description: "Назначение удалено",
-    })
-  }
-
-  // Сохранение всех изменений
-  const handleSaveAll = async () => {
+  
     try {
-      // В реальном приложении здесь будет API запрос
-      // const assignments = departures.map(dep => ({
-      //   id: dep.id,
-      //   busId: dep.bus?.id,
-      //   garageNumber: dep.bus?.garageNumber,
-      //   govNumber: dep.bus?.stateNumber,
-      //   driver: dep.driver ? {
-      //     driverId: dep.driver.id,
-      //     personnelNumber: dep.driver.personnelNumber,
-      //     firstName: dep.driver.fullName.split(' ')[0],
-      //     lastName: dep.driver.fullName.split(' ')[1],
-      //     shifts: [{
-      //       shiftNumber: 1,
-      //       departureTime: dep.departureTime,
-      //       scheduleTime: dep.scheduleTime,
-      //       additionalInfo: dep.additionalInfo
-      //     }]
-      //   } : undefined,
-      //   shift2Driver: dep.shift2Driver ? {
-      //     driverId: dep.shift2Driver.id,
-      //     personnelNumber: dep.shift2Driver.personnelNumber,
-      //     firstName: dep.shift2Driver.fullName.split(' ')[0],
-      //     lastName: dep.shift2Driver.fullName.split(' ')[1],
-      //     shifts: [{
-      //       shiftNumber: 2,
-      //       departureTime: dep.shift2Time || "",
-      //       scheduleTime: "",
-      //       additionalInfo: dep.shift2AdditionalInfo
-      //     }]
-      //   } : undefined,
-      //   isReserve: false,
-      //   endTime: dep.endTime,
-      //   departureNumber: dep.departureNumber
-      // }));
-
-      // await releasePlanService.saveRouteAssignments(routeId, dateString, assignments);
-
-      toast({
-        title: "Успешно",
-        description: "Все изменения сохранены",
-      })
-
-      // Добавляем небольшую задержку перед перенаправлением
-      setTimeout(() => {
-        router.push(`/dashboard/fleet-manager/release-plan/${dayType}/${dateString}`)
-      }, 1500)
+      for (const dep of departures) {
+        const dispatchBusLineId = dep.id;
+        const busId = dep.bus?.id ?? null;
+        const driver1Id = dep.driver?.id ?? null;
+        const driver2Id = dep.shift2Driver?.id ?? null;
+  
+        const payload = {
+          dispatchBusLineId,
+          busId,
+          driver1Id,
+          driver2Id,
+        };
+  
+        if (busId || driver1Id || driver2Id) {
+          // Есть назначение → POST назначение
+          await releasePlanService.assignToBusLine(dateString, payload);
+        } else {
+          // Нет назначений → PUT снять назначение
+          await releasePlanService.updateBusLineAssignment(dateString, payload);
+        }
+      }
+  
+      toast({ title: "Изменения успешно сохранены" });
+      router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}`);
     } catch (error) {
-      console.error("Ошибка при сохранении плана:", error)
-      toast({
-        title: "Ошибка",
-        description: "Произошла ошибка при сохранении плана",
-        variant: "destructive",
-      })
+      toast({ title: "Ошибка сохранения изменений", variant: "destructive" });
     }
-  }
+  };  
+
+  const handleBack = () => {
+    if (departures.some(d => d.isModified)) {
+      setPendingNavigation(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}`);
+      setIsConfirmDialogOpen(true);
+    } else {
+      router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}`);
+    }
+  };
 
   return (
-    <div className="flex flex-col gap-4 p-4 md:p-8">
-      <div className="flex items-center gap-2 mb-6">
-        <Link href={`/dashboard/fleet-manager/release-plan/${dayType}/${dateString}`}>
-          <Button variant="outline" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
+    <div className="p-4 md:p-8 space-y-6">
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="icon" onClick={handleBack}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-blue-700">
-            {routeDetails ? `Маршрут № ${routeDetails.number}` : "Маршрут № 1"}
-          </h1>
-          <p className="text-gray-500 mt-1">
-            {routeDetails?.name ? routeDetails.name : "Вокзал - Речной порт"}, {formatDateLabel(date)}
-          </p>
+          <h1 className="text-2xl font-bold text-blue-700">Маршрут № {data?.routeNumber}</h1>
+          <p className="text-sm text-muted-foreground">{date.toLocaleDateString()}</p>
         </div>
       </div>
 
-      {loading ? (
-        <div className="space-y-4">
-          <div className="h-64 bg-gray-200 animate-pulse rounded-lg"></div>
-        </div>
-      ) : error ? (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          Ошибка загрузки данных маршрута: {error.message}
-        </div>
+      {isLoading ? (
+        <div className="h-64 animate-pulse bg-gray-200 rounded" />
       ) : (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <Card>
             <CardHeader className="bg-blue-500 text-white">
-              <CardTitle className="flex items-center gap-2">
-                <BusIcon className="h-5 w-5" />
-                План выходов на маршрут
-              </CardTitle>
+              <CardTitle className="flex items-center gap-2"><BusIcon className="w-5 h-5" /> План выходов</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <DepartureTable
                 departures={departures}
-                onAddBus={handleOpenAddDialog}
-                onRemoveAssignment={handleRemoveAssignment}
-                onEditAssignment={handleOpenEditAssignmentModal}
-                onAddSecondShift={handleOpenSecondShiftModal}
-                onEditTime={handleOpenTimeEditModal}
+                onAddBus={dep => { setSelectedDeparture(dep); setIsAddDialogOpen(true); }}
+                onEditTime={(dep, type) => { setSelectedDeparture(dep); setTimeEditType(type); setCurrentTimeValue(dep[type]); setIsTimeEditModalOpen(true); }}
+                onEditAssignment={dep => { setSelectedDeparture(dep); setIsEditAssignmentModalOpen(true); }}
+                onAddSecondShift={dep => { setSelectedDeparture(dep); setIsSecondShiftModalOpen(true); }}
+                onRemoveAssignment={depId => {
+                  setDepartures(prev => prev.map(d => d.id === depId ? { ...d, bus: undefined, driver: undefined, isModified: true } : d));
+                  toast({ title: "Назначение снято" });
+                }}
               />
             </CardContent>
           </Card>
 
-          <div className="mt-6 flex justify-end">
-            <Button className="gap-2" onClick={handleSaveAll}>
-              <Save className="h-4 w-4" />
-              Сохранить изменения
-            </Button>
+          <div className="flex justify-end mt-6">
+            <Button onClick={handleSaveAllAssignments} className="gap-2"><Save className="w-4 h-4" /> Сохранить</Button>
           </div>
 
-          {/* Диалог добавления автобуса и водителя */}
           <AssignmentDialog
             open={isAddDialogOpen}
-            onClose={() => setIsAddDialogOpen(false)}
-            onSave={handleSaveAssignment}
+            onClose={() => { setIsAddDialogOpen(false); setSelectedDeparture(null); }}
             selectedDeparture={selectedDeparture}
             selectedBus={selectedBus}
             selectedDriver={selectedDriver}
@@ -433,47 +199,76 @@ export default function RouteDetailsPage() {
             driverSearchQuery={driverSearchQuery}
             onBusSearchChange={setBusSearchQuery}
             onDriverSearchChange={setDriverSearchQuery}
-            onSelectBus={handleSelectBus}
-            onSelectDriver={handleSelectDriver}
+            onSelectBus={setSelectedBus}
+            onSelectDriver={setSelectedDriver}
+            assignedBusesMap={assignedBusesInRoute}
+            assignedDriversMap={assignedDriversInRoute}
+            date={dateString}
+            routeId={routeId}
+
+            // ✅ Вот этого не хватает:
+            convoyId={auth?.convoyId || ""}
+
+            onSaved={(bus, driver) => {
+              if (bus) setAssignedBusesInRoute(prev => ({ ...prev, [bus.id]: { routeNumber: data?.routeNumber || "", departureNumber: selectedDeparture?.departureNumber ?? 0 } }));
+              if (driver) setAssignedDriversInRoute(prev => ({ ...prev, [driver.id]: { routeNumber: data?.routeNumber || "", departureNumber: selectedDeparture?.departureNumber ?? 0 } }));
+            }}
           />
 
-          {/* Модальное окно редактирования времени */}
           <TimeEditModal
             isOpen={isTimeEditModalOpen}
             onClose={() => setIsTimeEditModalOpen(false)}
-            onSave={handleSaveTime}
+            onSave={time => {
+              if (!selectedDeparture) return;
+              setDepartures(prev => prev.map(dep => dep.id === selectedDeparture.id ? { ...dep, [timeEditType]: time, isModified: true } : dep));
+              setIsTimeEditModalOpen(false);
+            }}
             currentTime={currentTimeValue}
-            title={
-              timeEditType === "departureTime"
-                ? "Редактирование времени выхода"
-                : timeEditType === "scheduleTime"
-                  ? "Редактирование времени по графику"
-                  : "Редактирование времени конца работы"
-            }
+            title="Изменить время"
           />
 
-          {/* Модальное окно добавления второй смены */}
           <SecondShiftModal
             isOpen={isSecondShiftModalOpen}
-            onClose={() => setIsSecondShiftModalOpen(false)}
+            onClose={() => { setIsSecondShiftModalOpen(false); setSelectedDeparture(null); }}
             departure={selectedDeparture}
-            availableDrivers={MOCK_BUSES.flatMap((bus) => bus.drivers)}
-            onSave={handleSaveSecondShift}
-            schedules={schedules}
+            availableDrivers={filteredDrivers}
+            schedules={data?.schedules || []}
+            onSave={(driverId, shiftTime) => {
+              const driver = filteredDrivers.find(d => d.id === driverId);
+              if (!selectedDeparture || !driver) return;
+              setDepartures(prev => prev.map(dep => dep.id === selectedDeparture.id ? { ...dep, shift2Driver: driver, shift2Time: shiftTime, isModified: true } : dep));
+              setIsSecondShiftModalOpen(false);
+            }}
           />
 
-          {/* Модальное окно редактирования назначения */}
           <EditAssignmentModal
             isOpen={isEditAssignmentModalOpen}
-            onClose={() => setIsEditAssignmentModalOpen(false)}
+            onClose={() => { setIsEditAssignmentModalOpen(false); setSelectedDeparture(null); }}
             departure={selectedDeparture}
-            availableBuses={MOCK_BUSES}
-            availableDrivers={MOCK_BUSES.flatMap((bus) => bus.drivers)}
-            onSave={handleUpdateAssignment}
+            availableBuses={filteredBuses}
+            availableDrivers={filteredDrivers}
+            onSave={updated => {
+              setDepartures(prev => prev.map(dep => dep.id === updated.id ? updated as LocalDeparture : dep));
+              setIsEditAssignmentModalOpen(false);
+            }}
           />
         </motion.div>
       )}
-    </div>
-  )
-}
 
+      <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Есть несохранённые изменения</DialogTitle>
+          </DialogHeader>
+          <p>Вы уверены, что хотите выйти? Все несохранённые изменения будут потеряны.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsConfirmDialogOpen(false)}>Остаться</Button>
+            <Button onClick={() => {
+              if (pendingNavigation) router.push(pendingNavigation);
+            }}>Выйти</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
