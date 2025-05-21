@@ -1,27 +1,30 @@
+// ✅ Финальная версия RouteDetailsPage.tsx с правильно размещёнными хуками
+
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import type { LocalDeparture } from "@/types/releasePlanTypes";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { ArrowLeft, Save, BusIcon } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+
 import { useRouteAssignments } from "../../../../../hooks/useRouteAssignments";
 import { releasePlanService } from "@/service/releasePlanService";
+import { getAuthData } from "@/lib/auth-utils";
+
 import DepartureTable from "./components/DepartureTable";
 import AssignmentDialog from "./components/AssignmentDialog";
 import TimeEditModal from "./components/TimeEditModal";
 import SecondShiftModal from "./components/SecondShiftModal";
 import EditAssignmentModal from "./components/EditAssignmentModal";
-import { useFilteredBuses } from "../../../../../hooks/useFilteredBuses";
-import { useFilteredDrivers } from "../../../../../hooks/useFilteredDrivers";
+
+import type { LocalDeparture } from "@/types/releasePlanTypes";
 import type { DisplayBus } from "@/types/bus.types";
 import type { DisplayDriver } from "@/types/driver.types";
-import { getAuthData } from "@/lib/auth-utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 export default function RouteDetailsPage() {
   const params = useParams();
@@ -30,20 +33,22 @@ export default function RouteDetailsPage() {
   const dateString = params.date as string;
   const dayType = params.dayType as string;
 
-  const [date] = useState<Date>(() => new Date(dateString));
-
+  const date = new Date(dateString);
   const auth = getAuthData();
+
   const { data, isLoading, refetch } = useRouteAssignments(routeId, date);
 
-  const [assignedBusesInRoute, setAssignedBusesInRoute] = useState<Record<string, { routeNumber: string; departureNumber: number }>>({});
-  const [assignedDriversInRoute, setAssignedDriversInRoute] = useState<Record<string, { routeNumber: string; departureNumber: number }>>({});
-  const [departures, setDepartures] = useState<LocalDeparture[]>([]);
-  const [selectedDeparture, setSelectedDeparture] = useState<LocalDeparture | null>(null);
-  const [selectedBus, setSelectedBus] = useState<DisplayBus | null>(null);
-  const [selectedDriver, setSelectedDriver] = useState<DisplayDriver | null>(null);
   const [busSearchQuery, setBusSearchQuery] = useState("");
   const [driverSearchQuery, setDriverSearchQuery] = useState("");
-  const [timeEditType, setTimeEditType] = useState<"departureTime" | "scheduleTime" | "endTime">("departureTime");
+  const [selectedBus, setSelectedBus] = useState<DisplayBus | null>(null);
+  const [selectedDriver, setSelectedDriver] = useState<DisplayDriver | null>(null);
+  const [assignedBusesInRoute, setAssignedBusesInRoute] = useState<Record<string, { routeNumber: string; departureNumber: number }>>({});
+  const [assignedDriversInRoute, setAssignedDriversInRoute] = useState<Record<string, { routeNumber: string; departureNumber: number }>>({});
+
+  const [departures, setDepartures] = useState<LocalDeparture[]>([]);
+  
+  const [selectedDeparture, setSelectedDeparture] = useState<LocalDeparture | null>(null);
+  const [timeEditType, setTimeEditType] = useState<"exitTime" | "endTime" | "shiftChangeTime" | null>(null);
   const [currentTimeValue, setCurrentTimeValue] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isTimeEditModalOpen, setIsTimeEditModalOpen] = useState(false);
@@ -52,37 +57,24 @@ export default function RouteDetailsPage() {
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
-  const selectedBusIds = selectedBus ? [selectedBus.id] : [];
-  const assignedBusIds = Object.keys(assignedBusesInRoute);
-  const assignedDriverIds = Object.keys(assignedDriversInRoute);
-
-  const filteredBuses = useFilteredBuses(data?.buses ?? [], busSearchQuery, assignedBusIds);
-  const filteredDrivers = useFilteredDrivers(data?.drivers ?? [], assignedDriverIds, selectedBusIds, driverSearchQuery);
-
   useEffect(() => {
     if (data?.departures) {
-      const updated: LocalDeparture[] = data.departures.map((d) => ({
-        ...d,
-        shift2AdditionalInfo: d.shift2AdditionalInfo ?? "",
-        shift2Time: d.shift2Time ?? "",
-        isModified: false,
-      }));
-
-      const busesInRoute = updated.reduce((acc, d) => {
-        if (d.bus?.id) acc[d.bus.id] = { routeNumber: data?.routeNumber || "", departureNumber: d.departureNumber };
-        return acc;
-      }, {} as Record<string, { routeNumber: string; departureNumber: number }>);
-
-      const driversInRoute = updated.reduce((acc, d) => {
-        if (d.driver?.id) acc[d.driver.id] = { routeNumber: data?.routeNumber || "", departureNumber: d.departureNumber };
-        return acc;
-      }, {} as Record<string, { routeNumber: string; departureNumber: number }>);
-
-      setAssignedBusesInRoute(busesInRoute);
-      setAssignedDriversInRoute(driversInRoute);
-      setDepartures(updated);
+      const sorted = [...data.departures]
+        .sort((a, b) => {
+          const aNumber = parseInt(a.busLine?.number ?? "0", 10);
+          const bNumber = parseInt(b.busLine?.number ?? "0", 10);
+          return aNumber - bNumber;
+        })
+        .map((d) => ({
+          ...d,
+          shift2AdditionalInfo: d.shift2AdditionalInfo ?? "",
+          shift2Time: d.shift2Time ?? "",
+          isModified: false,
+        }));
+  
+      setDepartures(sorted);
     }
-  }, [data?.departures]);
+  }, [data?.departures]);  
 
   useEffect(() => {
     const createIfMissing = async () => {
@@ -99,7 +91,6 @@ export default function RouteDetailsPage() {
         }
       }
     };
-
     createIfMissing();
   }, [data?.departures, auth?.convoyId, routeId, dateString, refetch]);
 
@@ -111,41 +102,63 @@ export default function RouteDetailsPage() {
   
     try {
       for (const dep of departures) {
-        const dispatchBusLineId = dep.id;
-        const busId = dep.bus?.id ?? null;
-        const driver1Id = dep.driver?.id ?? null;
-        const driver2Id = dep.shift2Driver?.id ?? null;
+        if (!dep.isModified) continue;
   
         const payload = {
-          dispatchBusLineId,
-          busId,
-          driver1Id,
-          driver2Id,
+          dispatchBusLineId: dep.id,
+          busId: dep.bus?.id ?? null,
+          driver1Id: dep.driver?.id ?? null,
+          driver2Id: dep.shift2Driver?.id ?? null,
         };
   
-        if (busId || driver1Id || driver2Id) {
-          // Есть назначение → POST назначение
-          await releasePlanService.assignToBusLine(dateString, payload);
-        } else {
-          // Нет назначений → PUT снять назначение
-          await releasePlanService.updateBusLineAssignment(dateString, payload);
-        }
+        await releasePlanService.updateBusLineAssignment(dateString, payload);
       }
+  
+      await refetch(); // 🔄 получить актуальные данные
   
       toast({ title: "Изменения успешно сохранены" });
       router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}`);
-    } catch (error) {
-      toast({ title: "Ошибка сохранения изменений", variant: "destructive" });
+    } catch (error: any) {
+      toast({
+        title: "Ошибка сохранения изменений",
+        description: error?.response?.data?.error ?? "",
+        variant: "destructive",
+      });
     }
-  };  
+  };
+  
+  const handleEditTime = (dep: LocalDeparture, type: "exitTime" | "endTime" | "shiftChangeTime") => {
+    setSelectedDeparture(dep);
+    setTimeEditType(type);
+    setIsTimeEditModalOpen(true);
+  };
+  
 
   const handleBack = () => {
-    if (departures.some(d => d.isModified)) {
+    if (departures.some((d) => d.isModified)) {
       setPendingNavigation(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}`);
       setIsConfirmDialogOpen(true);
     } else {
       router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}`);
     }
+  };
+
+  const handleRemoveAssignment = async (depId: string) => {
+    const dep = departures.find((d) => d.id === depId);
+    if (!dep) return;
+
+    await releasePlanService.updateBusLineAssignment(dateString, {
+      dispatchBusLineId: dep.id,
+      busId: null,
+      driver1Id: null,
+      driver2Id: null,
+    });
+
+    setDepartures((prev) =>
+      prev.map((d) => d.id === depId ? { ...d, bus: undefined, driver: undefined, shift2Driver: undefined, isModified: true } : d)
+    );
+
+    toast({ title: "Назначение снято" });
   };
 
   return (
@@ -166,77 +179,101 @@ export default function RouteDetailsPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <Card>
             <CardHeader className="bg-blue-500 text-white">
-              <CardTitle className="flex items-center gap-2"><BusIcon className="w-5 h-5" /> План выходов</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <BusIcon className="w-5 h-5" /> План выходов
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <DepartureTable
-                departures={departures}
-                onAddBus={dep => { setSelectedDeparture(dep); setIsAddDialogOpen(true); }}
-                onEditTime={(dep, type) => { setSelectedDeparture(dep); setTimeEditType(type); setCurrentTimeValue(dep[type]); setIsTimeEditModalOpen(true); }}
-                onEditAssignment={dep => { setSelectedDeparture(dep); setIsEditAssignmentModalOpen(true); }}
-                onAddSecondShift={dep => { setSelectedDeparture(dep); setIsSecondShiftModalOpen(true); }}
-                onRemoveAssignment={depId => {
-                  setDepartures(prev => prev.map(d => d.id === depId ? { ...d, bus: undefined, driver: undefined, isModified: true } : d));
-                  toast({ title: "Назначение снято" });
-                }}
-              />
+            <DepartureTable
+              departures={departures}
+              date={dateString} // 🔧 добавлено
+              onAddBus={(dep) => { setSelectedDeparture(dep); setIsAddDialogOpen(true); }}
+              onEditTime={handleEditTime}
+              onEditAssignment={(dep) => { setSelectedDeparture(dep); setIsEditAssignmentModalOpen(true); }}
+              onAddSecondShift={(dep) => { setSelectedDeparture(dep); setIsSecondShiftModalOpen(true); }}
+              onRemoveAssignment={(depId) => handleRemoveAssignment(depId)} // 🔧 существующее
+              onRemoveLocally={(depId) => {
+                setDepartures(prev => prev.map(d => d.id === depId ? { ...d, bus: undefined, driver: undefined, isModified: true } : d));
+              }} // 🔧 добавлено
+            />
             </CardContent>
           </Card>
 
           <div className="flex justify-end mt-6">
-            <Button onClick={handleSaveAllAssignments} className="gap-2"><Save className="w-4 h-4" /> Сохранить</Button>
+            <Button onClick={handleSaveAllAssignments} className="gap-2">
+              <Save className="w-4 h-4" /> Сохранить
+            </Button>
           </div>
 
-          <AssignmentDialog
-            open={isAddDialogOpen}
-            onClose={() => { setIsAddDialogOpen(false); setSelectedDeparture(null); }}
-            selectedDeparture={selectedDeparture}
-            selectedBus={selectedBus}
-            selectedDriver={selectedDriver}
-            filteredBuses={filteredBuses}
-            filteredDrivers={filteredDrivers}
-            busSearchQuery={busSearchQuery}
-            driverSearchQuery={driverSearchQuery}
-            onBusSearchChange={setBusSearchQuery}
-            onDriverSearchChange={setDriverSearchQuery}
-            onSelectBus={setSelectedBus}
-            onSelectDriver={setSelectedDriver}
-            assignedBusesMap={assignedBusesInRoute}
-            assignedDriversMap={assignedDriversInRoute}
-            date={dateString}
-            routeId={routeId}
-
-            // ✅ Вот этого не хватает:
-            convoyId={auth?.convoyId || ""}
-
-            onSaved={(bus, driver) => {
-              if (bus) setAssignedBusesInRoute(prev => ({ ...prev, [bus.id]: { routeNumber: data?.routeNumber || "", departureNumber: selectedDeparture?.departureNumber ?? 0 } }));
-              if (driver) setAssignedDriversInRoute(prev => ({ ...prev, [driver.id]: { routeNumber: data?.routeNumber || "", departureNumber: selectedDeparture?.departureNumber ?? 0 } }));
-            }}
-          />
-
-          <TimeEditModal
-            isOpen={isTimeEditModalOpen}
-            onClose={() => setIsTimeEditModalOpen(false)}
-            onSave={time => {
-              if (!selectedDeparture) return;
-              setDepartures(prev => prev.map(dep => dep.id === selectedDeparture.id ? { ...dep, [timeEditType]: time, isModified: true } : dep));
-              setIsTimeEditModalOpen(false);
-            }}
-            currentTime={currentTimeValue}
-            title="Изменить время"
-          />
-
+          {data && selectedDeparture && (
+            <AssignmentDialog
+              open={isAddDialogOpen}
+              onClose={() => {
+                setIsAddDialogOpen(false);
+                setSelectedDeparture(null);
+              }}
+              selectedDeparture={selectedDeparture}
+              assignedBusesMap={assignedBusesInRoute}
+              assignedDriversMap={assignedDriversInRoute}
+              globalAssignedDriversMap={data.globalAssignedDriversMap}
+              date={dateString}
+              routeId={routeId}
+              convoyId={auth?.convoyId || ""}
+              onSaved={(bus, driver) => {
+                if (bus) {
+                  setAssignedBusesInRoute((prev) => ({
+                    ...prev,
+                    [bus.id]: {
+                      routeNumber: data?.routeNumber || "",
+                      departureNumber: selectedDeparture?.departureNumber ?? 0,
+                    },
+                  }));
+                }
+                if (driver) {
+                  setAssignedDriversInRoute((prev) => ({
+                    ...prev,
+                    [driver.id]: {
+                      routeNumber: data?.routeNumber || "",
+                      departureNumber: selectedDeparture?.departureNumber ?? 0,
+                    },
+                  }));
+                }
+            
+                // 💡 Сразу обновляем весь список маршрута
+                refetch();
+              }}
+            />
+          )}
+          {selectedDeparture?.busLine && timeEditType && (
+            <TimeEditModal
+              isOpen={isTimeEditModalOpen}
+              onClose={() => {
+                setIsTimeEditModalOpen(false);
+                setSelectedDeparture(null);
+                setTimeEditType(null);
+              }}
+              busLineId={selectedDeparture.busLine.id}
+              busLineNumber={selectedDeparture.busLine.number}
+              routeId={routeId}
+              timeType={timeEditType}
+              onSuccess={() => refetch()}
+            />
+          )}
           <SecondShiftModal
             isOpen={isSecondShiftModalOpen}
             onClose={() => { setIsSecondShiftModalOpen(false); setSelectedDeparture(null); }}
             departure={selectedDeparture}
-            availableDrivers={filteredDrivers}
-            schedules={data?.schedules || []}
-            onSave={(driverId, shiftTime) => {
-              const driver = filteredDrivers.find(d => d.id === driverId);
-              if (!selectedDeparture || !driver) return;
-              setDepartures(prev => prev.map(dep => dep.id === selectedDeparture.id ? { ...dep, shift2Driver: driver, shift2Time: shiftTime, isModified: true } : dep));
+            convoyId={auth?.convoyId ?? ""}
+            date={dateString}
+            onSave={(driverId: string, shiftTime: string) => {
+              if (!selectedDeparture) return;
+              setDepartures((prev) =>
+                prev.map((d) =>
+                  d.id === selectedDeparture.id
+                    ? { ...d, shift2Driver: { id: driverId, fullName: "", serviceNumber: "", driverStatus: "DayOff" }, shift2Time: shiftTime, isModified: true }
+                    : d
+                )
+              );
               setIsSecondShiftModalOpen(false);
             }}
           />
@@ -245,11 +282,18 @@ export default function RouteDetailsPage() {
             isOpen={isEditAssignmentModalOpen}
             onClose={() => { setIsEditAssignmentModalOpen(false); setSelectedDeparture(null); }}
             departure={selectedDeparture}
-            availableBuses={filteredBuses}
-            availableDrivers={filteredDrivers}
-            onSave={updated => {
-              setDepartures(prev => prev.map(dep => dep.id === updated.id ? updated as LocalDeparture : dep));
-              setIsEditAssignmentModalOpen(false);
+            convoyId={auth?.convoyId ?? ""}
+            date={dateString}
+            onSave={(updated) => {
+              if (!updated) return;
+              setDepartures((prev) =>
+                prev.map((d) => d.id === updated.id ? {
+                  ...updated,
+                  shift2Time: updated.shift2Time ?? "",
+                  shift2AdditionalInfo: updated.shift2AdditionalInfo ?? "",
+                  isModified: true,
+                } : d)
+              );
             }}
           />
         </motion.div>
@@ -263,9 +307,7 @@ export default function RouteDetailsPage() {
           <p>Вы уверены, что хотите выйти? Все несохранённые изменения будут потеряны.</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsConfirmDialogOpen(false)}>Остаться</Button>
-            <Button onClick={() => {
-              if (pendingNavigation) router.push(pendingNavigation);
-            }}>Выйти</Button>
+            <Button onClick={() => pendingNavigation && router.push(pendingNavigation)}>Выйти</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

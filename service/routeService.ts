@@ -1,52 +1,64 @@
-// services/routeService.ts
-import apiClient from '../app/api/apiClient';
-import type { ApiResponse, Route, CreateRouteRequest, UpdateRouteRequest } from '../types/route.types';
+import apiClient from "@/app/api/apiClient"
+import type {
+  ApiResponse,
+  Route,
+  CreateRouteRequest,
+  UpdateRouteRequest,
+  RouteConflict
+} from "@/types/route.types"
 
 export const routeService = {
+  // Получить все маршруты
   getAll: async (): Promise<ApiResponse<Route[]>> => {
-    const response = await apiClient.get<ApiResponse<Route[]>>('/routes');
-    return response.data;
+    const res = await apiClient.get<ApiResponse<Route[]>>("/routes")
+    return res.data
   },
 
- // Новый: передаём опционально статус
- getByConvoyId: async (convoyId: string, status?: string): Promise<ApiResponse<Route[]>> => {
-  const params = status ? { status } : {}; // 🔥 если статус undefined — передаём пустой объект
-  const response = await apiClient.get<ApiResponse<Route[]>>(`/routes/by-convoy/${convoyId}`, { params });
-  return response.data;
-},
+  // Получить маршруты по колонне с опциональным фильтром по статусу
+  getByConvoyId: async (convoyId: string, status?: string): Promise<ApiResponse<Route[]>> => {
+    const res = await apiClient.get<ApiResponse<Route[]>>(`/routes/by-convoy/${convoyId}`, {
+      params: status ? { status } : {},
+    })
+    return res.data
+  },
 
-
+  // Получить маршрут по ID
   getById: async (id: string): Promise<ApiResponse<Route>> => {
-    const response = await apiClient.get<ApiResponse<Route>>(`/routes/${id}`);
-    return response.data;
+    const res = await apiClient.get<ApiResponse<Route>>(`/routes/${id}`)
+    return res.data
   },
 
+  // Создать маршрут
   create: async (data: CreateRouteRequest): Promise<ApiResponse<string>> => {
-    const response = await apiClient.post<ApiResponse<string>>('/routes', data);
-    return response.data;
+    const res = await apiClient.post<ApiResponse<string>>("/routes", data)
+    return res.data
   },
 
+  // Обновить маршрут
   update: async (id: string, data: UpdateRouteRequest): Promise<ApiResponse<Route>> => {
-    const response = await apiClient.put<ApiResponse<Route>>(`/routes/${id}`, data);
-    return response.data;
+    const res = await apiClient.put<ApiResponse<Route>>(`/routes/${id}`, data)
+    return res.data
   },
 
+  // Удалить маршрут
   delete: async (id: string): Promise<ApiResponse<void>> => {
-    const response = await apiClient.delete<ApiResponse<void>>(`/routes/${id}`);
-    return response.data;
+    const res = await apiClient.delete<ApiResponse<void>>(`/routes/${id}`)
+    return res.data
   },
 
-  checkRoute: async (number: string, convoyId: string): Promise<ApiResponse<void>> => {
-    const response = await apiClient.get<ApiResponse<void>>('/routes/check', {
+  // Проверка на дубликаты маршрута по номеру и колонне
+  checkRoute: async (number: string, convoyId: string): Promise<ApiResponse<RouteConflict[]>> => {
+    const res = await apiClient.get<ApiResponse<RouteConflict[]>>("/routes/check", {
       params: { number, convoyId },
-    });
-    return response.data;
+    })
+    return res.data
   },
 
+  // Проверка очереди (уникальности)
   checkRouteQueue: async (convoyId: string, queue: number): Promise<ApiResponse<void>> => {
-    const response = await apiClient.get<ApiResponse<void>>('/routes/check-queue', {
+    const res = await apiClient.get<ApiResponse<void>>("/routes/check-queue", {
       params: { convoyId, queue },
-    });
-    return response.data;
+    })
+    return res.data
   },
-};
+}

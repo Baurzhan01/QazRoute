@@ -143,7 +143,6 @@ export default function AddBusDialog({ open, onClose, onAdd }: AddBusDialogProps
                   <SelectItem value="OnWork">На линии</SelectItem>
                   <SelectItem value="UnderRepair">На ремонте</SelectItem>
                   <SelectItem value="LongTermRepair">Длительный ремонт</SelectItem>
-                  <SelectItem value="DayOff">Выходной</SelectItem>
                   <SelectItem value="Decommissioned">Списан</SelectItem>
                 </SelectContent>
               </Select>

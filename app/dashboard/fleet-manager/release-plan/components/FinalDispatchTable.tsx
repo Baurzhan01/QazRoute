@@ -1,104 +1,212 @@
-"use client"
+"use client";
 
-import React from "react"
-import type { FinalDispatchData, RouteGroup, RouteAssignment, ReserveAssignment } from "@/types/releasePlanTypes"
-import { getAuthData } from "@/lib/auth-utils"
+import { useState } from "react";
+import { toast } from "@/components/ui/use-toast";
+import { releasePlanService } from "@/service/releasePlanService";
+import { formatDayOfWeek, getMonthName, formatDate } from "../utils/dateUtils";
+import { InfoCell } from "./InfoCell";
+
+
+
+import type { FinalDispatchData } from "@/types/releasePlanTypes";
 
 interface FinalDispatchTableProps {
-  data: FinalDispatchData
+  data: FinalDispatchData;
+  depotNumber?: number;
+  driversCount: number;
+  busesCount: number;
+  convoySummary?: {
+    totalDrivers?: number;
+    totalBuses?: number;
+    driverOnWork?: number;
+    busOnWork?: number;
+  };
 }
 
-export default function FinalDispatchTable({ data }: FinalDispatchTableProps) {
-  const { routeGroups = [], reserveAssignments = [], date } = data
-  const displayDate = new Date(date)
+export default function FinalDispatchTable({
+  data,
+  depotNumber,
+  driversCount,
+  busesCount,
+  convoySummary,
+}: FinalDispatchTableProps) {
+  const {
+    routeGroups = [],
+    reserveAssignments = [],
+    repairBuses = [],
+    dayOffBuses = [],
+    driverStatuses = {},
+    date,
+  } = data;
 
-  const authData = getAuthData()
-  const convoyNumber = authData?.convoyNumber ?? "—"
+  const displayDate = new Date(date);
 
   return (
-    <div id="final-dispatch-table" className="flex flex-col gap-6">
-      <div className="text-center space-y-1">
-        <h2 className="text-2xl font-bold">Итоговый план выпуска автобусов</h2>
-        <p className="text-gray-600 text-lg">{displayDate.toLocaleDateString()}</p>
-        <p className="text-gray-700 font-semibold">Автоколонна: № {convoyNumber}</p>
+    <div id="final-dispatch-table" className="text-sm space-y-6">
+      {/* 🔷 Верхняя панель */}
+      <div className="flex justify-between border px-4 py-2 bg-gray-100 rounded">
+        <div className="space-y-1">
+          <div><strong>Водителей в колонне:</strong> {convoySummary?.totalDrivers ?? driversCount}</div>
+          <div><strong>Автобусов в колонне:</strong> {convoySummary?.totalBuses ?? busesCount}</div>
+          <div><strong>Привл. автоб:</strong> 0</div>
+        </div>
+        <div className="text-center">
+          <div className="font-bold">
+            План выпуска · Колонна №{depotNumber ?? "—"} ({formatDayOfWeek(displayDate)})
+          </div>
+          <div>
+            на {displayDate.toLocaleDateString("ru-RU")} {getMonthName(displayDate)}
+          </div>
+        </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead className="sticky top-0 bg-sky-600 text-white z-10">
-            <tr>
-              <th className="border p-2 w-16">№</th>
-              <th className="border p-2 w-28">Гар. номер</th>
-              <th className="border p-2 w-32">Гос. номер</th>
-              <th className="border p-2">ФИО</th>
-              <th className="border p-2">Таб. номер</th>
-              <th className="border p-2">Время выхода</th>
-              <th className="border p-2">По графику</th>
-              <th className="border p-2">Доп. информация</th>
-              <th className="border p-2">Пересм.</th>
-              <th className="border p-2">ФИО</th>
-              <th className="border p-2">Таб. номер</th>
-              <th className="border p-2">Конец работы</th>
-            </tr>
-          </thead>
-          <tbody>
-            {routeGroups.length === 0 && (
+      {/* 📋 Таблица маршрутов */}
+      {routeGroups.map((group) => (
+        <div key={group.routeId}>
+          <div className="bg-sky-100 text-sky-900 font-semibold px-2 py-1 rounded-t mt-6">
+            Маршрут № {group.routeNumber}
+          </div>
+          <table className="w-full border text-xs">
+            <thead className="bg-sky-600 text-white">
               <tr>
-                <td colSpan={12} className="border p-4 text-center text-gray-500">Нет данных по маршрутам</td>
+                <th className="p-1 border">№</th>
+                <th className="p-1 border">Гар. номер</th>
+                <th className="p-1 border">Гос. номер</th>
+                <th className="p-1 border">ФИО</th>
+                <th className="p-1 border">Таб. номер</th>
+                <th className="p-1 border">Время выхода</th>
+                <th className="p-1 border">По графику</th>
+                <th className="p-1 border">Доп. информация</th>
+                <th className="p-1 border">Пересменка</th>
+                <th className="p-1 border">ФИО</th>
+                <th className="p-1 border">Таб. номер</th>
+                <th className="p-1 border">Конец</th>
               </tr>
-            )}
-
-            {routeGroups.map((group: RouteGroup) => (
-              <React.Fragment key={group.routeId}>
-                <tr className="bg-sky-100 font-semibold text-sky-900">
-                  <td colSpan={12} className="p-2">Маршрут № {group.routeNumber}</td>
+            </thead>
+            <tbody>
+              {group.assignments.map((a, i) => (
+                <tr key={i} className="even:bg-gray-50">
+                  <td className="border p-1 text-center">{i + 1}</td>
+                  <td className="border p-1">{a.garageNumber}</td>
+                  <td className="border p-1">{a.stateNumber}</td>
+                  <td className="border p-1">{a.driver?.fullName ?? "—"}</td>
+                  <td className="border p-1 text-center">{a.driver?.serviceNumber ?? "—"}</td>
+                  <td className="border p-1">{a.departureTime}</td>
+                  <td className="border p-1">{a.scheduleTime}</td>
+                  <td className="border p-1">
+                    <InfoCell
+                      initialValue={a.additionalInfo ?? ""}
+                      dispatchBusLineId={a.dispatchBusLineId}
+                      date={displayDate}
+                    />
+                  </td>
+                  <td className="border p-1">{a.shift2AdditionalInfo ?? "—"}</td>
+                  <td className="border p-1">{a.shift2Driver?.fullName ?? "—"}</td>
+                  <td className="border p-1 text-center">{a.shift2Driver?.serviceNumber ?? "—"}</td>
+                  <td className="border p-1">{a.endTime}</td>
                 </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
 
-                {group.assignments.map((assignment: RouteAssignment, index: number) => (
-                  <tr key={`${group.routeId}-${index}`} className="even:bg-gray-50">
-                    <td className="border p-2 text-center">{index + 1}</td>
-                    <td className="border p-2">{assignment.garageNumber}</td>
-                    <td className="border p-2">{assignment.stateNumber}</td>
-                    <td className="border p-2">{assignment.driver?.fullName ?? "—"}</td>
-                    <td className="border p-2 text-center">{assignment.driver?.serviceNumber ?? "—"}</td>
-                    <td className="border p-2">{assignment.departureTime}</td>
-                    <td className="border p-2">{assignment.scheduleTime}</td>
-                    <td className="border p-2">{assignment.additionalInfo ?? "—"}</td>
-                    <td className="border p-2">{assignment.additionalInfo ?? "—"}</td>
-                    <td className="border p-2">{assignment.shift2Driver?.fullName ?? "—"}</td>
-                    <td className="border p-2 text-center">{assignment.shift2Driver?.serviceNumber ?? "—"}</td>
-                    <td className="border p-2">{assignment.endTime}</td>
-                  </tr>
-                ))}
-              </React.Fragment>
-            ))}
-
-            {reserveAssignments.length > 0 && (
-              <>
-                <tr className="bg-yellow-50 font-semibold text-yellow-900">
-                  <td colSpan={12} className="p-2">Резерв</td>
+      {/* 🟨 Блок резерва */}
+      {reserveAssignments.length > 0 && (
+        <>
+          <div className="bg-yellow-50 text-yellow-900 font-semibold px-2 py-1 rounded-t mt-6">
+            Резерв
+          </div>
+          <table className="w-full border text-xs">
+            <thead className="bg-yellow-400 text-black">
+              <tr>
+                <th className="p-1 border">№</th>
+                <th className="p-1 border">Гар. номер</th>
+                <th className="p-1 border">Гос. номер</th>
+                <th className="p-1 border">ФИО</th>
+                <th className="p-1 border">Таб. номер</th>
+                <th className="p-1 border">Время выхода</th>
+                <th className="p-1 border">По графику</th>
+                <th className="p-1 border">Доп. информация</th>
+                <th className="p-1 border">Пересменка</th>
+                <th className="p-1 border">ФИО</th>
+                <th className="p-1 border">Таб. номер</th>
+                <th className="p-1 border">Конец</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reserveAssignments.map((r, i) => (
+                <tr key={i} className="even:bg-gray-50">
+                  <td className="border p-1 text-center">{r.sequenceNumber}</td>
+                  <td className="border p-1">{r.garageNumber}</td>
+                  <td className="border p-1">{r.stateNumber}</td>
+                  <td className="border p-1">{r.driver?.fullName ?? "—"}</td>
+                  <td className="border p-1 text-center">{r.driver?.serviceNumber ?? "—"}</td>
+                  <td className="border p-1">—</td>
+                  <td className="border p-1">—</td>
+                  <td className="border p-1">
+                    {r.dispatchBusLineId ? (
+                      <InfoCell
+                        initialValue={r.additionalInfo ?? ""}
+                        dispatchBusLineId={r.dispatchBusLineId}
+                        date={displayDate}
+                      />
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="border p-1">—</td>
+                  <td className="border p-1">—</td>
+                  <td className="border p-1">—</td>
+                  <td className="border p-1">{r.endTime}</td>
                 </tr>
-                {reserveAssignments.map((assignment: ReserveAssignment, index: number) => (
-                  <tr key={`reserve-${index}`} className="even:bg-gray-50">
-                    <td className="border p-2 text-center">{assignment.sequenceNumber}</td>
-                    <td className="border p-2">{assignment.garageNumber}</td>
-                    <td className="border p-2">{assignment.stateNumber}</td>
-                    <td className="border p-2">{assignment.driver?.fullName ?? "—"}</td>
-                    <td className="border p-2 text-center">{assignment.driver?.serviceNumber ?? "—"}</td>
-                    <td className="border p-2">{assignment.departureTime}</td>
-                    <td className="border p-2">{assignment.scheduleTime}</td>
-                    <td className="border p-2">{assignment.additionalInfo ?? "—"}</td>
-                    <td className="border p-2">—</td>
-                    <td className="border p-2">—</td>
-                    <td className="border p-2">—</td>
-                    <td className="border p-2">{assignment.endTime}</td>
-                  </tr>
-                ))}
-              </>
-            )}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {/* 📦 Нижние блоки */}
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-2 text-xs border rounded overflow-hidden bg-gray-50">
+        <div className="border p-3">
+          <strong className="block text-gray-700">Ремонт</strong>
+          <ul className="mt-1 list-disc pl-4 text-gray-600">
+            {repairBuses.length > 0 ? repairBuses.map((b, i) => <li key={i}>{b}</li>) : <li>—</li>}
+          </ul>
+        </div>
+        <div className="border p-3">
+          <strong className="block text-gray-700">Автобусы на выходном</strong>
+          <ul className="mt-1 list-disc pl-4 text-gray-600">
+            {dayOffBuses.length > 0 ? dayOffBuses.map((b, i) => <li key={i}>{b}</li>) : <li>—</li>}
+          </ul>
+        </div>
+        <div className="border p-3 text-sm">
+          <strong className="block text-gray-700">Назначено на сегодня</strong>
+          <div className="pl-4 mt-1 text-gray-600 space-y-1">
+            <div>• Водителей: {convoySummary?.driverOnWork ?? "—"}</div>
+            <div>• Автобусов: {convoySummary?.busOnWork ?? "—"}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Статусы */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 mt-2 text-xs border rounded overflow-hidden bg-gray-50">
+        {renderStatusBlock("Водители на выходном", driverStatuses?.DayOff)}
+        {renderStatusBlock("Больничный", driverStatuses?.OnSickLeave)}
+        {renderStatusBlock("Отпуск", driverStatuses?.OnVacation)}
+        {renderStatusBlock("Стажёры", driverStatuses?.Intern)}
       </div>
     </div>
-  )
+  );
+}
+
+function renderStatusBlock(title: string, list?: string[]) {
+  return (
+    <div className="border p-3">
+      <strong className="block text-gray-700">{title}</strong>
+      <div className="mt-1 text-gray-600 whitespace-pre-wrap break-words">
+        {list?.length ? list.join(", ") : "—"}
+      </div>
+    </div>
+  );
 }

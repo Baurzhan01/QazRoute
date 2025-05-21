@@ -1,120 +1,112 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import SearchInput from "@/app/dashboard/fleet-manager/release-plan/components/SearchInput";
-import SelectableList from "../components/SelectableList";
-import type { DisplayBus } from "@/types/bus.types";
-import type { DisplayDriver } from "@/types/driver.types";
-import type { LocalDeparture } from "@/types/releasePlanTypes";
-import { getStatus, isAvailableBusStatus, BUS_STATUS_MAP, DRIVER_STATUS_MAP } from "../../../../../../utils/statusUtils";
-import { busService } from "@/service/busService";
-import { driverService } from "@/service/driverService";
-import { releasePlanService } from "@/service/releasePlanService";
-import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/components/ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import SearchInput from "@/app/dashboard/fleet-manager/release-plan/components/SearchInput"
+import SelectableList from "../components/SelectableList"
+
+import { useState, useEffect } from "react"
+import type { DisplayBus } from "@/types/bus.types"
+import type { DisplayDriver } from "@/types/driver.types"
+import type { LocalDeparture } from "@/types/releasePlanTypes"
+import {
+  getStatus,
+  isAvailableBusStatus,
+  BUS_STATUS_MAP,
+  DRIVER_STATUS_MAP,
+} from "../../../../../../utils/statusUtils"
+import { busService } from "@/service/busService"
+import { releasePlanService } from "@/service/releasePlanService"
+import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "@/components/ui/use-toast"
 
 interface AssignmentDialogProps {
-  open: boolean;
-  onClose: () => void;
-  selectedDeparture: LocalDeparture | null;
-  selectedBus: DisplayBus | null;
-  selectedDriver: DisplayDriver | null;
-  busSearchQuery: string;
-  driverSearchQuery: string;
-  onBusSearchChange: (query: string) => void;
-  onDriverSearchChange: (query: string) => void;
-  onSelectBus: (bus: DisplayBus) => void;
-  onSelectDriver: (driver: DisplayDriver) => void;
-  assignedBusesMap: Record<string, { routeNumber: string; departureNumber: number }>;
-  assignedDriversMap: Record<string, { routeNumber: string; departureNumber: number }>;
-  routeId: string;
-  date: string;
-  convoyId: string;
-  
-  // ⬇️ ВОТ ЭТИ ДВА ОБЯЗАТЕЛЬНО!
-  filteredBuses: DisplayBus[];
-  filteredDrivers: DisplayDriver[];
-
-  onSaved: (bus: DisplayBus | null, driver: DisplayDriver | null) => void;
+  open: boolean
+  onClose: () => void
+  selectedDeparture: LocalDeparture | null
+  assignedBusesMap: Record<string, { routeNumber: string; departureNumber: number }>
+  assignedDriversMap: Record<string, { routeNumber: string; departureNumber: number }>
+  globalAssignedDriversMap: Record<string, { routeNumber: string; departureNumber: number }>
+  routeId: string
+  date: string
+  convoyId: string
+  onSaved: (bus: DisplayBus | null, driver: DisplayDriver | null) => void
 }
-
 
 export default function AssignmentDialog({
   open,
   onClose,
   selectedDeparture,
-  selectedBus,
-  selectedDriver,
-  busSearchQuery,
-  driverSearchQuery,
-  onBusSearchChange,
-  onDriverSearchChange,
-  onSelectBus,
-  onSelectDriver,
   assignedBusesMap,
   assignedDriversMap,
+  globalAssignedDriversMap,
   routeId,
   date,
   convoyId,
   onSaved,
 }: AssignmentDialogProps) {
-  const queryClient = useQueryClient();
-  const [availableBuses, setAvailableBuses] = useState<DisplayBus[]>([]);
-  const [availableDrivers, setAvailableDrivers] = useState<DisplayDriver[]>([]);
-  const [noAvailableDrivers, setNoAvailableDrivers] = useState(false);
-  const [freeDriverIds, setFreeDriverIds] = useState<Set<string>>(new Set());
+  const queryClient = useQueryClient()
+  const [busSearchQuery, setBusSearchQuery] = useState("")
+  const [driverSearchQuery, setDriverSearchQuery] = useState("")
+  const [availableBuses, setAvailableBuses] = useState<DisplayBus[]>([])
+  const [busDrivers, setBusDrivers] = useState<DisplayDriver[]>([])
+  const [selectedBus, setSelectedBus] = useState<DisplayBus | null>(null)
+  const [selectedDriver, setSelectedDriver] = useState<DisplayDriver | null>(null)
+  const [forceDriverMode, setForceDriverMode] = useState(false)
 
   useEffect(() => {
-    if (!open || !selectedDeparture) return;
+    if (!open || !selectedDeparture) return
 
-    busService.getFreeBuses(date, convoyId).then(res => setAvailableBuses(res.value ?? []));
-    driverService.getFreeDrivers(date, convoyId).then(res => {
-      setFreeDriverIds(new Set((res.value ?? []).map((d) => d.id as string)));
-    });
-  }, [open, date, convoyId, selectedDeparture]);
+    setSelectedBus(null)
+    setSelectedDriver(null)
+    setBusSearchQuery("")
+    setDriverSearchQuery("")
+    setBusDrivers([])
+    setForceDriverMode(false)
+
+    busService
+      .getFreeBuses(date, convoyId)
+      .then((res) => setAvailableBuses(res ?? []))
+      .catch(() => toast({ title: "Не удалось загрузить автобусы", variant: "destructive" }))
+  }, [open, selectedDeparture, convoyId, date])
 
   useEffect(() => {
-    if (!selectedBus) {
-      setAvailableDrivers([]);
-      setNoAvailableDrivers(false);
-      return;
-    }
+    if (!selectedBus && !forceDriverMode) return
 
-    busService.getById(selectedBus.id).then((res) => {
-      const driversOnBus = res.value?.drivers ?? [];
+    releasePlanService
+      .getFreeDrivers(date, convoyId, forceDriverMode ? null : selectedBus?.id ?? null)
+      .then((res) => {
+        const drivers = res?.value ?? []
+        const mapped = drivers.map((d: any) => ({
+          id: d.id,
+          fullName: d.fullName,
+          serviceNumber: d.serviceNumber,
+          driverStatus: d.driverStatus || "DayOff",
+        }))
+        setBusDrivers(mapped)
+      })
+      .catch(() =>
+        toast({ title: "Не удалось загрузить водителей", variant: "destructive" })
+      )
+  }, [selectedBus, convoyId, date, forceDriverMode])
 
-      const mappedDrivers: DisplayDriver[] = driversOnBus.map((d: { id: string; fullName: string; serviceNumber: string }) => ({
-        id: d.id,
-        fullName: d.fullName,
-        serviceNumber: d.serviceNumber,
-        convoyId,
-        driverStatus: "OnWork",
-      }));
-      
+  const filteredBuses = availableBuses.filter((bus) =>
+    bus.garageNumber.toLowerCase().includes(busSearchQuery.toLowerCase())
+  )
 
-      const filtered = mappedDrivers.filter((driver) => !assignedDriversMap[driver.id]);
-      setAvailableDrivers(filtered);
-      setNoAvailableDrivers(filtered.length === 0);
-    });
-  }, [selectedBus, assignedDriversMap, convoyId]);
-
-  if (!selectedDeparture) return null;
+  const filteredDrivers = busDrivers.filter((driver) =>
+    driver.fullName.toLowerCase().includes(driverSearchQuery.toLowerCase())
+  )
 
   const handleSave = async () => {
-    if (!selectedDeparture || !selectedBus) return;
-
-    if (assignedBusesMap[selectedBus.id]) {
-      toast({ title: "Автобус уже назначен", variant: "destructive" });
-      return;
-    }
-
-    if (selectedDriver && assignedDriversMap[selectedDriver.id]) {
-      toast({ title: "Водитель уже назначен", variant: "destructive" });
-      return;
-    }
+    if (!selectedDeparture || !selectedBus) return
 
     try {
       await releasePlanService.assignToBusLine(date, {
@@ -122,17 +114,18 @@ export default function AssignmentDialog({
         busId: selectedBus.id,
         driver1Id: selectedDriver?.id ?? null,
         driver2Id: null,
-      });
+      })
 
-      await queryClient.invalidateQueries({ queryKey: ["routeAssignments", routeId, date] });
-
-      onSaved(selectedBus, selectedDriver ?? null);
-      toast({ title: "Назначение сохранено" });
-      onClose();
+      await queryClient.invalidateQueries({ queryKey: ["routeAssignments", routeId, date] })
+      onSaved(selectedBus, selectedDriver ?? null)
+      toast({ title: "Назначение сохранено" })
+      onClose()
     } catch {
-      toast({ title: "Ошибка при назначении", variant: "destructive" });
+      toast({ title: "Ошибка при назначении", variant: "destructive" })
     }
-  };
+  }
+
+  if (!selectedDeparture) return null
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -144,53 +137,99 @@ export default function AssignmentDialog({
         <div className="space-y-6">
           <div>
             <Label>Автобус</Label>
-            <SearchInput value={busSearchQuery} onChange={onBusSearchChange} placeholder="Поиск автобуса..." />
+            <SearchInput
+              value={busSearchQuery}
+              onChange={setBusSearchQuery}
+              placeholder="Поиск автобуса..."
+            />
             <SelectableList
-              items={availableBuses}
+              items={filteredBuses}
               selected={selectedBus}
-              onSelect={onSelectBus}
+              onSelect={(bus) => {
+                setSelectedBus(bus)
+                setSelectedDriver(null)
+                setForceDriverMode(false) // сбрасываем force режим
+                setBusDrivers([])          // сбрасываем водителей
+                setDriverSearchQuery("")   // сбрасываем поиск
+              }}
               labelKey="garageNumber"
               subLabelKey={(bus) => bus.govNumber}
               status={(bus) =>
                 assignedBusesMap[bus.id]
                   ? { label: "Уже назначен", color: "yellow" }
                   : isAvailableBusStatus(bus.status)
-                    ? getStatus(BUS_STATUS_MAP, "available")
-                    : { label: "Недоступен", color: "red" }
+                  ? getStatus(BUS_STATUS_MAP, "available")
+                  : getStatus(BUS_STATUS_MAP, bus.status)
               }
-              disableItem={(bus) => !!assignedBusesMap[bus.id] || ["UnderRepair", "LongTermRepair", "Decommissioned"].includes(bus.status)}
+              disableItem={(bus) =>
+                !!assignedBusesMap[bus.id] ||
+                ["UnderRepair", "LongTermRepair", "Decommissioned"].includes(bus.status)
+              }
             />
           </div>
 
           {selectedBus && (
             <div>
-              <Label>Водитель</Label>
-              <SearchInput value={driverSearchQuery} onChange={onDriverSearchChange} placeholder="Поиск водителя..." />
+              <div className="flex justify-between items-center mb-1">
+                <Label>Водитель</Label>
+                {!forceDriverMode && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setForceDriverMode(true)
+                      setSelectedDriver(null)
+                      setBusDrivers([])
+                    }}
+                  >
+                    Принудительно назначить
+                  </Button>
+                )}
+              </div>
+
+              <SearchInput
+                value={driverSearchQuery}
+                onChange={setDriverSearchQuery}
+                placeholder="Поиск водителя..."
+              />
               <SelectableList
-                items={availableDrivers}
+                items={filteredDrivers}
                 selected={selectedDriver}
-                onSelect={onSelectDriver}
+                onSelect={setSelectedDriver}
                 labelKey="fullName"
                 subLabelKey={(driver) => `№ ${driver.serviceNumber}`}
-                status={(driver) =>
-                  assignedDriversMap[driver.id]
-                    ? { label: "Уже назначен", color: "yellow" }
-                    : freeDriverIds.has(driver.id)
-                      ? getStatus(DRIVER_STATUS_MAP, "DayOff")
-                      : { label: "Недоступен", color: "red" }
+                status={(driver) => {
+                  if (assignedDriversMap[driver.id]) {
+                    return { label: "Уже назначен", color: "yellow" }
+                  }
+                  const global = globalAssignedDriversMap[driver.id]
+                  if (global) {
+                    return {
+                      label: `Назначен на маршрут №${global.routeNumber} (${global.departureNumber} вых.)`,
+                      color: "red",
+                    }
+                  }
+                  return getStatus(DRIVER_STATUS_MAP, driver.driverStatus)
+                }}
+                disableItem={(driver) =>
+                  !!assignedDriversMap[driver.id] ||
+                  !!globalAssignedDriversMap[driver.id] ||
+                  ["OnVacation", "OnSickLeave", "Fired", "Intern"].includes(driver.driverStatus)
                 }
-                disableItem={(driver) => !!assignedDriversMap[driver.id] || !freeDriverIds.has(driver.id)}
               />
-              {noAvailableDrivers && <div className="text-gray-500 text-sm mt-2">На данный автобус не назначено водителей</div>}
             </div>
           )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Отмена</Button>
-          <Button onClick={handleSave}>Сохранить</Button>
+          <Button variant="outline" onClick={onClose}>
+            Отмена
+          </Button>
+          <Button onClick={handleSave} disabled={!selectedBus}>
+            Сохранить
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

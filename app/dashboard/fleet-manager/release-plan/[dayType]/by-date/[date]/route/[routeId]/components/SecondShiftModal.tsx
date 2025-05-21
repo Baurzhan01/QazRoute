@@ -1,54 +1,82 @@
-"use client";
+"use client"
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import SearchInput from "@/app/dashboard/fleet-manager/release-plan/components/SearchInput";
-import SelectableList from "../components/SelectableList";
-import type { Departure } from "@/types/dispatch.types";
-import type { DisplayDriver } from "@/types/driver.types";
-import { DRIVER_STATUS_MAP, getStatus } from "../../../../../../utils/statusUtils";
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import SearchInput from "@/app/dashboard/fleet-manager/release-plan/components/SearchInput"
+import SelectableList from "../components/SelectableList"
+import type { Departure } from "@/types/dispatch.types"
+import type { DisplayDriver } from "@/types/driver.types"
+import { DRIVER_STATUS_MAP, getStatus } from "../../../../../../utils/statusUtils"
+import { driverService } from "@/service/driverService"
+import { releasePlanService } from "@/service/releasePlanService"
+import { toast } from "@/components/ui/use-toast"
 
 interface SecondShiftModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  departure: Departure | null;
-  availableDrivers: DisplayDriver[];
-  schedules: any[]; // можно заменить на конкретный тип, если есть
+  isOpen: boolean
+  onClose: () => void
+  departure: Departure | null
+  date: string
+  convoyId: string
   onSave: (driverId: string, shiftTime: string) => void;
+  onSuccess?: () => void
 }
 
 export default function SecondShiftModal({
   isOpen,
   onClose,
   departure,
-  availableDrivers,
-  schedules,
-  onSave,
+  date,
+  convoyId,
+  onSuccess,
 }: SecondShiftModalProps) {
-  const [driverSearchQuery, setDriverSearchQuery] = useState("");
-  const [selectedDriver, setSelectedDriver] = useState<DisplayDriver | null>(null);
-  const [shiftTime, setShiftTime] = useState("");
+  const [search, setSearch] = useState("")
+  const [availableDrivers, setAvailableDrivers] = useState<DisplayDriver[]>([])
+  const [selectedDriver, setSelectedDriver] = useState<DisplayDriver | null>(null)
+  const [shiftTime, setShiftTime] = useState("")
 
-  const filteredDrivers = useMemo(() => {
-    return availableDrivers.filter((d) =>
-      d.fullName.toLowerCase().includes(driverSearchQuery.toLowerCase())
-    );
-  }, [availableDrivers, driverSearchQuery]);
+  useEffect(() => {
+    if (!departure || !isOpen) return
 
-  if (!departure) return null;
+    driverService.getFreeDrivers(date, convoyId).then(res => {
+      setAvailableDrivers(res.value ?? [])
+    })
 
-  const handleSave = () => {
-    if (!selectedDriver) return;
+    setSearch("")
+    setSelectedDriver(null)
+    setShiftTime("")
+  }, [departure, isOpen, date, convoyId])
 
-    if (!shiftTime.match(/^\d{2}:\d{2}$/)) {
-      alert("Введите время пересменки в формате ЧЧ:ММ");
-      return;
+  const isValidTime = (value: string) => /^\d{2}:\d{2}$/.test(value)
+
+  const handleSave = async () => {
+    if (!departure || !selectedDriver || !isValidTime(shiftTime)) {
+      toast({ title: "Проверьте водителя и время пересменки", variant: "destructive" })
+      return
     }
 
-    onSave(selectedDriver.id, shiftTime);
-  };
+    try {
+      await releasePlanService.updateBusLineAssignment(date, {
+        dispatchBusLineId: departure.id,
+        driver1Id: departure.driver?.id ?? null,
+        driver2Id: selectedDriver.id,
+        busId: departure.bus?.id ?? null,
+      })
+
+      toast({ title: "Водитель 2-й смены назначен" })
+      onClose()
+      onSuccess?.()
+    } catch (e) {
+      toast({ title: "Ошибка при назначении", variant: "destructive" })
+    }
+  }
+
+  const filteredDrivers = availableDrivers.filter(driver =>
+    driver.fullName.toLowerCase().includes(search.toLowerCase())
+  )
+
+  if (!departure) return null
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -60,26 +88,15 @@ export default function SecondShiftModal({
         <div className="space-y-6">
           <div>
             <Label>Водитель</Label>
-            <SearchInput
-              value={driverSearchQuery}
-              onChange={setDriverSearchQuery}
-              placeholder="Поиск водителя..."
-            />
+            <SearchInput value={search} onChange={setSearch} placeholder="Поиск водителя..." />
             <SelectableList
               items={filteredDrivers}
               selected={selectedDriver}
               onSelect={setSelectedDriver}
               labelKey="fullName"
-              subLabelKey={(driver) => `№ ${driver.serviceNumber}`}
-              status={(driver) => {
-                return driver.driverStatus === "OnWork" || driver.driverStatus === "DayOff"
-                  ? getStatus(DRIVER_STATUS_MAP, "DayOff")
-                  : { label: "Недоступен", color: "red" as const };
-              }}
-              disableItem={(driver) => {
-                const notAvailableStatuses = ["OnVacation", "OnSickLeave", "Fired", "Intern"];
-                return notAvailableStatuses.includes(driver.driverStatus);
-              }}
+              subLabelKey={(d) => `№ ${d.serviceNumber}`}
+              status={(d) => getStatus(DRIVER_STATUS_MAP, d.driverStatus)}
+              disableItem={(d) => ["OnVacation", "OnSickLeave", "Fired", "Intern"].includes(d.driverStatus)}
             />
           </div>
 
@@ -98,9 +115,9 @@ export default function SecondShiftModal({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Отмена</Button>
-          <Button onClick={handleSave} disabled={!selectedDriver}>Сохранить</Button>
+          <Button onClick={handleSave} disabled={!selectedDriver || !isValidTime(shiftTime)}>Сохранить</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

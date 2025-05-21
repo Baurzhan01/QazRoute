@@ -32,6 +32,8 @@ export default function RoutesPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
 
   useEffect(() => {
     const authData = localStorage.getItem("authData");
@@ -153,47 +155,103 @@ export default function RoutesPage() {
         onOpenChange={setIsAddDialogOpen}
         title="Добавить маршрут"
         onSubmit={async (formData) => {
-          const created = await routeService.create({
-            convoyId: userContext.convoyId,
-            routeStatus: formData.routeStatus, // ❗️ без лишней конвертации
-            number: formData.number,
-            queue: formData.queue,
-          });
+          if (!userContext?.convoyId) return;
 
-          if (created.isSuccess && created.value && formData.exitNumbers.trim()) {
-            const exits = formData.exitNumbers.split(",").map((n) => n.trim());
-            await busLineService.createMultiple({
-              routeId: created.value,
-              busLines: exits.map(number => ({ number, exitTime: "00:00:00", endTime: "00:00:00", shiftChangeTime: null })),
+          setIsSaving(true);
+          try {
+            const created = await routeService.create({
+              convoyId: userContext.convoyId,
+              routeStatus: formData.routeStatus,
+              number: formData.number,
+              queue: formData.queue,
             });
-          }
 
-          await fetchRoutes();
-          setIsAddDialogOpen(false);
-          toast({ title: "Маршрут добавлен" });
+            if (!created.isSuccess || !created.value) {
+              toast({
+                title: "Ошибка",
+                description: created.error || "Не удалось создать маршрут",
+                variant: "destructive",
+              });
+              return;
+            }
+
+            if (formData.exitNumbers.trim()) {
+              const exits = formData.exitNumbers.split(",").map((n) => n.trim());
+              const busLineRes = await busLineService.createMultiple({
+                routeId: created.value,
+                busLines: exits.map(number => ({
+                  number,
+                  exitTime: "00:00:00",
+                  endTime: "00:00:00",
+                  shiftChangeTime: null,
+                })),
+              });
+
+              if (!busLineRes.isSuccess) {
+                toast({
+                  title: "Ошибка при создании выходов",
+                  description: busLineRes.error || "Выходы не были добавлены",
+                  variant: "destructive",
+                });
+              }
+            }
+
+            toast({ title: "Маршрут успешно добавлен" });
+            await fetchRoutes();
+            setIsAddDialogOpen(false);
+          } catch (error) {
+            toast({
+              title: "Непредвиденная ошибка",
+              description: String(error),
+              variant: "destructive",
+            });
+          } finally {
+            setIsSaving(false);
+          }
         }}
       />
-
       <RouteDialog
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
         title="Редактировать маршрут"
         route={selectedRoute || undefined}
         onSubmit={async (formData) => {
-          if (!selectedRoute?.id) return;
-          await routeService.update(selectedRoute.id, {
-            convoyId: userContext.convoyId,
-            routeStatus: formData.routeStatus, // ❗️ без лишней конвертации
-            number: formData.number,
-            queue: formData.queue,
-            busLineNumbers: formData.exitNumbers.split(",").map((n) => n.trim()),
-          });
-          await fetchRoutes();
-          setIsEditDialogOpen(false);
-          toast({ title: "Маршрут обновлен" });
+          if (!selectedRoute?.id || !userContext?.convoyId) return;
+
+          setIsSaving(true);
+          try {
+            const exits = formData.exitNumbers.split(",").map((n) => n.trim());
+            const updated = await routeService.update(selectedRoute.id, {
+              convoyId: userContext.convoyId,
+              routeStatus: formData.routeStatus,
+              number: formData.number,
+              queue: formData.queue,
+              busLineNumbers: exits,
+            });
+
+            if (!updated.isSuccess) {
+              toast({
+                title: "Ошибка обновления маршрута",
+                description: updated.error || "Не удалось обновить маршрут",
+                variant: "destructive",
+              });
+              return;
+            }
+
+            toast({ title: "Маршрут успешно обновлён" });
+            await fetchRoutes();
+            setIsEditDialogOpen(false);
+          } catch (error) {
+            toast({
+              title: "Непредвиденная ошибка",
+              description: String(error),
+              variant: "destructive",
+            });
+          } finally {
+            setIsSaving(false);
+          }
         }}
       />
-
       <ViewRouteDialog
         open={isViewDialogOpen}
         onOpenChange={setIsViewDialogOpen}

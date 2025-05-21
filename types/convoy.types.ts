@@ -18,6 +18,22 @@ export interface ApiResponse<T> {
     buses?: any[];
     driversCount?: number;
   }
+
+  export interface ConvoySummary {
+    totalDrivers: number
+    totalBuses: number
+    driversOnLine: number
+    busesOnLine: number
+    driversDayOff: number
+    busesDayOff: number
+    busRepairs: number
+    driversOnVacation: number
+    driversOnSickLeave: number
+    traineeDrivers: number
+    busOnWork: number
+    driverOnWork: number
+  }
+  
   
   export interface CreateConvoyRequest {
     number: number;

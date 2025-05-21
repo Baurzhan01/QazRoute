@@ -1,15 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState, useEffect, useMemo } from "react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle
+} from "@/components/ui/dialog";
+import {
+  Button
+} from "@/components/ui/button";
+import {
+  Input
+} from "@/components/ui/input";
+import {
+  Label
+} from "@/components/ui/label";
+import {
+  Badge
+} from "@/components/ui/badge";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from "@/components/ui/select";
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger
+} from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
 import type { Route, RouteFormData } from "../types";
 import { toBackendStatus, toFrontendStatus, type FrontendRouteStatus } from "../utils/routeStatusUtils";
+import { routeService } from "@/service/routeService";
+
+// ⏳ Debounce хук
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 interface RouteDialogProps {
   open: boolean;
@@ -20,11 +46,7 @@ interface RouteDialogProps {
 }
 
 export default function RouteDialog({
-  open,
-  onOpenChange,
-  title,
-  route,
-  onSubmit,
+  open, onOpenChange, title, route, onSubmit,
 }: RouteDialogProps) {
   const [formData, setFormData] = useState<Omit<RouteFormData, "routeStatus"> & { routeStatus: FrontendRouteStatus }>({
     number: "",
@@ -32,6 +54,16 @@ export default function RouteDialog({
     routeStatus: "Будни",
     exitNumbers: "",
   });
+
+  const [exitConflictInfo, setExitConflictInfo] = useState<{ convoyNumber: number; exits: string[]; overlapping: string[] } | null>(null);
+  const [queueConflictError, setQueueConflictError] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
+
+  const debouncedExitNumbers = useDebounce(formData.exitNumbers, 500);
+  const convoyId = useMemo(() => {
+    const raw = localStorage.getItem("authData");
+    return raw ? JSON.parse(raw)?.convoyId : "";
+  }, []);
 
   useEffect(() => {
     if (route) {
@@ -49,44 +81,119 @@ export default function RouteDialog({
         exitNumbers: "",
       });
     }
+    setExitConflictInfo(null);
+    setQueueConflictError(null);
   }, [route]);
 
-  // Очистка данных только перед отправкой (удаляем пробелы, дублирующиеся номера)
-  const cleanExitNumbers = (input: string) => {
-    return Array.from(new Set(input.split(",").map((n) => n.trim()).filter(Boolean))).join(", ");
+  const cleanExitNumbers = (input: string): string[] => {
+    return Array.from(
+      new Set(
+        input
+          .split(",")
+          .map((n) => n.trim())
+          .filter((n) => /^\d+$/.test(n)) // оставляем только числа
+      )
+    ).sort((a, b) => parseInt(a) - parseInt(b));
   };
+  
+  
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const checkQueue = async () => {
+      if (!route && formData.queue > 0 && convoyId) {
+        const res = await routeService.checkRouteQueue(convoyId, formData.queue);
+        setQueueConflictError(res.isSuccess ? null : "Такая позиция уже занята в колонне");
+      } else {
+        setQueueConflictError(null);
+      }
+    };
+    checkQueue();
+  }, [formData.queue, convoyId, route]);
+
+  useEffect(() => {
+    const checkExits = async () => {
+      if (!convoyId || !debouncedExitNumbers.trim() || !formData.number.trim()) {
+        setExitConflictInfo(null);
+        return;
+      }
+    
+      const currentExits = cleanExitNumbers(debouncedExitNumbers);
+    
+      const res = await routeService.checkRoute(formData.number.trim(), convoyId);
+      const conflict = res.value?.[0];
+    
+      if (conflict?.busLineNumbers?.length) {
+        const overlapping = currentExits.filter((exit) => conflict.busLineNumbers.includes(exit));
+        if (overlapping.length > 0) {
+          setExitConflictInfo({
+            convoyNumber: conflict.convoyNumber,
+            exits: conflict.busLineNumbers,
+            overlapping,
+          });
+          return;
+        }
+      }
+    
+      setExitConflictInfo(null);
+    };
+    
+
+    checkExits();
+  }, [debouncedExitNumbers, formData.number, convoyId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    setIsChecking(true);
+  
+    const cleanedExits = cleanExitNumbers(formData.exitNumbers);
+  
     if (!formData.number.trim()) {
       toast({ title: "Ошибка", description: "Введите номер маршрута", variant: "destructive" });
+      setIsChecking(false);
       return;
     }
+  
     if (formData.queue <= 0) {
       toast({ title: "Ошибка", description: "Порядок должен быть больше 0", variant: "destructive" });
+      setIsChecking(false);
       return;
     }
-    if (!formData.exitNumbers.trim()) {
-      toast({ title: "Ошибка", description: "Укажите хотя бы один выход", variant: "destructive" });
+  
+    if (cleanedExits.length === 0) {
+      toast({ title: "Ошибка", description: "Укажите хотя бы один корректный выход", variant: "destructive" });
+      setIsChecking(false);
       return;
     }
-
+  
+    if (queueConflictError) {
+      toast({ title: "Ошибка", description: queueConflictError, variant: "destructive" });
+      setIsChecking(false);
+      return;
+    }
+  
+    if (exitConflictInfo) {
+      toast({
+        title: "Ошибка",
+        description: `Выходы ${exitConflictInfo.overlapping.join(", ")} уже заняты в автоколонне №${exitConflictInfo.convoyNumber}`,
+        variant: "destructive",
+      });
+      setIsChecking(false);
+      return;
+    }
+  
     const preparedData: RouteFormData = {
-      number: formData.number,
+      number: formData.number.trim(),
       queue: formData.queue,
-      exitNumbers: cleanExitNumbers(formData.exitNumbers),
+      exitNumbers: cleanedExits.join(", "), // 🟢 отправляем строку
       routeStatus: toBackendStatus(formData.routeStatus),
     };
-
+  
     onSubmit(preparedData);
+    setIsChecking(false);
   };
+  
 
-  // Для бейджиков просто разделяем строки (не чистим!)
-  const parsedExits = formData.exitNumbers
-    .split(",")
-    .map((n) => n.trim())
-    .filter(Boolean);
+  const parsedExits = cleanExitNumbers(formData.exitNumbers);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -109,22 +216,19 @@ export default function RouteDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="queue">Порядок в разнорядке</Label>
+            <Label htmlFor="queue">Порядок в разнарядке</Label>
             <Input
               id="queue"
               type="number"
               value={formData.queue}
               onChange={(e) => {
                 const parsed = parseInt(e.target.value);
-                if (!isNaN(parsed)) {
-                  setFormData({ ...formData, queue: parsed });
-                } else {
-                  setFormData({ ...formData, queue: 0 });
-                }
+                setFormData({ ...formData, queue: isNaN(parsed) ? 0 : parsed });
               }}
               placeholder="1"
               required
             />
+            {queueConflictError && <p className="text-red-500 text-sm">{queueConflictError}</p>}
           </div>
 
           <div className="space-y-2">
@@ -149,28 +253,49 @@ export default function RouteDialog({
             <Input
               id="exitNumbers"
               type="text"
-              inputMode="text"   // <<< ВАЖНО: это убирает ограничения на ввод
+              inputMode="text"
               value={formData.exitNumbers}
               onChange={(e) => setFormData({ ...formData, exitNumbers: e.target.value })}
               placeholder="Например: 1, 2, 3"
               required
             />
-            {parsedExits.length > 0 && (
+
+            <TooltipProvider>
               <div className="flex flex-wrap gap-2 mt-2">
-                {parsedExits.map((exit, idx) => (
-                  <Badge key={idx} variant="outline">
-                    № {exit}
-                  </Badge>
-                ))}
+                {parsedExits.map((exit, idx) => {
+                  const isConflict = exitConflictInfo?.overlapping.includes(exit);
+                  const badge = (
+                    <Badge
+                      key={idx}
+                      className={isConflict ? "bg-red-100 text-red-700 border-red-300" : "bg-muted"}
+                      variant={isConflict ? "destructive" : "outline"}
+                    >
+                      № {exit}
+                    </Badge>
+                  );
+
+                  return isConflict ? (
+                    <Tooltip key={idx}>
+                      <TooltipTrigger asChild>{badge}</TooltipTrigger>
+                      <TooltipContent>
+                        Занят в автоколонне №{exitConflictInfo?.convoyNumber}
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    badge
+                  );
+                })}
               </div>
-            )}
+            </TooltipProvider>
           </div>
 
           <div className="flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Отмена
             </Button>
-            <Button type="submit">{route ? "Сохранить" : "Добавить"}</Button>
+            <Button type="submit" disabled={isChecking || !!queueConflictError || !!exitConflictInfo}>
+              {route ? "Сохранить" : "Добавить"}
+            </Button>
           </div>
         </form>
       </DialogContent>

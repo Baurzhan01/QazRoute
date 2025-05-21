@@ -1,25 +1,31 @@
 // types/schedule.types.ts
+
 export interface Schedule {
-    id?: string;
-    busLineId: string;
-    namePoint: string;
-  }
-  
-  export interface CreateScheduleRequest {
-    busLineId: string;
-    namePoint: string;
-  }
-  
-  export interface UpdateScheduleRequest {
-    busLineId: string;
-    namePoint: string;
-  }
-  export interface ApiResponse<T> {
-    isSuccess: boolean;
-    error: string | null;
-    statusCode: number;
-    value: T | null;
-  }
+  id: string
+  name: string
+  startTime: string // в формате "HH:mm"
+  endTime: string   // в формате "HH:mm"
+  shiftType: "Morning" | "Evening" | "Night" | "Custom"
+  description?: string
+}
+
+export interface CreateScheduleRequest {
+  name: string
+  startTime: string
+  endTime: string
+  shiftType: "Morning" | "Evening" | "Night" | "Custom"
+  description?: string
+}
+
+export interface UpdateScheduleRequest extends CreateScheduleRequest {}
+
+export interface ApiResponse<T> {
+  isSuccess: boolean
+  error: string | null
+  statusCode: number
+  value: T
+}
+
 
   export interface RouteDispatchDetails {
     id: string

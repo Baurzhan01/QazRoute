@@ -9,8 +9,6 @@ export function getBusStatusLabel(status: BusStatus): string {
       return "На ремонте"
     case "LongTermRepair":
       return "Длительный ремонт"
-    case "DayOff":
-      return "Выходной"
     case "Decommissioned":
       return "Списан"
     default:
@@ -45,15 +43,6 @@ export function getBusStatusInfo(status: BusStatus) {
         color: {
           bg: "bg-red-100",
           text: "text-red-700",
-        },
-      }
-    case "DayOff":
-      return {
-        label: "Выходной",
-        icon: Clock,
-        color: {
-          bg: "bg-purple-100",
-          text: "text-purple-700",
         },
       }
     case "Decommissioned":

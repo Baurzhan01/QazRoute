@@ -38,7 +38,6 @@ export default function Sidebar() {
     { title: "Список автобусов", href: "/dashboard/fleet-manager/buses", icon: <Truck className="h-5 w-5 text-sky-500" /> },
     { title: "Сходы с линии", href: "/dashboard/breakdowns", icon: <AlertTriangle className="h-5 w-5 text-yellow-500" /> },
     { title: "Журнал ремонтов", href: "/dashboard/repairs", icon: <ClipboardList className="h-5 w-5 text-sky-500" /> },
-    { title: "Статистика по колоннам", href: "/dashboard/statistics", icon: <BarChart2 className="h-5 w-5 text-sky-500" /> },
     { title: "Личный кабинет", href: "/dashboard/profile", icon: <User className="h-5 w-5 text-sky-500" /> },
   ];
 

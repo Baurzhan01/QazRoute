@@ -54,6 +54,16 @@ export interface DisplayDriver {
   busIds?: string[];
 }
 
+export interface DisplayBus {
+  id: string
+  govNumber: string
+  garageNumber: string
+  busStatus: string
+  isAssigned?: boolean
+  assignedRoute?: string
+  assignedDeparture?: number
+}
+
 // Для создания водителя (POST /drivers)
 export interface CreateDriverRequest extends Omit<Driver, "id" | "photo" | "inReserve"> {}
 
@@ -134,6 +144,8 @@ export interface ScheduleItem {
   icon: "clock" | "file" | "users"
 }
 
+export type WeekendDriver = DisplayDriver;
+export type WeekendBus = DisplayBus;
 // Новая сущность BusLine
 export interface BusLine {
   id?: string

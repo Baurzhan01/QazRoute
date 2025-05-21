@@ -30,7 +30,6 @@ export default function BusStatusStats({ stats, isLoading, selectedStatus, onSta
     { title: "На линии", value: stats.OnWork, icon: <Bus />, bgColor: "bg-green-50", textColor: "text-green-700", status: "OnWork" },
     { title: "На ремонте", value: stats.UnderRepair, icon: <Wrench />, bgColor: "bg-amber-50", textColor: "text-amber-700", status: "UnderRepair" },
     { title: "Длительный ремонт", value: stats.LongTermRepair, icon: <AlertTriangle />, bgColor: "bg-red-50", textColor: "text-red-700", status: "LongTermRepair" },
-    { title: "Выходной", value: stats.DayOff, icon: <Clock />, bgColor: "bg-purple-50", textColor: "text-purple-700", status: "DayOff" },
     { title: "Списан", value: stats.Decommissioned, icon: <XCircle />, bgColor: "bg-gray-50", textColor: "text-gray-700", status: "Decommissioned" },
   ];
 

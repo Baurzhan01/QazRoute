@@ -11,6 +11,16 @@ export const convoyService = {
       const response = await apiClient.get<ApiResponse<Convoy[]>>(`/convoys/by-depot/${depotId}`);
       return response.data;
     },
+
+    getConvoySummary: async (
+      convoyId: string,
+      date: string
+    ): Promise<ApiResponse<any>> => {
+      const response = await apiClient.get(`/convoys/convoy-summary`, {
+        params: { convoyId, date }
+      });
+      return response.data;
+    },    
   
     getById: async (id: string): Promise<ApiResponse<Convoy>> => {
       const response = await apiClient.get<ApiResponse<Convoy>>(`/convoys/${id}`);

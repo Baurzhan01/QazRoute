@@ -2,12 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
 
+/* Основной шрифт */
 body, table, th, td {
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', 'Roboto', sans-serif;
 }
-/* 🌟 Настройка базовых переменных для светлой и тёмной темы */
+
+/* 🌟 Переменные светлой темы */
 :root {
   --background: 0 0% 100%;
   --foreground: 0 0% 3.9%;
@@ -30,7 +33,7 @@ body, table, th, td {
   --ring: 0 0% 3.9%;
   --radius: 0.5rem;
 
-  /* Цвета для графиков и сайдбара */
+  /* Графики и сайдбар */
   --chart-1: 12 76% 61%;
   --chart-2: 173 58% 39%;
   --chart-3: 197 37% 24%;
@@ -47,7 +50,7 @@ body, table, th, td {
   --sidebar-ring: 217.2 91.2% 59.8%;
 }
 
-/* 🌑 Тёмная тема */
+/* 🌑 Темная тема */
 .dark {
   --background: 0 0% 3.9%;
   --foreground: 0 0% 98%;
@@ -85,7 +88,7 @@ body, table, th, td {
   --sidebar-ring: 217.2 91.2% 59.8%;
 }
 
-/* 🎨 Базовые стили */
+/* 🎨 Базовые Tailwind-стили */
 @layer base {
   * {
     border-color: hsl(var(--border));
@@ -95,11 +98,16 @@ body, table, th, td {
   }
 }
 
-/* 🎯 Дополнительные утилиты */
+/* ✨ Дополнительные утилиты и анимации */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+
+  .shadow-soft {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  }
+
   .animate-slide-in {
     animation: slide-in 0.4s ease forwards;
   }
@@ -115,8 +123,24 @@ body, table, th, td {
     }
   }
 }
+@media print {
+  button, .no-print, nav, header, .shadow-sm {
+    display: none !important;
+  }
 
-/* 📅 Специальные стили для react-datepicker */
+  html, body {
+    background: white;
+    margin: 0;
+    padding: 0;
+  }
+
+  #final-dispatch-table {
+    zoom: 95%;
+  }
+}
+
+
+/* 📅 Стилизация react-datepicker */
 .react-datepicker {
   font-family: 'Inter', sans-serif;
   border-radius: 0.75rem;

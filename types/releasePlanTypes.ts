@@ -1,6 +1,6 @@
 // types/releasePlan/releasePlan.types.ts
 
-import type { DisplayDriver, Driver } from "@/types/driver.types"
+import type { DisplayDriver } from "@/types/driver.types"
 import type { DisplayBus } from "@/types/bus.types"
 
 export type ValidDayType = "workday" | "saturday" | "sunday" | "holiday"
@@ -12,46 +12,30 @@ export interface DateDto {
   day: number
 }
 
-// ➡️ Запросы на создание/обновление разнарядки
+// Создание разнарядки
 export interface DispatchRouteCreateRequest {
   convoyId: string
   routeId: string
   date: string
 }
-// types/releasePlanTypes.ts
 
-export type LocalDeparture = Departure & {
-  shift2AdditionalInfo: string;
-  shift2Time: string;
-  isModified?: boolean;
-};
-
-export interface ReserveAssignmentDto {
-  driverId?: string
-  busId?: string
-}
-
+// Обновление разнарядки
 export interface DispatchRouteUpdateRequest {
   dispatchRouteId: string
   busLines: BusLineDto[]
 }
 
+// DTO выхода маршрута
 export interface BusLineDto {
   id: string
-  busId: string | null;
-  driver1Id: string | null;
-  driver2Id: string | null;
-  departureTime: string;
-  endTime: string;
+  busId: string | null
+  driver1Id: string | null
+  driver2Id: string | null
+  departureTime: string
+  endTime: string
 }
 
-// ➡️ Работа с резервом
-export interface ReserveAssignmentDto {
-  driverId?: string
-  busId?: string
-}
-
-// ➡️ Назначение на выход автобуса
+// DTO для назначения водителей и автобусов на выход
 export interface DispatchBusLineDto {
   dispatchBusLineId: string
   driver1Id: string | null
@@ -59,6 +43,7 @@ export interface DispatchBusLineDto {
   busId: string | null
 }
 
+// DTO для редактирования назначений на выход
 export interface BusLineAssignmentRequest {
   dispatchBusLineId: string
   driver1Id: string | null
@@ -66,7 +51,13 @@ export interface BusLineAssignmentRequest {
   busId: string | null
 }
 
-// 🚌 Основная единица выхода (Departure = 1 выход маршрута)
+// Назначение в резерв
+export interface ReserveAssignmentDto {
+  driverId?: string
+  busId?: string
+}
+
+// 🚌 Выход маршрута (Departure)
 export interface Departure {
   id: string
   departureNumber: number
@@ -76,12 +67,29 @@ export interface Departure {
   endTime: string
   shift2Time?: string
   shift2AdditionalInfo?: string
+  isModified?: boolean
+
   bus?: DisplayBus
   driver?: DisplayDriver
   shift2Driver?: DisplayDriver
+
+  busLine?: {
+    id: string
+    number: string
+    exitTime?: string | null
+    endTime?: string | null
+    shiftChangeTime?: string | null; // ← добавить вот это
+  }
 }
 
-// 📋 Структура маршрута для отображения на дне
+// ➕ Локальная копия Departure с метками изменений
+export type LocalDeparture = Departure & {
+  shift2AdditionalInfo: string
+  shift2Time: string
+  isModified?: boolean
+}
+
+// 📋 Структура маршрута внутри плана выпуска
 export interface DispatchRoute {
   routeId: string
   routeNumber: string
@@ -112,18 +120,31 @@ export interface DayPlan {
 
 // 🏁 Итоговая разнарядка
 export interface FinalDispatchData {
-  date: string;                    // Дата разнарядки
-  routeGroups: RouteGroup[];       // Группы маршрутов (с назначениями)
-  reserveAssignments: ReserveAssignment[]; // Назначения в резерве
+  date: string
+  routeGroups: RouteGroup[]
+  reserveAssignments: ReserveAssignment[]
+
+  // 👇 добавь эти поля:
+  repairBuses: string[]         // список автобусов на ремонте
+  dayOffBuses: string[]         // автобусы на выходном
+  driverStatuses: {
+    DayOff?: string[]
+    OnVacation?: string[]
+    OnSickLeave?: string[]
+    Intern?: string[]
+    total?: number
+  }
 }
 
+
 export interface RouteGroup {
-  routeId: string;                 // ID маршрута
-  routeNumber: string;             // Номер маршрута
-  assignments: RouteAssignment[];  // Назначения по выходам
+  routeId: string
+  routeNumber: string
+  assignments: RouteAssignment[]
 }
 
 export interface RouteAssignment {
+  dispatchBusLineId: string;
   garageNumber: string
   stateNumber: string
   driver: {
@@ -142,6 +163,7 @@ export interface RouteAssignment {
 }
 
 export interface ReserveAssignment {
+  dispatchBusLineId: string;
   sequenceNumber: number
   garageNumber: string
   stateNumber: string
@@ -159,5 +181,49 @@ export interface ReserveAssignment {
   endTime: string
 }
 
+export interface TimeObject {
+  hour: number
+  minute: number
+}
 
+export interface FullDispatchResponse {
+  routeNumber: string
+  busLines: FullDispatchBusLine[]
+  // ✅ Добавить недостающие поля:
+  repairBuses?: string[];
+  dayOffBuses?: string[];
+  driverStatuses?: {
+    DayOff?: string[];
+    OnVacation?: string[];
+    OnSickLeave?: string[];
+    Intern?: string[];
+    total?: number;
+  };
+}
 
+export interface FullDispatchBusLine {
+  id: string
+  busLine: {
+    id: string
+    number: string
+    exitTime: TimeObject | string
+    endTime: TimeObject | string
+  }
+  bus?: {
+    id: string
+    garageNumber: string
+    govNumber: string
+  }
+  driver1?: {
+    id: string
+    fullName: string
+    serviceNumber: string
+  }
+  driver2?: {
+    id: string
+    fullName: string
+    serviceNumber: string
+  }
+  scheduleStart?: TimeObject
+  scheduleShiftChange?: TimeObject
+}

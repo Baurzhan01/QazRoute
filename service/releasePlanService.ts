@@ -97,6 +97,21 @@ assignReserve: async (date: string, assignments: { driverId: string | null; busI
     return data
   },
 
+  getFreeDrivers: async (
+    date: string,
+    convoyId: string,
+    busId: string | null
+  ) => {
+    const response = await apiClient.get(`/drivers/free-drivers`, {
+      params: {
+        date,
+        convoyId,
+        ...(busId !== null && { busId }), // добавляем busId только если он не null
+      },
+    })
+    return response.data
+  },
+
   updateBusLineAssignment: async (
     date: string,
     payload: BusLineAssignmentRequest
@@ -110,14 +125,31 @@ assignReserve: async (date: string, assignments: { driverId: string | null; busI
     return data
   },
   
+  updateBusLineDescription: async (
+    dispatchBusLineId: string,
+    date: string,
+    description: string
+  ): Promise<ApiResponse<boolean>> => {
+    const payload = {
+      dispatchBusLineId,
+      date,         // строка в формате "2025-05-21"
+      description,
+    };
+  
+    const { data } = await apiClient.put(`/dispatches/update-description`, payload);
+    return data;
+  },  
 
   getReservesByDate: async (date: string): Promise<ApiResponse<any>> => {
     const { data } = await apiClient.get(`/dispatches/reserve/${date}/all`)
     return data
   },
 
-  getFullDispatchByDate: async (date: string): Promise<ApiResponse<any>> => {
-    const { data } = await apiClient.get(`/dispatches/${date}/full`)
-    return data
-  }
+  getFullDispatchByDate: async (
+    date: string,
+    convoyId: string
+  ): Promise<ApiResponse<any>> => {
+    const { data } = await apiClient.get(`/dispatches/${date}/full/${convoyId}`);
+    return data;
+  }  
 } as const

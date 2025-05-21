@@ -13,6 +13,7 @@ import type {
       routeId: route.routeId,
       routeNumber: route.routeNumber,
       assignments: (route.busLines ?? []).map((line: any): RouteAssignment => ({
+        dispatchBusLineId: line.dispatchBusLineId,
         garageNumber: line.bus?.garageNumber ?? "—",
         stateNumber: line.bus?.govNumber ?? "—",
         driver: line.firstDriver
@@ -23,7 +24,7 @@ import type {
           : null,
         departureTime: line.exitTime ?? "—",
         scheduleTime: line.scheduleStart ?? "—",
-        additionalInfo: line.additionalInfo ?? "—",
+        additionalInfo: line.description ?? "—",
         shift2Driver: line.secondDriver
           ? {
               serviceNumber: line.secondDriver.serviceNumber ?? "—",
@@ -35,6 +36,7 @@ import type {
     }))
   
     const reserveAssignments: ReserveAssignment[] = (raw.reserves ?? []).map((r: any, index: number) => ({
+      dispatchBusLineId: r.dispatchBusLineId ?? "",
       sequenceNumber: index + 1,
       garageNumber: r.garageNumber ?? "—",
       stateNumber: r.govNumber ?? "—",
@@ -52,7 +54,10 @@ import type {
     return {
       date: raw.date ?? new Date().toISOString(),
       routeGroups,
-      reserveAssignments
+      reserveAssignments,
+      repairBuses: [],
+      dayOffBuses: [],
+      driverStatuses: {}
     }
   }
   

@@ -1,6 +1,11 @@
 import apiClient from "@/app/api/apiClient";
 import type { ApiResponse, BusLine, CreateBusLineRequest, UpdateBusLineRequest } from "@/types/busLine.types";
 
+const dateToTicks = (date: Date): number => {
+  const epochTicks = 621355968000000000;
+  return epochTicks + date.getTime() * 10000;
+};
+
 export const busLineService = {
   getAll: async (): Promise<ApiResponse<BusLine[]>> => {
     try {
@@ -65,6 +70,32 @@ export const busLineService = {
   update: async (id: string, data: UpdateBusLineRequest): Promise<ApiResponse<BusLine>> => {
     try {
       const response = await apiClient.put<ApiResponse<BusLine>>(`/bus-lines/${id}`, data);
+      return response.data;
+    } catch (error: any) {
+      console.error(`❌ Ошибка при обновлении выхода ${id}:`, error);
+      throw new Error(error.response?.data?.error || "Не удалось обновить выход");
+    }
+  },
+  updateExitTime: async (
+    id: string,
+    exitTime: Date | null,
+    number: string,
+    endTime?: Date | null,
+    shiftChangeTime?: Date | null,
+    routeId?: string
+  ): Promise<ApiResponse<BusLine>> => {
+    try {
+      const formatTime = (date: Date | null | undefined): string | null =>
+        date ? date.toISOString().substring(11, 16) : null;
+  
+      const response = await apiClient.put<ApiResponse<BusLine>>(`/bus-lines/${id}`, {
+        number, // теперь передаём явно
+        exitTime: formatTime(exitTime),
+        endTime: formatTime(endTime),
+        shiftChangeTime: formatTime(shiftChangeTime),
+        routeId,
+      });
+  
       return response.data;
     } catch (error: any) {
       console.error(`❌ Ошибка при обновлении выхода ${id}:`, error);
