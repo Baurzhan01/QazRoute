@@ -1,36 +1,30 @@
-"use client";
+"use client"
 
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { releasePlanService } from "@/service/releasePlanService";
-import { convoyService } from "@/service/convoyService";
-import { busService } from "@/service/busService";
-import { driverService } from "@/service/driverService";
-import { getAuthData } from "@/lib/auth-utils";
+import { useMemo } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { releasePlanService } from "@/service/releasePlanService"
+import { convoyService } from "@/service/convoyService"
+import { busService } from "@/service/busService"
+import { driverService } from "@/service/driverService"
+import { getAuthData } from "@/lib/auth-utils"
 
-import type { FinalDispatchData } from "@/types/releasePlanTypes";
-import type { ConvoySummary } from "@/types/convoy.types";
+import type { FinalDispatchData } from "@/types/releasePlanTypes"
+import type { ConvoySummary } from "@/types/convoy.types"
 
-export function useFinalDispatch(date: Date) {
-  const dateStr = useMemo(() => date.toISOString().split("T")[0], [date]);
-  const auth = getAuthData();
-  const convoyId = auth?.convoyId;
+export function useFinalDispatch(date: Date, enabled: boolean = true) {
+  const dateStr = useMemo(() => date.toISOString().split("T")[0], [date])
+  const auth = getAuthData()
+  const convoyId = auth?.convoyId
 
   const {
     data,
     isLoading,
     error,
-  } = useQuery<{
-    finalDispatch: FinalDispatchData;
-    convoySummary?: Pick<ConvoySummary, "driverOnWork" | "busOnWork" | "totalDrivers" | "totalBuses">;
-    convoyNumber?: number;
-    driversCount: number;
-    busesCount: number;
-  }>({
+  } = useQuery({
     queryKey: ["finalDispatch", dateStr, convoyId],
-    enabled: !!dateStr && !!convoyId,
+    enabled: enabled && !!dateStr && !!convoyId,
     queryFn: async () => {
-      if (!convoyId) throw new Error("convoyId отсутствует");
+      if (!convoyId) throw new Error("convoyId отсутствует")
 
       const [
         dispatchRes,
@@ -86,12 +80,11 @@ export function useFinalDispatch(date: Date) {
           page: 1,
           pageSize: 100,
         }),
-      ]);
+      ])
 
-      const convoyNumber = convoyDetailsRes.isSuccess ? convoyDetailsRes.value?.number : undefined;
-
-      const routes = dispatchRes.value?.routes ?? [];
-      const reserves = reserveRes.isSuccess ? reserveRes.value ?? [] : [];
+      const convoyNumber = convoyDetailsRes.isSuccess ? convoyDetailsRes.value?.number : undefined
+      const routes = dispatchRes.value?.routes ?? []
+      const reserves = reserveRes.isSuccess ? reserveRes.value ?? [] : []
 
       const finalDispatch: FinalDispatchData = {
         date: dateStr,
@@ -146,30 +139,31 @@ export function useFinalDispatch(date: Date) {
           OnVacation:
             vacationDriversRes.value?.items?.map((d) => d.fullName) ?? [],
           Intern: internDriversRes.value?.items?.map((d) => d.fullName) ?? [],
-          DayOff: weekendDriversRes.value?.map((d) => d.fullName) ?? [], // ✅ В
+          DayOff: weekendDriversRes.value?.map((d) => d.fullName) ?? [],
+          total: undefined,
         },
-      };
+      }
 
-      const uniqueDrivers = new Set<string>();
-      const uniqueBuses = new Set<string>();
+      const uniqueDrivers = new Set<string>()
+      const uniqueBuses = new Set<string>()
 
       finalDispatch.routeGroups.forEach((group) =>
         group.assignments.forEach((a) => {
-          if (a.driver?.serviceNumber) uniqueDrivers.add(a.driver.serviceNumber);
+          if (a.driver?.serviceNumber) uniqueDrivers.add(a.driver.serviceNumber)
           if (a.shift2Driver?.serviceNumber)
-            uniqueDrivers.add(a.shift2Driver.serviceNumber);
-          if (a.garageNumber) uniqueBuses.add(a.garageNumber);
+            uniqueDrivers.add(a.shift2Driver.serviceNumber)
+          if (a.garageNumber) uniqueBuses.add(a.garageNumber)
         })
-      );
+      )
 
       finalDispatch.reserveAssignments.forEach((r) => {
         if (r.driver?.serviceNumber)
-          uniqueDrivers.add(r.driver.serviceNumber);
-        if (r.garageNumber) uniqueBuses.add(r.garageNumber);
-      });
+          uniqueDrivers.add(r.driver.serviceNumber)
+        if (r.garageNumber) uniqueBuses.add(r.garageNumber)
+      })
 
-      const driversCount = uniqueDrivers.size;
-      const busesCount = uniqueBuses.size;
+      const driversCount = uniqueDrivers.size
+      const busesCount = uniqueBuses.size
 
       const convoySummary = summaryRes.isSuccess && summaryRes.value
         ? {
@@ -178,7 +172,7 @@ export function useFinalDispatch(date: Date) {
             totalDrivers: summaryRes.value.totalDrivers,
             totalBuses: summaryRes.value.totalBuses,
           }
-        : undefined;
+        : undefined
 
       return {
         finalDispatch,
@@ -186,9 +180,9 @@ export function useFinalDispatch(date: Date) {
         convoyNumber,
         driversCount,
         busesCount,
-      };
+      }
     },
-  });
+  })
 
   return {
     finalDispatch: data?.finalDispatch ?? null,
@@ -198,5 +192,5 @@ export function useFinalDispatch(date: Date) {
     busesCount: data?.busesCount ?? 0,
     loading: isLoading,
     error: error?.message ?? null,
-  };
+  }
 }

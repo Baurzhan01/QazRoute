@@ -1,8 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { useCallback } from "react"
-import html2pdf from "html2pdf.js"
+import { useCallback, useEffect, useState } from "react"
 import { formatDateLabel } from "@/app/dashboard/fleet-manager/release-plan/utils/dateUtils"
 import type { FinalDispatchData } from "@/types/releasePlanTypes"
 
@@ -13,7 +12,18 @@ interface FinalDispatchExportProps {
 }
 
 export default function FinalDispatchExport({ date, data, depotName }: FinalDispatchExportProps) {
+  const [html2pdf, setHtml2pdf] = useState<any>(null)
+
+  useEffect(() => {
+    // Динамический импорт — только на клиенте
+    import("html2pdf.js").then((mod) => {
+      setHtml2pdf(mod.default || mod)
+    })
+  }, [])
+
   const handleExport = useCallback(() => {
+    if (!html2pdf) return
+
     const element = document.getElementById("final-dispatch-table")
     if (!element) return
 
@@ -26,10 +36,10 @@ export default function FinalDispatchExport({ date, data, depotName }: FinalDisp
     }
 
     html2pdf().set(opt).from(element).save()
-  }, [date, data, depotName])
+  }, [html2pdf, date, data, depotName])
 
   return (
-    <Button onClick={handleExport} variant="default">
+    <Button onClick={handleExport} variant="default" disabled={!html2pdf}>
       📄 Скачать PDF
     </Button>
   )

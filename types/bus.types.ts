@@ -20,15 +20,16 @@ export interface Bus {
 
 // Для отображения автобусов в UI
 export interface DisplayBus {
-  id: string;
-  garageNumber: string;
-  govNumber: string;
-  stateNumber?: string;
-  status: BusStatus;
-  isAssigned: boolean;
-  assignedRoute?: string;
-  assignedDeparture?: number;
+  id: string
+  govNumber: string
+  garageNumber: string
+  busStatus: string
+  isAssigned?: boolean
+  assignedRoute?: string
+  assignedDeparture?: number
+  isBusy?: boolean // ← обязательно
 }
+
 
 // Автобус с назначенными водителями
 export interface BusWithDrivers extends Bus {

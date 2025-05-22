@@ -1,45 +1,14 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useQuery } from "@tanstack/react-query"
-import { Button } from "@/components/ui/button"
-import { motion } from "framer-motion"
-import { ArrowLeft } from "lucide-react"
-import Link from "next/link"
-import MonthSelector from "./components/MonthSelector"
-import { useCalendar } from "./hooks/useCalendar"
-import { releasePlanService } from "@/service/releasePlanService"
-import { toast } from "@/components/ui/use-toast"
+import { useCalendar } from "./hooks/useCalendar";
+import { motion } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import MonthSelector from "./components/MonthSelector";
 
 export default function ReleasePlanPage() {
-  const { currentMonth, nextMonth, loading: calendarLoading, goToNextMonth } = useCalendar()
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [isInitialLoad, setIsInitialLoad] = useState(true)
-
-  const formattedDate = selectedDate.toISOString().split("T")[0]
-
-  const {
-    data: dispatchPlan,
-    isLoading: dispatchLoading,
-    refetch,
-    isFetching,
-  } = useQuery({
-    queryKey: ["releasePlan", formattedDate],
-    queryFn: async () => {
-      const response = await releasePlanService.getFullDispatchByDate(formattedDate)
-      if (!response.isSuccess || !response.value) {
-        throw new Error(response.error || "Ошибка загрузки плана выпуска")
-      }
-      return response.value
-    },
-    enabled: !!formattedDate,
-  })
-
-  useEffect(() => {
-    if (!calendarLoading && currentMonth) {
-      setIsInitialLoad(false)
-    }
-  }, [calendarLoading, currentMonth])
+  const { currentMonth, nextMonth, loading, goToNextMonth } = useCalendar();
 
   return (
     <div className="flex flex-col gap-4 p-4 md:p-8">
@@ -69,27 +38,22 @@ export default function ReleasePlanPage() {
         </div>
       </div>
 
-      <MonthSelector
-        currentMonth={currentMonth}
-        nextMonth={nextMonth}
-        onNext={goToNextMonth}
-        loading={calendarLoading}
-      />
-
-      {/* Лоадер при первой загрузке */}
-      {isInitialLoad || dispatchLoading || isFetching ? (
+      {loading || !currentMonth || !nextMonth ? (
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700"></div>
         </div>
       ) : (
         <>
-          {/* Здесь ты можешь подключить отображение по дням и резерву */}
-          {/* Например, <DayPlanView data={dispatchPlan} /> */}
-          <pre className="bg-gray-100 p-4 rounded text-sm overflow-x-auto">
-            {/* {JSON.stringify(dispatchPlan, null, 2)} */}
-          </pre>
+          <MonthSelector
+            currentMonth={currentMonth}
+            nextMonth={nextMonth}
+            onNext={goToNextMonth}
+            loading={loading}
+          />
+          {/* 👇 Здесь можно подключить компонент с днями */}
+          {/* <CalendarGrid month={currentMonth} /> */}
         </>
       )}
     </div>
-  )
+  );
 }

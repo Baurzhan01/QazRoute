@@ -15,9 +15,9 @@ export interface DateDto {
 // Создание разнарядки
 export interface DispatchRouteCreateRequest {
   convoyId: string
-  routeId: string
   date: string
 }
+
 
 // Обновление разнарядки
 export interface DispatchRouteUpdateRequest {

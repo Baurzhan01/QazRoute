@@ -36,7 +36,7 @@ export default function RouteCard({
   const handleClick = async () => {
     setLoading(true)
     const auth = getAuthData()
-  
+
     if (!auth?.convoyId) {
       toast({
         title: "Ошибка",
@@ -46,15 +46,15 @@ export default function RouteCard({
       setLoading(false)
       return
     }
-  
+
     try {
       const check = await releasePlanService.getRouteDetails(id, date)
-  
-      // 👉 Если не существует — создаём
+
+      // Если разнарядка по маршруту отсутствует — инициализируем разнарядку по всей колонне
       if (!check.isSuccess || !check.value) {
-        await releasePlanService.createDispatchRoute(auth.convoyId, id, date)
+        await releasePlanService.createDispatchRoute(auth.convoyId, date) // ✅ исправлено: передаём 2 аргумента
       }
-  
+
       router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${date}/route/${id}`)
     } catch (error: any) {
       toast({
@@ -66,8 +66,6 @@ export default function RouteCard({
       setLoading(false)
     }
   }
-  
-  
 
   return (
     <motion.div
@@ -78,12 +76,10 @@ export default function RouteCard({
       className="h-full"
     >
       <Card className="h-full flex flex-col relative overflow-hidden">
-        {/* Порядковый номер */}
         <div className="absolute top-2 left-2 w-8 h-8 bg-blue-600 text-white flex items-center justify-center font-bold rounded-md">
           {order}
         </div>
 
-        {/* Контент */}
         <CardContent className="flex flex-col items-center justify-center p-6 pt-12 flex-grow text-center">
           <div className="rounded-full bg-blue-100 p-4 mb-4">
             <Bus className="h-8 w-8 text-blue-600" />
@@ -92,7 +88,6 @@ export default function RouteCard({
           <p className="text-sm uppercase font-medium tracking-wide text-gray-500">маршрут</p>
         </CardContent>
 
-        {/* Кнопка перехода */}
         <CardFooter className="border-t p-4">
           <Button
             variant="outline"

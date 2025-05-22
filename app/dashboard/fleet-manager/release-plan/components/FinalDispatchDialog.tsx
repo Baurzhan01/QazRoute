@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { formatDateLabel } from "../utils/dateUtils"
-import type { FinalDispatchData, RouteGroup, RouteAssignment } from "@/types/finalDispatch.types"
+import type { FinalDispatchData, RouteGroup, RouteAssignment } from "@/types/releasePlanTypes"
 
 interface FinalDispatchDialogProps {
   open: boolean

@@ -12,13 +12,15 @@ interface ReserveTableProps {
   onAddAssignment: (departure: ReserveDepartureUI) => void
   onRemoveAssignment: (departureId: string) => void
   onUpdateDepartures: (departures: ReserveDepartureUI[]) => void
+  onUpdateAssignment: (updated: ReserveDepartureUI) => void
 }
 
 export default function ReserveTable({
   departures,
   onAddAssignment,
   onRemoveAssignment,
-  onUpdateDepartures
+  onUpdateDepartures,
+  onUpdateAssignment,
 }: ReserveTableProps) {
   const [filterAssigned, setFilterAssigned] = useState<"all" | "assigned" | "unassigned">("all")
 
@@ -40,7 +42,6 @@ export default function ReserveTable({
       scheduleTime: "",
       endTime: "",
     }
-
     onUpdateDepartures([...departures, newDeparture])
   }
 
@@ -79,16 +80,12 @@ export default function ReserveTable({
                         <Badge
                           variant="outline"
                           className={
-                            departure.bus.status === "OnWork"
-                              ? "bg-green-50 text-green-700"
-                              : departure.bus.status === "UnderRepair"
-                              ? "bg-amber-50 text-amber-700"
-                              : departure.bus.status === "DayOff"
-                              ? "bg-blue-50 text-blue-700"
-                              : "bg-gray-50 text-gray-700"
+                            departure.bus.isAssigned
+                              ? "bg-red-50 text-red-700"
+                              : "bg-green-50 text-green-700"
                           }
                         >
-                          {departure.bus.status}
+                          {departure.bus.isAssigned ? "НАЗНАЧЕН" : "НЕ назначен"}
                         </Badge>
                       </div>
                     </div>
@@ -135,7 +132,11 @@ export default function ReserveTable({
         </table>
       </div>
 
-      
+      <div className="flex justify-end">
+        <Button variant="outline" onClick={handleAddRow}>
+          + Добавить строку
+        </Button>
+      </div>
     </div>
   )
 }

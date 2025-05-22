@@ -10,7 +10,8 @@ import type {
   ReserveAssignmentDto,
   ReserveAssignment,
   DispatchBusLineDto,
-  BusLineAssignmentRequest
+  BusLineAssignmentRequest,
+  DayPlan
 } from "@/types/releasePlanTypes"
 
 
@@ -18,19 +19,18 @@ import type {
 export const releasePlanService = {
   createDispatchRoute: async (
     convoyId: string,
-    routeId: string,
     date: string
   ): Promise<ApiResponse<string>> => {
-    const payload = { convoyId, routeId, date }
-
+    const payload = { convoyId, date }
     try {
-      const { data } = await apiClient.post(`/dispatches/route`, payload)
+      const { data } = await apiClient.post("/dispatches/route", payload)
       return data
     } catch (error: any) {
       console.error("❌ Ошибка при создании разнарядки:", error)
       throw new Error(error.response?.data?.error || "Не удалось создать разнарядку")
     }
   },
+  
 
 
 assignReserve: async (date: string, assignments: { driverId: string | null; busId: string | null }[]) =>
@@ -148,7 +148,7 @@ assignReserve: async (date: string, assignments: { driverId: string | null; busI
   getFullDispatchByDate: async (
     date: string,
     convoyId: string
-  ): Promise<ApiResponse<any>> => {
+  ): Promise<ApiResponse<DayPlan>> => {
     const { data } = await apiClient.get(`/dispatches/${date}/full/${convoyId}`);
     return data;
   }  

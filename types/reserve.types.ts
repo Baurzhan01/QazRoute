@@ -5,12 +5,12 @@ import type { DisplayDriver } from "./driver.types"
 export interface ReserveDepartureUI {
   id: string
   sequenceNumber: number
-  bus?: DisplayBus
-  driver?: DisplayDriver
+  bus?: DisplayBus | null
+  driver?: DisplayDriver | null
   departureTime?: string
   scheduleTime?: string
   additionalInfo?: string
-  shift2Driver?: DisplayDriver
+  shift2Driver?: DisplayDriver | null
   shift2AdditionalInfo?: string
   endTime?: string
 }

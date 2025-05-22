@@ -20,6 +20,7 @@ import type { ReserveDepartureUI } from "@/types/reserve.types"
 
 import { busService } from "@/service/busService"
 import { driverService } from "@/service/driverService"
+import { releasePlanService } from "@/service/releasePlanService"
 import { useDebounce } from "../../../../../utils/useDebounce"
 
 interface AssignmentDialogProps {
@@ -60,78 +61,79 @@ export default function AssignmentDialog({
   const [freeDrivers, setFreeDrivers] = useState<DisplayDriver[]>([])
   const [forceDriverMode, setForceDriverMode] = useState(false)
 
-  const [loadingBuses, setLoadingBuses] = useState(false)
-  const [loadingDrivers, setLoadingDrivers] = useState(false)
-
   const debouncedBusSearch = useDebounce(busSearchQuery, 300)
   const debouncedDriverSearch = useDebounce(driverSearchQuery, 300)
 
+  const fetchBuses = async () => {
+    const res = await busService.getFreeBuses(date, convoyId)
+    const withFlags = (res ?? []).map((bus) => ({
+      ...bus,
+      isAssigned: bus.isBusy ?? false,
+    }))
+    setBuses(withFlags)
+  }
+
+  const fetchFreeDrivers = async () => {
+    const res = await driverService.getFreeDrivers(date, convoyId)
+    const drivers = (res.value ?? []).map((d) => ({
+      ...d,
+      isAssigned: d.isBusy ?? false,
+    }))
+    setFreeDrivers(drivers)
+    setDrivers(drivers)
+  }
+
   useEffect(() => {
     if (!open) return
-
-    setLoadingBuses(true)
-    busService.getFreeBuses(date, convoyId).then((res) => {
-      setBuses(res ?? [])
-      setLoadingBuses(false)
-    })
-
-    setLoadingDrivers(true)
-    driverService.getFreeDrivers(date, convoyId).then((res) => {
-      const drivers = res.value ?? []
-      setFreeDrivers(drivers)
-      setDrivers(drivers)
-      setLoadingDrivers(false)
-    })
-
     setForceDriverMode(false)
+    fetchBuses()
+    fetchFreeDrivers()
   }, [open, date, convoyId])
 
-  // Загружаем водителей при выборе автобуса или при активации режима "принудительно"
   useEffect(() => {
     if (!selectedBus && !forceDriverMode) return
 
-    const fetch = async () => {
-      setLoadingDrivers(true)
-
-      if (forceDriverMode) {
-        setDrivers(freeDrivers)
-      } else if (selectedBus) {
-        const res = await busService.getWithDrivers(selectedBus.id)
-        const mapped: DisplayDriver[] =
-          res.value?.drivers?.map((d: any) => ({
-            id: d.id,
-            fullName: d.fullName,
-            serviceNumber: d.serviceNumber,
-            convoyId,
-            driverStatus: "OnWork",
-          })) ?? []
-
+    if (forceDriverMode) {
+      setDrivers(freeDrivers)
+    } else if (selectedBus) {
+      busService.getWithDrivers(selectedBus.id).then((res) => {
+        const busDrivers = res.value?.drivers ?? []
+        const mapped = busDrivers
+          .map((d) => freeDrivers.find((fd) => fd.id === d.id) ?? null)
+          .filter(Boolean) as DisplayDriver[]
         setDrivers(mapped)
-      }
-
-      setLoadingDrivers(false)
+      })
     }
+  }, [selectedBus, forceDriverMode, freeDrivers])
 
-    fetch()
-  }, [selectedBus, forceDriverMode])
+  const filteredBuses = buses.filter((bus) =>
+    `${bus.garageNumber} ${bus.govNumber}`.toLowerCase().includes(debouncedBusSearch.toLowerCase())
+  )
 
-  const filteredBuses = buses.filter((bus) => {
-    if (!debouncedBusSearch) return true
-    return (
-      bus.garageNumber.toLowerCase().includes(debouncedBusSearch.toLowerCase()) ||
-      (bus.stateNumber?.toLowerCase().includes(debouncedBusSearch.toLowerCase()) ?? false)
-    )
-  })
-
-  const filteredDrivers = drivers.filter((driver) => {
-    if (!debouncedDriverSearch) return true
-    return (
-      driver.fullName.toLowerCase().includes(debouncedDriverSearch.toLowerCase()) ||
-      driver.serviceNumber.includes(debouncedDriverSearch)
-    )
-  })
+  const filteredDrivers = drivers.filter((driver) =>
+    `${driver.fullName} ${driver.serviceNumber}`.toLowerCase().includes(debouncedDriverSearch.toLowerCase())
+  )
 
   if (!selectedDeparture) return null
+
+  const handleSave = async () => {
+    if (!selectedDeparture || !selectedBus) return
+
+    try {
+      await releasePlanService.assignToReserve(date, [
+        {
+          busId: selectedBus.id,
+          driverId: selectedDriver?.id ?? undefined
+        },
+      ])
+
+      toast({ title: "Назначение сохранено" })
+      onSave(selectedBus, selectedDriver)
+      onClose()
+    } catch {
+      toast({ title: "Ошибка", description: "Не удалось сохранить назначение", variant: "destructive" })
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -144,76 +146,65 @@ export default function AssignmentDialog({
           <div>
             <Label>Автобус</Label>
             <SearchInput value={busSearchQuery} onChange={onBusSearchChange} placeholder="Поиск автобуса..." />
-            {loadingBuses ? (
-              <div className="p-4 text-gray-500">Загрузка автобусов...</div>
-            ) : (
-              <SelectableList
-                items={filteredBuses}
-                selected={selectedBus}
-                onSelect={(bus) => {
-                  onSelectBus(bus)
-                  setForceDriverMode(false)
-                  setDrivers([])
-                  onDriverSearchChange("")
-                }}
-                labelKey="garageNumber"
-                subLabelKey={(bus) => bus.govNumber}
-                status={(bus) =>
-                  bus.status === "OnWork"
-                    ? { label: "На линии", color: "green" }
-                    : { label: "Выходной", color: "gray" }
-                }
-                disableItem={() => false}
-              />
-            )}
+            <SelectableList
+              items={filteredBuses}
+              selected={selectedBus}
+              onSelect={(bus) => {
+                onSelectBus(bus)
+                setForceDriverMode(false)
+                setDrivers([])
+                onDriverSearchChange("")
+              }}
+              labelKey="garageNumber"
+              subLabelKey={(bus) => bus.govNumber}
+              status={(bus) =>
+                bus.isAssigned
+                  ? { label: "НАЗНАЧЕН", color: "red" }
+                  : { label: "НЕ назначен", color: "green" }
+              }
+              disableItem={(bus) => !!bus.isAssigned}
+            />
           </div>
 
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <Label>Водитель</Label>
-              {!forceDriverMode && selectedBus && (
-                <Button variant="outline" size="sm" onClick={() => setForceDriverMode(true)}>
-                  Принудительно назначить
-                </Button>
-              )}
-            </div>
-            <SearchInput value={driverSearchQuery} onChange={onDriverSearchChange} placeholder="Поиск водителя..." />
-            {loadingDrivers ? (
-              <div className="p-4 text-gray-500">Загрузка водителей...</div>
-            ) : (
+          {selectedBus && (
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <Label>Водитель</Label>
+                {!forceDriverMode && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setForceDriverMode(true)
+                      setDrivers([])
+                      onDriverSearchChange("")
+                    }}
+                  >
+                    Принудительно назначить
+                  </Button>
+                )}
+              </div>
+              <SearchInput value={driverSearchQuery} onChange={onDriverSearchChange} placeholder="Поиск водителя..." />
               <SelectableList
                 items={filteredDrivers}
                 selected={selectedDriver}
                 onSelect={onSelectDriver}
                 labelKey="fullName"
-                subLabelKey={(driver) => `№ ${driver.serviceNumber}`}
-                status={(driver) =>
-                  driver.driverStatus === "OnWork"
-                    ? { label: "На работе", color: "green" }
-                    : { label: "Выходной", color: "gray" }
+                subLabelKey={(d) => `№ ${d.serviceNumber}`}
+                status={(d) =>
+                  d.isAssigned
+                    ? { label: "НАЗНАЧЕН", color: "red" }
+                    : { label: "НЕ назначен", color: "green" }
                 }
-                disableItem={() => false}
+                disableItem={(d) => !!d.isAssigned}
               />
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Отмена
-          </Button>
-          <Button
-            onClick={() => {
-              if (!selectedBus) {
-                toast({ title: "Ошибка", description: "Выберите автобус", variant: "destructive" })
-                return
-              }
-              onSave(selectedBus, selectedDriver)
-              onClose()
-            }}
-          >
-            Сохранить
-          </Button>
+          <Button variant="outline" onClick={onClose}>Отмена</Button>
+          <Button onClick={handleSave}>Сохранить</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

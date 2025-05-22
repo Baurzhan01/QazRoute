@@ -1,3 +1,4 @@
+// AssignmentDialog.tsx
 "use client"
 
 import {
@@ -73,7 +74,13 @@ export default function AssignmentDialog({
 
     busService
       .getFreeBuses(date, convoyId)
-      .then((res) => setAvailableBuses(res ?? []))
+      .then((res) => {
+        const buses = (res ?? []).map((bus) => ({
+          ...bus,
+          isAssigned: bus.isBusy ?? false,
+        }))
+        setAvailableBuses(buses)
+      })
       .catch(() => toast({ title: "Не удалось загрузить автобусы", variant: "destructive" }))
   }, [open, selectedDeparture, convoyId, date])
 
@@ -89,17 +96,18 @@ export default function AssignmentDialog({
           fullName: d.fullName,
           serviceNumber: d.serviceNumber,
           driverStatus: d.driverStatus || "DayOff",
+          isAssigned: d.isBusy ?? false,
         }))
         setBusDrivers(mapped)
       })
-      .catch(() =>
-        toast({ title: "Не удалось загрузить водителей", variant: "destructive" })
-      )
+      .catch(() => toast({ title: "Не удалось загрузить водителей", variant: "destructive" }))
   }, [selectedBus, convoyId, date, forceDriverMode])
 
+  const normalizedQuery = busSearchQuery.trim().toLowerCase();
   const filteredBuses = availableBuses.filter((bus) =>
-    bus.garageNumber.toLowerCase().includes(busSearchQuery.toLowerCase())
-  )
+    `${bus.garageNumber} ${bus.govNumber}`.toLowerCase().includes(normalizedQuery)
+  );
+
 
   const filteredDrivers = busDrivers.filter((driver) =>
     driver.fullName.toLowerCase().includes(driverSearchQuery.toLowerCase())
@@ -148,22 +156,21 @@ export default function AssignmentDialog({
               onSelect={(bus) => {
                 setSelectedBus(bus)
                 setSelectedDriver(null)
-                setForceDriverMode(false) // сбрасываем force режим
-                setBusDrivers([])          // сбрасываем водителей
-                setDriverSearchQuery("")   // сбрасываем поиск
+                setForceDriverMode(false)
+                setBusDrivers([])
+                setDriverSearchQuery("")
               }}
               labelKey="garageNumber"
               subLabelKey={(bus) => bus.govNumber}
               status={(bus) =>
-                assignedBusesMap[bus.id]
-                  ? { label: "Уже назначен", color: "yellow" }
-                  : isAvailableBusStatus(bus.status)
-                  ? getStatus(BUS_STATUS_MAP, "available")
-                  : getStatus(BUS_STATUS_MAP, bus.status)
+                bus.isAssigned
+                  ? { label: "НАЗНАЧЕН", color: "red" }
+                  : { label: "НЕ назначен", color: "green" }
               }
               disableItem={(bus) =>
+                bus.isAssigned ||
                 !!assignedBusesMap[bus.id] ||
-                ["UnderRepair", "LongTermRepair", "Decommissioned"].includes(bus.status)
+                ["UnderRepair", "LongTermRepair", "Decommissioned"].includes(bus.busStatus)
               }
             />
           </div>
@@ -198,20 +205,13 @@ export default function AssignmentDialog({
                 onSelect={setSelectedDriver}
                 labelKey="fullName"
                 subLabelKey={(driver) => `№ ${driver.serviceNumber}`}
-                status={(driver) => {
-                  if (assignedDriversMap[driver.id]) {
-                    return { label: "Уже назначен", color: "yellow" }
-                  }
-                  const global = globalAssignedDriversMap[driver.id]
-                  if (global) {
-                    return {
-                      label: `Назначен на маршрут №${global.routeNumber} (${global.departureNumber} вых.)`,
-                      color: "red",
-                    }
-                  }
-                  return getStatus(DRIVER_STATUS_MAP, driver.driverStatus)
-                }}
+                status={(driver) =>
+                  driver.isAssigned
+                    ? { label: "НАЗНАЧЕН", color: "red" }
+                    : { label: "НЕ назначен", color: "green" }
+                }
                 disableItem={(driver) =>
+                  driver.isAssigned ||
                   !!assignedDriversMap[driver.id] ||
                   !!globalAssignedDriversMap[driver.id] ||
                   ["OnVacation", "OnSickLeave", "Fired", "Intern"].includes(driver.driverStatus)

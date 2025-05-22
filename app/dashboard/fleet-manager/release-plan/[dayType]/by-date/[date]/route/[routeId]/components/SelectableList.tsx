@@ -1,7 +1,7 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
-import { AlertCircle, Check } from "lucide-react"
+import { Check } from "lucide-react"
 import type { StatusType } from "../../../../../../utils/statusUtils"
 
 interface SelectableListProps<T extends { id: string }> {
@@ -39,8 +39,7 @@ export default function SelectableList<T extends { id: string }>({
         const isSelected = selected?.id === item.id
         const isDisabled = disableItem?.(item) ?? false
 
-        const label =
-          typeof labelKey === "function" ? labelKey(item) : String(item[labelKey])
+        const label = typeof labelKey === "function" ? labelKey(item) : String(item[labelKey])
         const subLabel =
           typeof subLabelKey === "function"
             ? subLabelKey(item)
@@ -48,8 +47,15 @@ export default function SelectableList<T extends { id: string }>({
             ? String(item[subLabelKey])
             : null
 
-        const itemStatus = status?.(item)
-        const statusColor = itemStatus?.color ?? "gray"
+        const itemStatus = status
+          ? status(item)
+          : "isAssigned" in item && item.isAssigned
+          ? { label: "НАЗНАЧЕН", color: "red" }
+          : "isBusy" in item && item.isBusy
+          ? { label: "НАЗНАЧЕН", color: "red" }
+          : { label: "НЕ назначен", color: "green" }
+
+        const statusColor = itemStatus.color ?? "gray"
 
         return (
           <div

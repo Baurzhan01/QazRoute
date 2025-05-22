@@ -32,9 +32,8 @@ export default function DayPlanPage() {
   const depotId = authData?.busDepotId || ""
 
   const { data: dayPlan, loading } = usePlanByDay(date, convoyId, depotId, dayType)
-  const { finalDispatch } = useFinalDispatch(date)
-
   const [showDispatchDialog, setShowDispatchDialog] = useState(false)
+  const { finalDispatch } = useFinalDispatch(date, showDispatchDialog)
 
   const handleViewFinalDispatch = () => {
     router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}/final-dispatch`)
@@ -66,7 +65,7 @@ export default function DayPlanPage() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {[...Array(8)].map((_, i) => (
-            <div key={i} className="h-64 bg-gray-200 animate-pulse rounded-lg" />
+            <div key={`loading-${i}`} className="h-64 bg-gray-200 animate-pulse rounded-lg" />
           ))}
         </div>
       ) : !dayPlan ? (
@@ -80,7 +79,7 @@ export default function DayPlanPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
             {dayPlan.routes.map((route, index) => (
               <RouteCard
-                key={route.routeId}
+                key={`${route.routeId}-${index}`}
                 id={route.routeId}
                 number={route.routeNumber}
                 order={index + 1}
@@ -91,6 +90,7 @@ export default function DayPlanPage() {
             ))}
 
             <ReserveCard
+              key={`reserve-${dateString}`}
               drivers={dayPlan.reserves}
               date={dateString}
               dayType={dayType}

@@ -51,8 +51,9 @@ export interface DisplayDriver {
   isAssigned?: boolean
   assignedRoute?: string
   assignedDeparture?: number
-  busIds?: string[];
+  isBusy?: boolean // ← обязательно
 }
+
 
 export interface DisplayBus {
   id: string
@@ -62,6 +63,7 @@ export interface DisplayBus {
   isAssigned?: boolean
   assignedRoute?: string
   assignedDeparture?: number
+  isBusy?: boolean // ← обязательно
 }
 
 // Для создания водителя (POST /drivers)

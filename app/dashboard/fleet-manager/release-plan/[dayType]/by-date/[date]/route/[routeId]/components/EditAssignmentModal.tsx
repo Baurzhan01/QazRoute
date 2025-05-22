@@ -50,12 +50,13 @@ export default function EditAssignmentModal({
   const [freeBuses, setFreeBuses] = useState<DisplayBus[]>([]);
   const [freeDrivers, setFreeDrivers] = useState<DisplayDriver[]>([]);
   const [busDrivers, setBusDrivers] = useState<DisplayDriver[]>([]);
+  const [forceDriverMode, setForceDriverMode] = useState(false);
 
   useEffect(() => {
     if (!departure || !isOpen) return;
 
     busService.getFreeBuses(date, convoyId).then((res) => {
-      setFreeBuses(res.value ?? []);
+      setFreeBuses(res ?? []);
     });
 
     driverService.getFreeDrivers(date, convoyId).then((res) => {
@@ -64,17 +65,19 @@ export default function EditAssignmentModal({
   }, [isOpen, date, convoyId, departure]);
 
   useEffect(() => {
-    if (!selectedBus) return;
+    if (!selectedBus || forceDriverMode) return;
 
-    busService.getById(selectedBus.id).then((res) => {
+    busService.getWithDrivers(selectedBus.id).then((res) => {
       const driversOnBus = res.value?.drivers ?? [];
-      const mapped = driversOnBus.map((d: any) => {
-        const full = freeDrivers.find((fd) => fd.id === d.id);
-        return full ? full : null;
-      }).filter(Boolean) as DisplayDriver[];
+      const mapped = driversOnBus
+        .map((d: any) => {
+          const full = freeDrivers.find((fd) => fd.id === d.id);
+          return full ? full : null;
+        })
+        .filter(Boolean) as DisplayDriver[];
       setBusDrivers(mapped);
     });
-  }, [selectedBus, freeDrivers]);
+  }, [selectedBus, freeDrivers, forceDriverMode]);
 
   if (!departure) return null;
 
@@ -110,9 +113,16 @@ export default function EditAssignmentModal({
     }
   };
 
-  const filteredBuses = freeBuses.filter((b) => b.garageNumber.toLowerCase().includes(busSearchQuery.toLowerCase()));
-  const filteredDrivers = busDrivers.filter((d) => d.fullName.toLowerCase().includes(driverSearchQuery.toLowerCase()));
-  const filteredShift2Drivers = freeDrivers.filter((d) => d.fullName.toLowerCase().includes(shift2DriverSearchQuery.toLowerCase()));
+  const normalizedQuery = busSearchQuery.trim().toLowerCase();
+  const filteredBuses = freeBuses.filter((b) =>
+    `${b.garageNumber} ${b.govNumber}`.toLowerCase().includes(normalizedQuery)
+  );
+  const filteredDrivers = (forceDriverMode ? freeDrivers : busDrivers).filter((d) =>
+    d.fullName.toLowerCase().includes(driverSearchQuery.toLowerCase())
+  );
+  const filteredShift2Drivers = freeDrivers.filter((d) =>
+    d.fullName.toLowerCase().includes(shift2DriverSearchQuery.toLowerCase())
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -130,14 +140,35 @@ export default function EditAssignmentModal({
               selected={selectedBus}
               onSelect={setSelectedBus}
               labelKey="garageNumber"
-              subLabelKey={(bus) => bus.stateNumber ?? bus.govNumber}
-              status={(bus) => getStatus(BUS_STATUS_MAP, bus.status)}
+              subLabelKey={(bus) => bus.govNumber}
+              status={(bus) =>
+                bus.isBusy
+                  ? { label: "НАЗНАЧЕН", color: "red" }
+                  : { label: "НЕ назначен", color: "green" }
+              }
+              disableItem={(bus) => !!bus.isBusy}
             />
           </div>
 
           {selectedBus && (
             <div>
-              <Label>Водитель (1 смена)</Label>
+              <div className="flex justify-between items-center mb-1">
+                <Label>Водитель (1 смена)</Label>
+                {!forceDriverMode && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setForceDriverMode(true);
+                      setSelectedDriver(null);
+                      setDriverSearchQuery("");
+                    }}
+                  >
+                    Принудительно назначить
+                  </Button>
+                )}
+              </div>
+
               <SearchInput value={driverSearchQuery} onChange={setDriverSearchQuery} placeholder="Поиск водителя..." />
               <SelectableList
                 items={filteredDrivers}
@@ -145,7 +176,15 @@ export default function EditAssignmentModal({
                 onSelect={setSelectedDriver}
                 labelKey="fullName"
                 subLabelKey={(d) => `№ ${d.serviceNumber}`}
-                status={(d) => getStatus(DRIVER_STATUS_MAP, d.driverStatus)}
+                status={(d) =>
+                  d.isAssigned
+                    ? { label: "НАЗНАЧЕН", color: "red" }
+                    : { label: "НЕ назначен", color: "green" }
+                }
+                disableItem={(d) =>
+                  !!d.isAssigned ||
+                  ["OnVacation", "OnSickLeave", "Fired", "Intern"].includes(d.driverStatus)
+                }
               />
             </div>
           )}
@@ -153,14 +192,26 @@ export default function EditAssignmentModal({
           {departure.shift2Driver && (
             <div>
               <Label>Водитель (2 смена)</Label>
-              <SearchInput value={shift2DriverSearchQuery} onChange={setShift2DriverSearchQuery} placeholder="Поиск водителя..." />
+              <SearchInput
+                value={shift2DriverSearchQuery}
+                onChange={setShift2DriverSearchQuery}
+                placeholder="Поиск водителя..."
+              />
               <SelectableList
                 items={filteredShift2Drivers}
                 selected={selectedShift2Driver}
                 onSelect={setSelectedShift2Driver}
                 labelKey="fullName"
                 subLabelKey={(d) => `№ ${d.serviceNumber}`}
-                status={(d) => getStatus(DRIVER_STATUS_MAP, d.driverStatus)}
+                status={(d) =>
+                  d.isAssigned
+                    ? { label: "НАЗНАЧЕН", color: "red" }
+                    : { label: "НЕ назначен", color: "green" }
+                }
+                disableItem={(d) =>
+                  !!d.isAssigned ||
+                  ["OnVacation", "OnSickLeave", "Fired", "Intern"].includes(d.driverStatus)
+                }
               />
             </div>
           )}
