@@ -33,6 +33,7 @@ export default function ReserveTable({
     }
     return departures
   }, [departures, filterAssigned])
+  
 
   const handleAddRow = () => {
     const newDeparture: ReserveDepartureUI = {

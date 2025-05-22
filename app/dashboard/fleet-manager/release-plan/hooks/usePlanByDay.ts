@@ -1,73 +1,56 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { releasePlanService } from "@/service/releasePlanService";
-import type { DispatchRoute, ReserveDriver } from "@/types/releasePlanTypes";
-
-interface PlanRoute {
-  routeId: string;
-  routeNumber: string;
-}
-
-interface UsePlanByDayResult {
-  routes: PlanRoute[];
-  reserves: ReserveDriver[];
-}
+import { useEffect, useState } from "react"
+import { releasePlanService } from "@/service/releasePlanService"
+import { routeService } from "@/service/routeService"
+import type { Route, RouteStatus } from "@/types/route.types"
 
 export function usePlanByDay(
   date: Date,
   convoyId: string,
   depotId: string,
-  dayType: string
+  dayType: "workday" | "saturday" | "sunday" | "holiday"
 ) {
-  const [data, setData] = useState<UsePlanByDayResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [routes, setRoutes] = useState<Route[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true);
-      setError(null);
-
-      const dateStr = date.toISOString().split("T")[0];
+      setLoading(true)
+      setError(null)
+      const dateStr = date.toISOString().split("T")[0]
+      const routeStatus = getRouteStatusFromDayType(dayType)
 
       try {
-        let dispatchRes;
+        const res = await routeService.getByConvoyId(convoyId, routeStatus)
+        const convoyRoutes = res.value ?? []
 
-        try {
-          dispatchRes = await releasePlanService.getFullDispatchByDate(dateStr, convoyId);
-        } catch (err: any) {
-          if (err.response?.status === 404) {
-            console.warn("🔁 Разнарядка не найдена — создаём...");
-            await releasePlanService.createDispatchRoute(convoyId, dateStr);
-            dispatchRes = await releasePlanService.getFullDispatchByDate(dateStr, convoyId);
-          } else {
-            throw err;
-          }
+        if (convoyRoutes.length > 0) {
+          await releasePlanService.createDispatchRoute(convoyId, dateStr)
         }
 
-        if (!dispatchRes.isSuccess || !dispatchRes.value) {
-          throw new Error("Ошибка получения разнарядки");
-        }
-
-        const routes = dispatchRes.value.routes.map((r: DispatchRoute) => ({
-          routeId: r.routeId,
-          routeNumber: r.routeNumber,
-        }));
-
-        const reserves: ReserveDriver[] = dispatchRes.value.reserves ?? [];
-
-        setData({ routes, reserves });
+        setRoutes(convoyRoutes)
       } catch (err: any) {
-        console.error("❌ Ошибка загрузки плана дня:", err);
-        setError(err.message || "Не удалось загрузить план выпуска");
+        console.error("❌ Ошибка usePlanByDay:", err)
+        setError(err.message || "Ошибка загрузки маршрутов")
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    if (convoyId && depotId) load();
-  }, [date, convoyId, depotId, dayType]);
+    if (convoyId && depotId) load()
+  }, [date, convoyId, depotId, dayType])
 
-  return { data, loading, error };
+  return { routes, loading, error }
+}
+
+function getRouteStatusFromDayType(dayType: string): RouteStatus {
+  const map: Record<string, RouteStatus> = {
+    workday: "Workday",
+    saturday: "Saturday",
+    sunday: "Sunday",
+    holiday: "Workday",
+  }
+  return map[dayType] ?? "Workday"
 }

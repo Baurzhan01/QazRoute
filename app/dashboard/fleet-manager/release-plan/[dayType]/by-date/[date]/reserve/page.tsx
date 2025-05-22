@@ -47,7 +47,6 @@ export default function ReservePage() {
 
   useBeforeUnload(hasChanges, "У вас есть несохранённые изменения. Вы уверены, что хотите покинуть страницу?");
 
-  // Загрузка резервов с сервера
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -57,11 +56,11 @@ export default function ReservePage() {
         if (reserves.length) {
           setDepartures(
             reserves.map((r: any, index: number) => ({
-              id: r.id,
+              id: r.dispatchBusLineId ?? uuidv4(),
               sequenceNumber: index + 1,
               departureTime: "",
               scheduleTime: "",
-              endTime: "",
+              endTime: r.endTime ?? "",
               bus: r.busId
                 ? {
                     id: r.busId,
@@ -71,7 +70,7 @@ export default function ReservePage() {
                     convoyId: convoyId,
                   }
                 : undefined,
-              driver: r.driverId
+              driver: r.driverTabNumber
                 ? {
                     id: r.driverId,
                     fullName: r.driverFullName,
@@ -80,10 +79,10 @@ export default function ReservePage() {
                     driverStatus: "OnWork",
                   }
                 : undefined,
+              additionalInfo: r.description ?? "",
             }))
           );
         } else {
-          // Если нет данных — создаём 5 пустых строк
           setDepartures(
             Array.from({ length: 5 }).map((_, index) => ({
               id: uuidv4(),
@@ -95,11 +94,7 @@ export default function ReservePage() {
           );
         }
       } catch (error) {
-        toast({
-          title: "Ошибка",
-          description: "Не удалось загрузить резерв",
-          variant: "destructive",
-        });
+        toast({ title: "Ошибка", description: "Не удалось загрузить резерв", variant: "destructive" });
       }
     };
 
@@ -115,41 +110,17 @@ export default function ReservePage() {
     setIsAddDialogOpen(true);
   };
 
-  const handleSelectBus = (bus: DisplayBus) => {
-    setSelectedBus(bus);
-  };
-
-  const handleSelectDriver = (driver: DisplayDriver) => {
-    setSelectedDriver(driver);
-  };
-
-  const handleSaveAssignment = () => {
-    if (!selectedDeparture || !selectedBus) {
-      toast({ title: "Ошибка", description: "Выберите автобус", variant: "destructive" });
-      return;
-    }
-
-    setDepartures((prev) =>
-      prev.map((d) =>
-        d.id === selectedDeparture.id
-          ? { ...d, bus: selectedBus, driver: selectedDriver || undefined }
-          : d
-      )
-    );
-
+  const handleUpdateAssignment = (updated: ReserveDepartureUI) => {
+    setDepartures((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
     setHasChanges(true);
-    setIsAddDialogOpen(false);
   };
 
   const handleRemoveAssignment = (departureId: string) => {
     setDepartures((prev) =>
       prev.map((d) =>
-        d.id === departureId
-          ? { ...d, bus: undefined, driver: undefined }
-          : d
+        d.id === departureId ? { ...d, bus: undefined, driver: undefined } : d
       )
     );
-
     setHasChanges(true);
   };
 
@@ -164,7 +135,6 @@ export default function ReservePage() {
         endTime: "",
       },
     ]);
-
     setHasChanges(true);
   };
 
@@ -175,6 +145,13 @@ export default function ReservePage() {
         .map((d) => ({
           driverId: d.driver?.id ?? null,
           busId: d.bus?.id ?? null,
+          driverFullName: d.driver?.fullName ?? "",
+          driverTabNumber: d.driver?.serviceNumber ?? "",
+          garageNumber: d.bus?.garageNumber ?? "",
+          govNumber: d.bus?.govNumber ?? "",
+          description: d.additionalInfo ?? "",
+          endTime: d.endTime ?? "",
+          dispatchBusLineId: d.id,
         }));
 
       if (assignments.length > 0) {
@@ -184,7 +161,7 @@ export default function ReservePage() {
       toast({ title: "Сохранено", description: "Назначения сохранены" });
       setHasChanges(false);
       router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}`);
-    } catch (error) {
+    } catch {
       toast({ title: "Ошибка", description: "Не удалось сохранить резерв", variant: "destructive" });
     }
   };
@@ -214,6 +191,7 @@ export default function ReservePage() {
               onAddAssignment={handleOpenAddDialog}
               onRemoveAssignment={handleRemoveAssignment}
               onUpdateDepartures={setDepartures}
+              onUpdateAssignment={handleUpdateAssignment}
             />
           </CardContent>
         </Card>
@@ -239,13 +217,12 @@ export default function ReservePage() {
           driverSearchQuery={driverSearchQuery}
           onBusSearchChange={setBusSearchQuery}
           onDriverSearchChange={setDriverSearchQuery}
-          onSelectBus={handleSelectBus}
-          onSelectDriver={handleSelectDriver}
+          onSelectBus={setSelectedBus}
+          onSelectDriver={setSelectedDriver}
           convoyId={convoyId}
           date={dateString}
           onSave={(bus, driver) => {
             if (!selectedDeparture) return;
-          
             setDepartures((prev) =>
               prev.map((d) =>
                 d.id === selectedDeparture.id
@@ -253,9 +230,8 @@ export default function ReservePage() {
                   : d
               )
             );
-          
             setHasChanges(true);
-          }}          
+          }}
         />
       </motion.div>
     </div>

@@ -11,7 +11,8 @@ import type {
   ReserveAssignment,
   DispatchBusLineDto,
   BusLineAssignmentRequest,
-  DayPlan
+  DayPlan,
+  FinalDispatchData
 } from "@/types/releasePlanTypes"
 
 
@@ -147,9 +148,13 @@ assignReserve: async (date: string, assignments: { driverId: string | null; busI
 
   getFullDispatchByDate: async (
     date: string,
-    convoyId: string
-  ): Promise<ApiResponse<DayPlan>> => {
-    const { data } = await apiClient.get(`/dispatches/${date}/full/${convoyId}`);
-    return data;
-  }  
+    convoyId: string,
+    routeStatus?: string
+  ): Promise<ApiResponse<FinalDispatchData>> => {
+    const res = await apiClient.get(`/dispatches/${date}/full/${convoyId}`, {
+      params: routeStatus ? { routStatus: routeStatus } : {}
+    })
+    return res.data
+  }
 } as const
+

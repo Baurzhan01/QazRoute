@@ -123,10 +123,8 @@ export interface FinalDispatchData {
   date: string
   routeGroups: RouteGroup[]
   reserveAssignments: ReserveAssignment[]
-
-  // 👇 добавь эти поля:
-  repairBuses: string[]         // список автобусов на ремонте
-  dayOffBuses: string[]         // автобусы на выходном
+  repairBuses: string[]
+  dayOffBuses: string[]
   driverStatuses: {
     DayOff?: string[]
     OnVacation?: string[]
@@ -137,6 +135,7 @@ export interface FinalDispatchData {
 }
 
 
+
 export interface RouteGroup {
   routeId: string
   routeNumber: string
@@ -145,6 +144,7 @@ export interface RouteGroup {
 
 export interface RouteAssignment {
   dispatchBusLineId: string;
+  busLineNumber: string;
   garageNumber: string
   stateNumber: string
   driver: {

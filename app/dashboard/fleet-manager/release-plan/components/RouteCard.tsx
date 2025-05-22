@@ -1,15 +1,11 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Bus, ArrowRight } from "lucide-react"
-import { getAuthData } from "@/lib/auth-utils"
-import { releasePlanService } from "@/service/releasePlanService"
-import { toast } from "@/components/ui/use-toast"
+import { Bus, ArrowRight, AlertCircle, CheckCircle } from "lucide-react"
 
 type DayType = "workday" | "saturday" | "sunday" | "holiday"
 
@@ -17,9 +13,10 @@ interface RouteCardProps {
   id: string
   number: string
   order: number
-  date: string // формат YYYY-MM-DD
+  date: string
   dayType: DayType
   delay?: number
+  isAssigned?: boolean
 }
 
 export default function RouteCard({
@@ -29,42 +26,14 @@ export default function RouteCard({
   date,
   dayType,
   delay = 0,
+  isAssigned = false,
 }: RouteCardProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
-  const handleClick = async () => {
+  const handleClick = () => {
     setLoading(true)
-    const auth = getAuthData()
-
-    if (!auth?.convoyId) {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось определить колонну",
-        variant: "destructive",
-      })
-      setLoading(false)
-      return
-    }
-
-    try {
-      const check = await releasePlanService.getRouteDetails(id, date)
-
-      // Если разнарядка по маршруту отсутствует — инициализируем разнарядку по всей колонне
-      if (!check.isSuccess || !check.value) {
-        await releasePlanService.createDispatchRoute(auth.convoyId, date) // ✅ исправлено: передаём 2 аргумента
-      }
-
-      router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${date}/route/${id}`)
-    } catch (error: any) {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось загрузить или создать разнарядку",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
+    router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${date}/route/${id}`)
   }
 
   return (
@@ -76,8 +45,28 @@ export default function RouteCard({
       className="h-full"
     >
       <Card className="h-full flex flex-col relative overflow-hidden">
+        {/* Порядковый номер */}
         <div className="absolute top-2 left-2 w-8 h-8 bg-blue-600 text-white flex items-center justify-center font-bold rounded-md">
           {order}
+        </div>
+
+        {/* Статус назначения */}
+        <div
+          className="absolute top-2 right-2 flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium"
+          style={{
+            backgroundColor: isAssigned ? "#dcfce7" : "#fef2f2",
+            color: isAssigned ? "#166534" : "#991b1b",
+          }}
+        >
+          {isAssigned ? (
+            <>
+              <CheckCircle className="w-4 h-4" /> Назначен
+            </>
+          ) : (
+            <>
+              <AlertCircle className="w-4 h-4" /> Не назначен
+            </>
+          )}
         </div>
 
         <CardContent className="flex flex-col items-center justify-center p-6 pt-12 flex-grow text-center">

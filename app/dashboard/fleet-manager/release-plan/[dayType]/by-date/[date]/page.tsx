@@ -12,9 +12,11 @@ import RouteCard from "../../../components/RouteCard"
 import ReserveCard from "../../../components/ReserveCard"
 import FinalDispatchDialog from "../../../components/FinalDispatchDialog"
 import { usePlanByDay } from "../../../hooks/usePlanByDay"
-import { useFinalDispatch } from "../../../hooks/useFinalDispatch"
+import { useReserveAssignments } from "../../../hooks/useReserveAssignments"
+import { releasePlanService } from "@/service/releasePlanService"
 import { formatDateLabel, formatDayOfWeek, parseDate } from "../../../utils/dateUtils"
 import { getAuthData } from "@/lib/auth-utils"
+import type { FinalDispatchData } from "@/types/releasePlanTypes"
 
 type ValidDayType = "workday" | "saturday" | "sunday" | "holiday"
 
@@ -27,17 +29,21 @@ export default function DayPlanPage() {
   const date = useMemo(() => parseDate(dateString), [dateString])
   const dayType = normalizeDayType(rawDayType)
 
-  const authData = getAuthData()
-  const convoyId = authData?.convoyId || ""
-  const depotId = authData?.busDepotId || ""
+  const auth = getAuthData()
+  const convoyId = auth?.convoyId || ""
+  const depotId = auth?.busDepotId || ""
 
-  const { data: dayPlan, loading } = usePlanByDay(date, convoyId, depotId, dayType)
+  const { routes, loading } = usePlanByDay(date, convoyId, depotId, dayType)
+  const { drivers: reserveDrivers } = useReserveAssignments(date)
+
   const [showDispatchDialog, setShowDispatchDialog] = useState(false)
-  const { finalDispatch } = useFinalDispatch(date, showDispatchDialog)
+  const [finalDispatch, setFinalDispatch] = useState<FinalDispatchData | null>(null)
+  const [loadingDispatch, setLoadingDispatch] = useState(false)
 
   const handleViewFinalDispatch = () => {
     router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}/final-dispatch`)
   }
+  
 
   const titleByDayType = {
     workday: "Рабочий день",
@@ -48,7 +54,7 @@ export default function DayPlanPage() {
 
   return (
     <div className="flex flex-col gap-4 p-4 md:p-8">
-      {/* Header */}
+      {/* Заголовок */}
       <div className="flex items-center gap-2 mb-6">
         <Link href={`/dashboard/fleet-manager/release-plan/daytype/${dayType}/${date.getFullYear()}-${date.getMonth() + 1}`}>
           <Button variant="outline" size="icon">
@@ -61,27 +67,21 @@ export default function DayPlanPage() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* Контент */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {[...Array(8)].map((_, i) => (
-            <div key={`loading-${i}`} className="h-64 bg-gray-200 animate-pulse rounded-lg" />
+            <div key={i} className="h-64 bg-gray-200 animate-pulse rounded-lg" />
           ))}
         </div>
-      ) : !dayPlan ? (
-        <Card>
-          <CardContent className="py-10 text-center text-gray-500">
-            Данные не найдены для выбранного дня
-          </CardContent>
-        </Card>
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-            {dayPlan.routes.map((route, index) => (
+            {routes.map((route, index) => (
               <RouteCard
-                key={`${route.routeId}-${index}`}
-                id={route.routeId}
-                number={route.routeNumber}
+                key={route.id}
+                id={route.id}
+                number={route.number}
                 order={index + 1}
                 date={dateString}
                 dayType={dayType}
@@ -90,34 +90,25 @@ export default function DayPlanPage() {
             ))}
 
             <ReserveCard
-              key={`reserve-${dateString}`}
-              drivers={dayPlan.reserves}
+              drivers={reserveDrivers}
               date={dateString}
               dayType={dayType}
-              delay={dayPlan.routes.length * 0.05}
+              delay={routes.length * 0.05}
             />
           </div>
 
-          {/* Итоговая разнарядка */}
+          {/* Кнопка итоговой разнарядки */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
             className="mt-4 flex justify-end"
           >
-            <Button className="gap-2" onClick={handleViewFinalDispatch}>
+            <Button className="gap-2" onClick={handleViewFinalDispatch} disabled={loadingDispatch}>
               <FileText className="h-4 w-4" />
-              Показать итоговую разнарядку
+              {loadingDispatch ? "Загрузка..." : "Показать итоговую разнарядку"}
             </Button>
           </motion.div>
-
-          {finalDispatch && (
-            <FinalDispatchDialog
-              open={showDispatchDialog}
-              onClose={() => setShowDispatchDialog(false)}
-              dispatch={finalDispatch}
-            />
-          )}
         </>
       )}
     </div>

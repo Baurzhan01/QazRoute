@@ -25,6 +25,7 @@ import EditAssignmentModal from "./components/EditAssignmentModal";
 import type { LocalDeparture } from "@/types/releasePlanTypes";
 import type { DisplayBus } from "@/types/bus.types";
 import type { DisplayDriver } from "@/types/driver.types";
+import { useSearchParams } from "next/navigation";
 
 export default function RouteDetailsPage() {
   const params = useParams();
@@ -56,6 +57,9 @@ export default function RouteDetailsPage() {
   const [isEditAssignmentModalOpen, setIsEditAssignmentModalOpen] = useState(false);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const fromFinalDispatch = searchParams.get("from") === "final-dispatch";
+  
 
   useEffect(() => {
     if (data?.departures) {
@@ -76,23 +80,23 @@ export default function RouteDetailsPage() {
     }
   }, [data?.departures]);  
 
-  useEffect(() => {
-    const createIfMissing = async () => {
-      if (!data?.departures?.length && auth?.convoyId && routeId && dateString) {
-        try {
-          await releasePlanService.createDispatchRoute(auth.convoyId, routeId, dateString);
-          await refetch();
-        } catch (error: any) {
-          if (error?.message?.includes("Разнарядка уже есть")) {
-            await refetch();
-          } else {
-            toast({ title: "Ошибка создания разнарядки", variant: "destructive" });
-          }
-        }
-      }
-    };
-    createIfMissing();
-  }, [data?.departures, auth?.convoyId, routeId, dateString, refetch]);
+  // useEffect(() => {
+  //   const createIfMissing = async () => {
+  //     if (!data?.departures?.length && auth?.convoyId && routeId && dateString) {
+  //       try {
+  //         await releasePlanService.createDispatchRoute(auth.convoyId, routeId, dateString);
+  //         await refetch();
+  //       } catch (error: any) {
+  //         if (error?.message?.includes("Разнарядка уже есть")) {
+  //           await refetch();
+  //         } else {
+  //           toast({ title: "Ошибка создания разнарядки", variant: "destructive" });
+  //         }
+  //       }
+  //     }
+  //   };
+  //   createIfMissing();
+  // }, [data?.departures, auth?.convoyId, routeId, dateString, refetch]);
 
   const handleSaveAllAssignments = async () => {
     if (!data?.dispatchRouteId) {
@@ -135,13 +139,17 @@ export default function RouteDetailsPage() {
   
 
   const handleBack = () => {
+    const base = `/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}`;
+    const returnUrl = fromFinalDispatch ? `${base}/final-dispatch` : base;
+  
     if (departures.some((d) => d.isModified)) {
-      setPendingNavigation(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}`);
+      setPendingNavigation(returnUrl);
       setIsConfirmDialogOpen(true);
     } else {
-      router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}`);
+      router.push(returnUrl);
     }
   };
+  
 
   const handleRemoveAssignment = async (depId: string) => {
     const dep = departures.find((d) => d.id === depId);

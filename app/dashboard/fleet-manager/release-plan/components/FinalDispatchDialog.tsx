@@ -23,7 +23,7 @@ import type { FinalDispatchData, RouteGroup, RouteAssignment } from "@/types/rel
 interface FinalDispatchDialogProps {
   open: boolean
   onClose: () => void
-  dispatch: FinalDispatchData
+  dispatch: FinalDispatchData | null
 }
 
 export default function FinalDispatchDialog({
@@ -31,6 +31,8 @@ export default function FinalDispatchDialog({
   onClose,
   dispatch,
 }: FinalDispatchDialogProps) {
+  if (!dispatch || !dispatch.routeGroups) return null
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
@@ -94,7 +96,7 @@ export default function FinalDispatchDialog({
           </div>
 
           {/* 🟠 Резервные водители */}
-          {dispatch.reserveAssignments.length > 0 && (
+          {dispatch.reserveAssignments?.length > 0 && (
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-bold text-lg mb-4">Резерв водителей</h3>
               <Table>

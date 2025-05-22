@@ -21,7 +21,9 @@ interface ReserveCardProps {
   delay?: number
 }
 
-export default function ReserveCard({ drivers, date, dayType, delay = 0 }: ReserveCardProps) {
+export default function ReserveCard({ drivers = [], date, dayType, delay = 0 }: ReserveCardProps) {
+  const hasDrivers = drivers.length > 0
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -36,7 +38,7 @@ export default function ReserveCard({ drivers, date, dayType, delay = 0 }: Reser
           Р
         </div>
 
-        {/* Контент карточки */}
+        {/* Контент */}
         <CardContent className="flex-grow flex flex-col items-center justify-center p-6 pt-12">
           <div className="rounded-full bg-gray-100 p-4 mb-4">
             <UsersRound className="h-8 w-8 text-gray-700" />
@@ -46,9 +48,7 @@ export default function ReserveCard({ drivers, date, dayType, delay = 0 }: Reser
           <p className="text-sm uppercase font-medium tracking-wider text-gray-500 mb-2">ВОДИТЕЛИ</p>
 
           <p className="text-sm text-center text-gray-600">
-            {drivers.length > 0
-              ? `Водителей в резерве: ${drivers.length}`
-              : "Резерв пуст"}
+            {hasDrivers ? `Водителей в резерве: ${drivers.length}` : "Резерв пуст"}
           </p>
         </CardContent>
 

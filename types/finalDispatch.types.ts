@@ -45,11 +45,17 @@ export type FinalDispatchEntry = {
   changeTime: string | null
 }
 
-export type FinalDispatchData = {
-  entries: FinalDispatchEntry[];  // ✅ ДОБАВИТЬ ЭТО ПОЛЕ
-  id: string;
-  date: string;
-  dayType: string;
-  routes: any[];  
-  reserves: any[]; 
+export interface FinalDispatchData {
+  date: string
+  routeGroups: RouteGroup[]
+  reserveAssignments: ReserveAssignment[]
+  repairBuses: string[]
+  dayOffBuses: string[]
+  driverStatuses: {
+    DayOff?: string[]
+    OnVacation?: string[]
+    OnSickLeave?: string[]
+    Intern?: string[]
+    total?: number
+  }
 }
