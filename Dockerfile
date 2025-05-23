@@ -10,7 +10,7 @@ COPY next.config.mjs ./
 #COPY .env ./
 
 # Устанавливаем зависимости без dev
-RUN npm install --omit=dev --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 
 # Копируем весь остальной проект
 COPY . .
