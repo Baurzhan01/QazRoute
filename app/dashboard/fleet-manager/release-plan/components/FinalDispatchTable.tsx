@@ -174,33 +174,42 @@ export default function FinalDispatchTable({
         </>
       )}
       {/* 📦 Нижние блоки: адаптивные и разделённые */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white p-4 rounded-lg shadow-md border divide-y md:divide-y-0 md:divide-x">
-        <div className="md:pr-4">
-          <h4 className="font-bold flex items-center gap-2 text-sky-700 mb-2">
-            <Wrench className="h-5 w-5" /> Ремонт
-          </h4>
-          <ul className="grid [grid-template-columns:repeat(auto-fit,minmax(120px,1fr))] gap-2 text-sm font-medium text-gray-800">
-            {repairBuses.length ? repairBuses.map((b, i) => <li key={i}>{b}</li>) : <li>—</li>}
-          </ul>
+        <div className="grid grid-cols-1 md:grid-cols-1 xl:grid-cols-1 gap-6 mt-6">
+          {/* 🔧 Ремонт */}
+          <div className="bg-gray-50 border rounded-lg p-4 shadow-sm">
+            <h4 className="font-bold text-sky-700 mb-3 flex items-center gap-2">
+              <Wrench className="h-5 w-5" /> Ремонт
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {repairBuses.length ? repairBuses.map((b, i) => (
+                <span key={i} className="px-3 py-1 bg-white rounded border text-sm shadow-sm">{b}</span>
+              )) : <span className="text-gray-400">—</span>}
+            </div>
+          </div>
+
+          {/* 🚫 На выходном */}
+          <div className="bg-gray-50 border rounded-lg p-4 shadow-sm">
+            <h4 className="font-bold text-red-700 mb-3 flex items-center gap-2">
+              <span className="text-xl">🚫</span> Автобусы на выходном
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {dayOffBuses.length ? dayOffBuses.map((b, i) => (
+                <span key={i} className="px-3 py-1 bg-white rounded border text-sm shadow-sm">{b}</span>
+              )) : <span className="text-gray-400">—</span>}
+            </div>
+          </div>
+
+          {/* ✅ Назначено */}
+          <div className="bg-gray-50 border rounded-lg p-4 shadow-sm">
+            <h4 className="font-bold text-green-700 mb-3 flex items-center gap-2">
+              <span className="text-xl">📊</span> Назначено
+            </h4>
+            <ul className="text-sm text-gray-800 space-y-1">
+              <li>• Водителей: {convoySummary?.driverOnWork ?? "—"}</li>
+              <li>• Автобусов: {convoySummary?.busOnWork ?? "—"}</li>
+            </ul>
+          </div>
         </div>
-        <div className="md:px-4 pt-4 md:pt-0">
-          <h4 className="font-bold text-red-700 mb-2">🚫 Автобусы на выходном</h4>
-          <table className="w-full border text-sm text-gray-900">
-            <tbody>
-              <tr className="flex flex-wrap gap-2">
-                {dayOffBuses.length ? dayOffBuses.map((b, i) => <td key={i} className="border px-2 py-1 bg-white shadow-sm">{b}</td>) : <td>—</td>}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div className="md:pl-4 pt-4 md:pt-0">
-          <h4 className="font-bold text-green-700 mb-2">📊 Назначено</h4>
-          <ul className="text-sm font-medium text-gray-800 space-y-1 pl-1">
-            <li>• Водителей: {convoySummary?.driverOnWork ?? "—"}</li>
-            <li>• Автобусов: {convoySummary?.busOnWork ?? "—"}</li>
-          </ul>
-        </div>
-      </div>
 
       {/* Driver statuses в табличной форме */}
       <div className="grid grid-cols-1 md:grid-cols-1 xl:grid-cols-1 gap-6 mt-4">

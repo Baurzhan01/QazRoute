@@ -20,15 +20,17 @@ export default function PrintFinalDispatchPage() {
     const fetchData = async () => {
       const auth = getAuthData();
       const convoyId = auth?.convoyId;
+      const convoyNumber = auth?.convoyNumber;
       if (!date || !convoyId) return;
 
       const formattedDate = formatDate(new Date(date));
+
       const [dispatchResult, reserveResult] = await Promise.all([
         releasePlanService.getFullDispatchByDate(formattedDate, convoyId),
         releasePlanService.getReserveAssignmentsByDate(formattedDate),
       ]);
 
-      if (!dispatchResult.isSuccess || !reserveResult.isSuccess) return;
+      if (!dispatchResult.isSuccess || !reserveResult.isSuccess || !dispatchResult.value) return;
 
       const prepared = prepareFinalDispatchData({
         ...dispatchResult.value,
@@ -60,13 +62,14 @@ export default function PrintFinalDispatchPage() {
   }, [date]);
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-white min-h-screen print:p-4">
       {data && (
         <FinalDispatchTable
           data={data}
           depotNumber={parseInt(getAuthData()?.convoyNumber || "") || undefined}
           driversCount={driversCount}
           busesCount={busesCount}
+          dayType={dayType}
         />
       )}
     </div>
