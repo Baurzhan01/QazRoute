@@ -136,100 +136,103 @@ export default function AssignmentDialog({
   if (!selectedDeparture) return null
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Назначение автобуса и водителя</DialogTitle>
-        </DialogHeader>
+          <Dialog open={open} onOpenChange={onClose}>
+            <DialogContent className="w-[90vw] max-w-6xl max-h-[90vh] overflow-y-auto rounded-xl">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold tracking-wide text-gray-800">
+                Назначение автобуса и водителя
+              </DialogTitle>
+            </DialogHeader>
 
-        <div className="space-y-6">
-          <div>
-            <Label>Автобус</Label>
-            <SearchInput
-              value={busSearchQuery}
-              onChange={setBusSearchQuery}
-              placeholder="Поиск автобуса..."
-            />
-            <SelectableList
-              items={filteredBuses}
-              selected={selectedBus}
-              onSelect={(bus) => {
-                setSelectedBus(bus)
-                setSelectedDriver(null)
-                setForceDriverMode(false)
-                setBusDrivers([])
-                setDriverSearchQuery("")
-              }}
-              labelKey="garageNumber"
-              subLabelKey={(bus) => bus.govNumber}
-              status={(bus) =>
-                bus.isAssigned
-                  ? { label: "НАЗНАЧЕН", color: "red" }
-                  : { label: "НЕ назначен", color: "green" }
-              }
-              disableItem={(bus) =>
-                bus.isAssigned ||
-                !!assignedBusesMap[bus.id] ||
-                ["UnderRepair", "LongTermRepair", "Decommissioned"].includes(bus.busStatus)
-              }
-            />
-          </div>
-
-          {selectedBus && (
+          <div className="space-y-10 text-lg text-gray-700">
             <div>
-              <div className="flex justify-between items-center mb-1">
-                <Label>Водитель</Label>
-                {!forceDriverMode && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setForceDriverMode(true)
-                      setSelectedDriver(null)
-                      setBusDrivers([])
-                    }}
-                  >
-                    Принудительно назначить
-                  </Button>
-                )}
-              </div>
-
+              <Label className="block mb-2 text-lg font-semibold">Автобус</Label>
               <SearchInput
-                value={driverSearchQuery}
-                onChange={setDriverSearchQuery}
-                placeholder="Поиск водителя..."
+                value={busSearchQuery}
+                onChange={setBusSearchQuery}
+                placeholder="🔍 Поиск автобуса..."
               />
               <SelectableList
-                items={filteredDrivers}
-                selected={selectedDriver}
-                onSelect={setSelectedDriver}
-                labelKey="fullName"
-                subLabelKey={(driver) => `№ ${driver.serviceNumber}`}
-                status={(driver) =>
-                  driver.isAssigned
+                items={filteredBuses}
+                selected={selectedBus}
+                onSelect={(bus) => {
+                  setSelectedBus(bus)
+                  setSelectedDriver(null)
+                  setForceDriverMode(false)
+                  setBusDrivers([])
+                  setDriverSearchQuery("")
+                }}
+                labelKey="garageNumber"
+                subLabelKey={(bus) => bus.govNumber}
+                status={(bus) =>
+                  bus.isAssigned
                     ? { label: "НАЗНАЧЕН", color: "red" }
                     : { label: "НЕ назначен", color: "green" }
                 }
-                disableItem={(driver) =>
-                  driver.isAssigned ||
-                  !!assignedDriversMap[driver.id] ||
-                  !!globalAssignedDriversMap[driver.id] ||
-                  ["OnVacation", "OnSickLeave", "Fired", "Intern"].includes(driver.driverStatus)
+                disableItem={(bus) =>
+                  bus.isAssigned ||
+                  !!assignedBusesMap[bus.id] ||
+                  ["UnderRepair", "LongTermRepair", "Decommissioned"].includes(bus.busStatus)
                 }
               />
             </div>
-          )}
-        </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Отмена
-          </Button>
-          <Button onClick={handleSave} disabled={!selectedBus}>
-            Сохранить
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            {selectedBus && (
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <Label className="text-lg font-semibold">Водитель</Label>
+                  {!forceDriverMode && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setForceDriverMode(true)
+                        setSelectedDriver(null)
+                        setBusDrivers([])
+                      }}
+                    >
+                      Принудительно назначить
+                    </Button>
+                  )}
+                </div>
+
+                <SearchInput
+                  value={driverSearchQuery}
+                  onChange={setDriverSearchQuery}
+                  placeholder="🔍 Поиск водителя..."
+                />
+                <SelectableList
+                  items={filteredDrivers}
+                  selected={selectedDriver}
+                  onSelect={setSelectedDriver}
+                  labelKey="fullName"
+                  subLabelKey={(driver) => `№ ${driver.serviceNumber}`}
+                  status={(driver) =>
+                    driver.isAssigned
+                      ? { label: "НАЗНАЧЕН", color: "red" }
+                      : { label: "НЕ назначен", color: "green" }
+                  }
+                  disableItem={(driver) =>
+                    driver.isAssigned ||
+                    !!assignedDriversMap[driver.id] ||
+                    !!globalAssignedDriversMap[driver.id] ||
+                    ["OnVacation", "OnSickLeave", "Fired", "Intern"].includes(driver.driverStatus)
+                  }
+                />
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="pt-6">
+            <Button variant="outline" onClick={onClose}>
+              Отмена
+            </Button>
+            <Button onClick={handleSave} disabled={!selectedBus}>
+              Сохранить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
   )
 }

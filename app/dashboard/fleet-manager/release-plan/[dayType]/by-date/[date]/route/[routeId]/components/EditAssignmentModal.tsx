@@ -126,15 +126,17 @@ export default function EditAssignmentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Редактировать назначение</DialogTitle>
-        </DialogHeader>
+     <DialogContent className="w-[90vw] max-w-6xl max-h-[90vh] overflow-y-auto rounded-xl">
+      <DialogHeader>
+        <DialogTitle className="text-2xl font-bold tracking-wide text-gray-800">
+          Редактировать назначение
+        </DialogTitle>
+      </DialogHeader>
 
-        <div className="space-y-6">
+      <div className="space-y-10 text-lg text-gray-700">
           <div>
             <Label>Автобус</Label>
-            <SearchInput value={busSearchQuery} onChange={setBusSearchQuery} placeholder="Поиск автобуса..." />
+            <SearchInput value={busSearchQuery} onChange={setBusSearchQuery} placeholder="🔍 Поиск автобуса..." />
             <SelectableList
               items={filteredBuses}
               selected={selectedBus}

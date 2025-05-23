@@ -13,4 +13,5 @@ export interface ReserveDepartureUI {
   shift2Driver?: DisplayDriver | null
   shift2AdditionalInfo?: string
   endTime?: string
+  justAdded?: boolean // ✅ Добавить это поле
 }

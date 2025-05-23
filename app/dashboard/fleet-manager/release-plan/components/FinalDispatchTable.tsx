@@ -17,7 +17,7 @@ interface FinalDispatchTableProps {
     driverOnWork?: number
     busOnWork?: number
   }
-  dayType: string //
+  dayType: string
 }
 
 export default function FinalDispatchTable({
@@ -26,7 +26,7 @@ export default function FinalDispatchTable({
   driversCount,
   busesCount,
   convoySummary,
-  dayType, 
+  dayType,
 }: FinalDispatchTableProps) {
   const {
     routeGroups = [],
@@ -39,14 +39,14 @@ export default function FinalDispatchTable({
 
   const displayDate = new Date(date)
 
-  function formatDriverName(fullName?: string, serviceNumber?: string) {
+  function formatShortName(fullName?: string, serviceNumber?: string) {
     if (!fullName) return "—"
     const [last, first = "", middle = ""] = fullName.split(" ")
     const initials = `${first.charAt(0)}.${middle.charAt(0)}.`.toUpperCase()
     const nameShort = `${last} ${initials}`
     return serviceNumber ? `${nameShort} (№ ${serviceNumber})` : nameShort
   }
-
+  
   return (
     <div className="text-[15px] leading-relaxed space-y-8 text-gray-900">
       {/* 🧾 Верхняя панель */}
@@ -185,9 +185,13 @@ export default function FinalDispatchTable({
         </div>
         <div className="md:px-4 pt-4 md:pt-0">
           <h4 className="font-bold text-red-700 mb-2">🚫 Автобусы на выходном</h4>
-          <ul className="grid [grid-template-columns:repeat(auto-fit,minmax(100px,1fr))] gap-2 text-sm font-medium text-gray-800">
-            {dayOffBuses.length ? dayOffBuses.map((b, i) => <li key={i}>{b}</li>) : <li>—</li>}
-          </ul>
+          <table className="w-full border text-sm text-gray-900">
+            <tbody>
+              <tr className="flex flex-wrap gap-2">
+                {dayOffBuses.length ? dayOffBuses.map((b, i) => <td key={i} className="border px-2 py-1 bg-white shadow-sm">{b}</td>) : <td>—</td>}
+              </tr>
+            </tbody>
+          </table>
         </div>
         <div className="md:pl-4 pt-4 md:pt-0">
           <h4 className="font-bold text-green-700 mb-2">📊 Назначено</h4>
@@ -198,24 +202,41 @@ export default function FinalDispatchTable({
         </div>
       </div>
 
-      {/* Driver statuses */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-4">
-        {renderStatusBlock("📁 Выходной", driverStatuses?.DayOff, "text-red-600", true)}
-        {renderStatusBlock("🤒 Больничный", driverStatuses?.OnSickLeave, "text-orange-600")}
-        {renderStatusBlock("🏖️ Отпуск", driverStatuses?.OnVacation, "text-yellow-600")}
-        {renderStatusBlock("🧪 Стажёры", driverStatuses?.Intern, "text-blue-600")}
+      {/* Driver statuses в табличной форме */}
+      <div className="grid grid-cols-1 md:grid-cols-1 xl:grid-cols-1 gap-6 mt-4">
+        {renderDriverStatusTable("👤 Водители на выходном", driverStatuses?.DayOff, formatShortName)}
+        {renderDriverStatusTable("🤒 Больничный", driverStatuses?.OnSickLeave, formatShortName)}
+        {renderDriverStatusTable("🏖️ Отпуск", driverStatuses?.OnVacation, formatShortName)}
+        {renderDriverStatusTable("🧪 Стажёры", driverStatuses?.Intern, formatShortName)}
       </div>
     </div>
   )
 }
 
-function renderStatusBlock(title: string, list?: string[], colorClass = "text-gray-700", wide = false) {
+function renderDriverStatusTable(
+  title: string,
+  list: string[] | undefined,
+  formatShortName: (name?: string) => string,
+  colorClass = "text-gray-700"
+) {
   return (
     <div className="bg-gray-50 border rounded-lg p-4 shadow-sm">
       <h4 className={`font-bold mb-3 ${colorClass}`}>{title}</h4>
-      <ul className={`grid [grid-template-columns:repeat(auto-fit,minmax(${wide ? "90px" : "140px"},1fr))] gap-2 text-sm font-medium text-gray-900`}>
-        {list?.length ? list.map((name, i) => <li key={i}>{name}</li>) : <li>—</li>}
-      </ul>
+      <table className="w-full border text-sm text-gray-900">
+        <tbody>
+          <tr className="flex flex-wrap gap-2">
+            {list?.length ? (
+              list.map((fullName, i) => (
+                <td key={i} className="border px-2 py-1 bg-white shadow-sm">
+                  {formatShortName(fullName)}
+                </td>
+              ))
+            ) : (
+              <td className="text-gray-400">—</td>
+            )}
+          </tr>
+        </tbody>
+      </table>
     </div>
   )
 }

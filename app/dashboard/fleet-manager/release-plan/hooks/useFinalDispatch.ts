@@ -21,6 +21,15 @@ export function useFinalDispatch(date: Date | null, dayType?: ValidDayType) {
     holiday: "Workday",
   }
 
+  function formatDriverName(fullName?: string, serviceNumber?: string) {
+    if (!fullName) return "—"
+    const [last, first = "", middle = ""] = fullName.split(" ")
+    const initials = `${first.charAt(0)}.${middle.charAt(0)}.`.toUpperCase()
+    const nameShort = `${last} ${initials}`
+    return serviceNumber ? `${nameShort} (№ ${serviceNumber})` : nameShort
+  }
+  
+
   const routeStatus = dayType ? routeStatusMap[dayType] : undefined
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -146,12 +155,13 @@ export function useFinalDispatch(date: Date | null, dayType?: ValidDayType) {
         repairBuses: repairBusesRes.items?.map(b => `${b.garageNumber} (${b.govNumber})`) ?? [],
         dayOffBuses: weekendBusesRes.value?.map(b => `${b.garageNumber} (${b.govNumber})`) ?? [],
         driverStatuses: {
-          OnSickLeave: sickLeaveDriversRes.value?.items?.map(d => d.fullName) ?? [],
-          OnVacation: vacationDriversRes.value?.items?.map(d => d.fullName) ?? [],
-          Intern: internDriversRes.value?.items?.map(d => d.fullName) ?? [],
-          DayOff: weekendDriversRes.value?.map(d => d.fullName) ?? [],
+          OnSickLeave: sickLeaveDriversRes.value?.items?.map(d => formatDriverName(d.fullName, d.serviceNumber)) ?? [],
+          OnVacation: vacationDriversRes.value?.items?.map(d => formatDriverName(d.fullName, d.serviceNumber)) ?? [],
+          Intern: internDriversRes.value?.items?.map(d => formatDriverName(d.fullName, d.serviceNumber)) ?? [],
+          DayOff: weekendDriversRes.value?.map(d => formatDriverName(d.fullName, d.serviceNumber)) ?? [],          
           total: undefined,
         },
+        
       }
 
       const uniqueDrivers = new Set<string>()

@@ -137,15 +137,17 @@ export default function AssignmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="w-[90vw] max-w-6xl max-h-[90vh] overflow-y-auto rounded-xl">
         <DialogHeader>
-          <DialogTitle>Назначение автобуса и водителя</DialogTitle>
+          <DialogTitle className="text-2xl font-bold tracking-wide text-gray-800">
+            Назначение автобуса и водителя
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-10 text-lg text-gray-700">
           <div>
-            <Label>Автобус</Label>
-            <SearchInput value={busSearchQuery} onChange={onBusSearchChange} placeholder="Поиск автобуса..." />
+            <Label className="block mb-2 text-lg font-semibold">Автобус</Label>
+            <SearchInput value={busSearchQuery} onChange={onBusSearchChange} placeholder="🔍 Поиск автобуса..." />
             <SelectableList
               items={filteredBuses}
               selected={selectedBus}
@@ -168,8 +170,8 @@ export default function AssignmentDialog({
 
           {selectedBus && (
             <div>
-              <div className="flex justify-between items-center mb-1">
-                <Label>Водитель</Label>
+              <div className="flex justify-between items-center mb-2">
+                <Label className="text-lg font-semibold">Водитель</Label>
                 {!forceDriverMode && (
                   <Button
                     variant="outline"
@@ -184,7 +186,7 @@ export default function AssignmentDialog({
                   </Button>
                 )}
               </div>
-              <SearchInput value={driverSearchQuery} onChange={onDriverSearchChange} placeholder="Поиск водителя..." />
+              <SearchInput value={driverSearchQuery} onChange={onDriverSearchChange} placeholder="🔍 Поиск водителя..." />
               <SelectableList
                 items={filteredDrivers}
                 selected={selectedDriver}
@@ -202,7 +204,7 @@ export default function AssignmentDialog({
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="pt-6">
           <Button variant="outline" onClick={onClose}>Отмена</Button>
           <Button onClick={handleSave}>Сохранить</Button>
         </DialogFooter>
