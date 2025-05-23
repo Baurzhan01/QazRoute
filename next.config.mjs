@@ -1,3 +1,9 @@
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
 let userConfig = undefined
 try {
   userConfig = await import('./v0-user-next.config')
@@ -21,29 +27,19 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
-}
-const path = require('path');
-
-module.exports = {
   webpack(config) {
-    config.resolve.alias['@'] = path.resolve(__dirname); // или 'app' если нужно
-    return config;
-  },
-};
-
+    config.resolve.alias['@'] = path.resolve(__dirname)
+    return config
+  }
+}
 
 mergeConfig(nextConfig, userConfig)
 
 function mergeConfig(nextConfig, userConfig) {
-  if (!userConfig) {
-    return
-  }
+  if (!userConfig) return
 
   for (const key in userConfig) {
-    if (
-      typeof nextConfig[key] === 'object' &&
-      !Array.isArray(nextConfig[key])
-    ) {
+    if (typeof nextConfig[key] === 'object' && !Array.isArray(nextConfig[key])) {
       nextConfig[key] = {
         ...nextConfig[key],
         ...userConfig[key],
