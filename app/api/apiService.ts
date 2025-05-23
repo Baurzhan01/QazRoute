@@ -26,7 +26,7 @@ interface BusLine {
   routeId: string;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://82.115.49.203/api";
 
 // Вспомогательная функция для обработки ответов API
 async function handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
