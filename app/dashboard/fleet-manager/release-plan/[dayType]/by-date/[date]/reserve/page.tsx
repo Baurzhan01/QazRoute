@@ -24,7 +24,6 @@ export default function ReservePage() {
   const router = useRouter();
   const dateString = params.date as string;
   const dayType = params.dayType as string;
-
   const date = useMemo(() => parseDate(dateString), [dateString]);
 
   const localAuth = useMemo(() => {
@@ -33,7 +32,6 @@ export default function ReservePage() {
     }
     return {};
   }, []);
-
   const convoyId = (params.convoyId as string) || localAuth?.convoyId;
 
   const [departures, setDepartures] = useState<ReserveDepartureUI[]>([]);
@@ -47,6 +45,7 @@ export default function ReservePage() {
 
   useBeforeUnload(hasChanges, "У вас есть несохранённые изменения. Вы уверены, что хотите покинуть страницу?");
 
+  // 🚚 Загрузка резерва с сервера
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -56,7 +55,7 @@ export default function ReservePage() {
         if (reserves.length) {
           setDepartures(
             reserves.map((r: any, index: number) => ({
-              id: r.dispatchBusLineId ?? uuidv4(),
+              id: r.id ?? uuidv4(),
               sequenceNumber: index + 1,
               departureTime: "",
               scheduleTime: "",
@@ -83,6 +82,7 @@ export default function ReservePage() {
             }))
           );
         } else {
+          // Если ничего нет — покажем 5 пустых строк
           setDepartures(
             Array.from({ length: 5 }).map((_, index) => ({
               id: uuidv4(),
@@ -124,7 +124,8 @@ export default function ReservePage() {
     setHasChanges(true);
   };
 
-  const handleAddRow = () => {
+  // 🆕 Локальное добавление строки (не отправляется на сервер)
+  const handleAddLocalRow = () => {
     setDepartures((prev) => [
       ...prev,
       {
@@ -133,10 +134,15 @@ export default function ReservePage() {
         departureTime: "",
         scheduleTime: "",
         endTime: "",
+        bus: undefined,
+        driver: undefined,
+        additionalInfo: "",
+        isEmptyRow: false, // ❗️ ВАЖНО: чтобы таблица показывала кнопку «Назначить»
       },
-    ]);
-    setHasChanges(true);
-  };
+    ])
+    setHasChanges(true)
+  }
+  
 
   const handleSaveAll = async () => {
     try {
@@ -192,15 +198,17 @@ export default function ReservePage() {
               onRemoveAssignment={handleRemoveAssignment}
               onUpdateDepartures={setDepartures}
               onUpdateAssignment={handleUpdateAssignment}
+              date={dateString} // ← обязательно передаём для API в таблицу
+              onReload={() => location.reload()} // или useQuery/refetch, если подключено
             />
           </CardContent>
         </Card>
 
         <div className="mt-6 flex justify-between">
-          <Button onClick={handleAddRow}>
-            <Plus className="h-4 w-4" />
-            Добавить строку
-          </Button>
+        <Button onClick={handleAddLocalRow}>
+          <Plus className="h-4 w-4" />
+          Добавить строку
+        </Button>
           <Button onClick={handleSaveAll}>
             <Save className="h-4 w-4" />
             Сохранить

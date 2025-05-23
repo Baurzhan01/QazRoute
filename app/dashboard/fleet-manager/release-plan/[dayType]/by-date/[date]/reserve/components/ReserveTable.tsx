@@ -1,14 +1,16 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Plus, X, Bus, User } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
 import type { ReserveDepartureUI } from "@/types/reserve.types"
-import { v4 as uuidv4 } from "uuid"
+import { releasePlanService } from "@/service/releasePlanService"
 
 interface ReserveDepartureExtended extends ReserveDepartureUI {
   justAdded?: boolean
+  isEmptyRow?: boolean
 }
 
 interface ReserveTableProps {
@@ -17,6 +19,8 @@ interface ReserveTableProps {
   onRemoveAssignment: (departureId: string) => void
   onUpdateDepartures: (departures: ReserveDepartureExtended[]) => void
   onUpdateAssignment: (updated: ReserveDepartureUI) => void
+  date: string
+  onReload?: () => void
 }
 
 export default function ReserveTable({
@@ -25,6 +29,8 @@ export default function ReserveTable({
   onRemoveAssignment,
   onUpdateDepartures,
   onUpdateAssignment,
+  date,
+  onReload,
 }: ReserveTableProps) {
   const [filterAssigned, setFilterAssigned] = useState<"all" | "assigned" | "unassigned">("all")
 
@@ -38,26 +44,30 @@ export default function ReserveTable({
     return departures
   }, [departures, filterAssigned])
 
-  const handleAddRow = () => {
-    const newDeparture: ReserveDepartureExtended = {
-      id: uuidv4(),
-      sequenceNumber: departures.length + 1,
-      departureTime: "",
-      scheduleTime: "",
-      endTime: "",
-      bus: null,
-      driver: null,
-      shift2Driver: null,
-      justAdded: true,
+  const handleAddEmptyRow = async () => {
+    if (!date) {
+      toast({ title: "Ошибка", description: "Дата не указана", variant: "destructive" })
+      return
     }
-    const updatedDepartures = [...departures, newDeparture]
-    onUpdateDepartures(updatedDepartures)
-    setTimeout(() => {
-      const cleared = updatedDepartures.map((d) =>
-        d.id === newDeparture.id ? { ...d, justAdded: false } : d
-      )
-      onUpdateDepartures(cleared)
-    }, 2000)
+
+    try {
+      await releasePlanService.assignToReserve(date, [
+        {
+          busId: null,
+          driverId: null,
+          description: null,
+        },
+      ])
+
+      toast({ title: "Пустая строка добавлена" })
+      onReload?.()
+    } catch {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось добавить строку",
+        variant: "destructive",
+      })
+    }
   }
 
   return (
@@ -69,23 +79,23 @@ export default function ReserveTable({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse text-sm">
           <thead className="sticky top-0 bg-white z-10 shadow-sm">
             <tr>
-              <th className="border p-2">№</th>
-              <th className="border p-2"><Bus className="w-4 h-4 inline text-gray-500 mr-1" />Гар. номер</th>
-              <th className="border p-2">Гос. номер</th>
-              <th className="border p-2"><User className="w-4 h-4 inline text-gray-500 mr-1" />ФИО</th>
-              <th className="border p-2">Таб. номер</th>
-              <th className="border p-2">Время выхода</th>
-              <th className="border p-2">По графику</th>
-              <th className="border p-2">Доп. информация</th>
-              <th className="border p-2">Пересм.</th>
-              <th className="border p-2">ФИО (2 смена)</th>
-              <th className="border p-2">Таб. номер (2 смена)</th>
-              <th className="border p-2">Доп. информация (2 смена)</th>
-              <th className="border p-2">Конец работы</th>
-              <th className="border p-2">Действия</th>
+              <th className="border p-2 w-10">№</th>
+              <th className="border p-2 w-32"><Bus className="w-4 h-4 inline text-gray-500 mr-1" />Гар. номер</th>
+              <th className="border p-2 w-32">Гос. номер</th>
+              <th className="border p-2 w-48"><User className="w-4 h-4 inline text-gray-500 mr-1" />ФИО</th>
+              <th className="border p-2 w-28">Таб. номер</th>
+              <th className="border p-2 w-28">Выход</th>
+              <th className="border p-2 w-28">По графику</th>
+              <th className="border p-2 min-w-[200px]">Доп. информация</th>
+              <th className="border p-2 w-20">Пересм.</th>
+              <th className="border p-2 w-48">ФИО (2 смена)</th>
+              <th className="border p-2 w-28">Таб. № (2 смена)</th>
+              <th className="border p-2 w-48">Доп. инфо (2 смена)</th>
+              <th className="border p-2 w-28">Конец</th>
+              <th className="border p-2 w-32">Действия</th>
             </tr>
           </thead>
           <tbody>
@@ -104,21 +114,21 @@ export default function ReserveTable({
 
               return (
                 <tr key={departure.id} className={departure.justAdded ? "animate-fade-in bg-yellow-50" : ""}>
-                  <td className="border p-2 font-semibold text-center">{departure.sequenceNumber}</td>
+                  <td className="border p-2 text-center font-semibold">{departure.sequenceNumber}</td>
                   <td className="border p-2">{departure.bus?.garageNumber || badge}</td>
-                  <td className="border p-2">{departure.bus?.govNumber || ""}</td>
-                  <td className="border p-2">{departure.driver?.fullName || ""}</td>
-                  <td className="border p-2">{departure.driver?.serviceNumber || ""}</td>
-                  <td className="border p-2">{departure.departureTime || ""}</td>
-                  <td className="border p-2">{departure.scheduleTime || ""}</td>
-                  <td className="border p-2">{departure.additionalInfo || ""}</td>
-                  <td className="border p-2"></td>
-                  <td className="border p-2">{departure.shift2Driver?.fullName || ""}</td>
-                  <td className="border p-2">{departure.shift2Driver?.serviceNumber || ""}</td>
-                  <td className="border p-2">{departure.shift2AdditionalInfo || ""}</td>
-                  <td className="border p-2">{departure.endTime || ""}</td>
+                  <td className="border p-2">{departure.bus?.govNumber || "—"}</td>
+                  <td className="border p-2">{departure.driver?.fullName || "—"}</td>
+                  <td className="border p-2">{departure.driver?.serviceNumber || "—"}</td>
+                  <td className="border p-2">{departure.departureTime || "—"}</td>
+                  <td className="border p-2">{departure.scheduleTime || "—"}</td>
+                  <td className="border p-2 whitespace-pre-line">{departure.additionalInfo?.trim() || "—"}</td>
+                  <td className="border p-2">—</td>
+                  <td className="border p-2">{departure.shift2Driver?.fullName || "—"}</td>
+                  <td className="border p-2">{departure.shift2Driver?.serviceNumber || "—"}</td>
+                  <td className="border p-2">{departure.shift2AdditionalInfo || "—"}</td>
+                  <td className="border p-2">{departure.endTime || "—"}</td>
                   <td className="border p-2 text-center">
-                    {!departure.bus ? (
+                    <div className="flex justify-center gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -127,16 +137,28 @@ export default function ReserveTable({
                       >
                         <Plus className="h-4 w-4 mr-1" /> Назначить
                       </Button>
-                    ) : (
+
                       <Button
                         variant="ghost"
                         size="sm"
                         className="text-red-500"
-                        onClick={() => onRemoveAssignment(departure.id)}
+                        onClick={async () => {
+                          try {
+                            await releasePlanService.removeFromReserve([departure.id])
+                            toast({ title: "Удалено из резерва" })
+                            onReload?.()
+                          } catch {
+                            toast({
+                              title: "Ошибка",
+                              description: "Не удалось удалить резерв",
+                              variant: "destructive",
+                            })
+                          }
+                        }}
                       >
                         <X className="h-4 w-4" />
                       </Button>
-                    )}
+                    </div>
                   </td>
                 </tr>
               )
@@ -146,8 +168,11 @@ export default function ReserveTable({
       </div>
 
       <div className="flex justify-end">
-        <Button variant="outline" onClick={handleAddRow}>
-          + Добавить строку
+        <Button
+          className="bg-gray-100 text-gray-800 hover:bg-gray-200"
+          onClick={handleAddEmptyRow}
+        >
+          + Добавить пустую строку
         </Button>
       </div>
     </div>

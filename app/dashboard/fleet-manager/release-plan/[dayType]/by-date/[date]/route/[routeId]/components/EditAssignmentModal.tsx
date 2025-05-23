@@ -126,7 +126,7 @@ export default function EditAssignmentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-     <DialogContent className="w-[90vw] max-w-6xl max-h-[90vh] overflow-y-auto rounded-xl">
+     <DialogContent className="!w-[95vw] !max-w-[1400px] !max-h-[95vh] min-h-[500px] px-6 py-8 overflow-y-auto rounded-2xl shadow-xl">
       <DialogHeader>
         <DialogTitle className="text-2xl font-bold tracking-wide text-gray-800">
           Редактировать назначение

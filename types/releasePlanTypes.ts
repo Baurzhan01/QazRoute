@@ -53,9 +53,11 @@ export interface BusLineAssignmentRequest {
 
 // Назначение в резерв
 export interface ReserveAssignmentDto {
-  driverId?: string
-  busId?: string
+  driverId?: string | null
+  busId?: string | null
+  description?: string | null
 }
+
 
 // 🚌 Выход маршрута (Departure)
 export interface Departure {

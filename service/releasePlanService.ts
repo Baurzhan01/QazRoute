@@ -80,13 +80,10 @@ assignReserve: async (date: string, assignments: { driverId: string | null; busI
   ): Promise<ApiResponse<boolean>> => {
     const { data } = await apiClient.post(`/dispatches/reserve/${date}/assignments`, payload)
     return data
-  },
+  },  
 
-  removeFromReserve: async (
-    date: string,
-    payload: ReserveAssignmentDto[]
-  ): Promise<ApiResponse<boolean>> => {
-    const { data } = await apiClient.delete(`/dispatches/reserve/${date}/assignments`, { data: payload })
+  removeFromReserve: async (ids: string[]): Promise<ApiResponse<boolean>> => {
+    const { data } = await apiClient.delete(`/dispatches/reserve/assignments`, { data: ids })
     return data
   },
 
@@ -123,6 +120,18 @@ assignReserve: async (date: string, assignments: { driverId: string | null; busI
 
   getReserveAssignmentsByDate: async (date: string): Promise<ApiResponse<ReserveAssignment[]>> => {
     const { data } = await apiClient.get(`/dispatches/reserve/${date}/all`)
+    return data
+  },
+  
+  updateReserveAssignment: async (
+    id: string,
+    payload: {
+      driverId: string | null
+      busId: string | null
+      description?: string | null
+    }
+  ): Promise<ApiResponse<boolean>> => {
+    const { data } = await apiClient.put(`/dispatches/reserve/${id}/assignment`, payload)
     return data
   },
   

@@ -118,26 +118,42 @@ export default function AssignmentDialog({
 
   const handleSave = async () => {
     if (!selectedDeparture || !selectedBus) return
-
+  
     try {
-      await releasePlanService.assignToReserve(date, [
-        {
+      if (selectedDeparture.justAdded) {
+        // Новый резерв
+        await releasePlanService.assignToReserve(date, [
+          {
+            busId: selectedBus.id,
+            driverId: selectedDriver?.id ?? null,
+            description: null,
+          },
+        ])
+      } else {
+        // Уже существующий → обновляем
+        await releasePlanService.updateReserveAssignment(selectedDeparture.id, {
           busId: selectedBus.id,
-          driverId: selectedDriver?.id ?? undefined
-        },
-      ])
-
+          driverId: selectedDriver?.id ?? null,
+          description: null,
+        })
+      }
+  
       toast({ title: "Назначение сохранено" })
       onSave(selectedBus, selectedDriver)
       onClose()
     } catch {
-      toast({ title: "Ошибка", description: "Не удалось сохранить назначение", variant: "destructive" })
+      toast({
+        title: "Ошибка",
+        description: "Не удалось сохранить назначение",
+        variant: "destructive",
+      })
     }
   }
+  
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="w-[90vw] max-w-6xl max-h-[90vh] overflow-y-auto rounded-xl">
+      <DialogContent className="!w-[95vw] !max-w-[1400px] !max-h-[95vh] min-h-[500px] px-6 py-8 overflow-y-auto rounded-2xl shadow-xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold tracking-wide text-gray-800">
             Назначение автобуса и водителя
