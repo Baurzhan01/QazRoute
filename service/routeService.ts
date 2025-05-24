@@ -47,9 +47,9 @@ export const routeService = {
   },
 
   // Проверка на дубликаты маршрута по номеру и колонне
-  checkRoute: async (number: string, convoyId: string): Promise<ApiResponse<RouteConflict[]>> => {
+  checkRoute: async (number: string, convoyId: string, routeStatus: string): Promise<ApiResponse<RouteConflict[]>> => {
     const res = await apiClient.get<ApiResponse<RouteConflict[]>>("/routes/check", {
-      params: { number, convoyId },
+      params: { number, convoyId, routeStatus },
     })
     return res.data
   },
