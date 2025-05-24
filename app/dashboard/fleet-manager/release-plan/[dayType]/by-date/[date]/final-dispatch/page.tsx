@@ -83,7 +83,7 @@ export default function FinalDispatchPage() {
             variant="outline"
             onClick={() =>
               window.open(
-                `/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateParam}/final-dispatch/print`,
+                `/print/${dayType}/${dateParam}`,
                 "_blank"
               )
             }

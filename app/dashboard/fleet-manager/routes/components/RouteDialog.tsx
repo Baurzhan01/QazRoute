@@ -119,7 +119,11 @@ export default function RouteDialog({
     
       const currentExits = cleanExitNumbers(debouncedExitNumbers);
     
-      const res = await routeService.checkRoute(formData.number.trim(), convoyId);
+      const res = await routeService.checkRoute(
+        formData.number.trim(), 
+        convoyId,
+        toBackendStatus(formData.routeStatus)
+      );
       const conflict = res.value?.[0];
     
       if (conflict?.busLineNumbers?.length) {
@@ -137,9 +141,8 @@ export default function RouteDialog({
       setExitConflictInfo(null);
     };
     
-
     checkExits();
-  }, [debouncedExitNumbers, formData.number, convoyId]);
+  }, [debouncedExitNumbers, formData.number, convoyId, formData.routeStatus]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

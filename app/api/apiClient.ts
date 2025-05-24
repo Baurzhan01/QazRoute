@@ -3,7 +3,7 @@ import axios from 'axios';
 import type { ApiResponse } from '@/types/api.types';
 
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7250/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://82.115.49.203/api',
   headers: {
     'Content-Type': 'application/json',
   },
