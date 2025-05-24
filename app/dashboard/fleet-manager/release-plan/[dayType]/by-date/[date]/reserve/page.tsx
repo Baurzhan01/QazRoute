@@ -198,8 +198,9 @@ export default function ReservePage() {
               onRemoveAssignment={handleRemoveAssignment}
               onUpdateDepartures={setDepartures}
               onUpdateAssignment={handleUpdateAssignment}
-              date={dateString} // ← обязательно передаём для API в таблицу
-              onReload={() => location.reload()} // или useQuery/refetch, если подключено
+              date={dateString}
+              onReload={() => location.reload()}
+              convoyId={convoyId}
             />
           </CardContent>
         </Card>

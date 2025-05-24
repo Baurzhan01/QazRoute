@@ -120,22 +120,22 @@ export default function AssignmentDialog({
     if (!selectedDeparture || !selectedBus) return
   
     try {
-      if (selectedDeparture.justAdded) {
-        // Новый резерв
-        await releasePlanService.assignToReserve(date, [
+      if (selectedDeparture.id) {
+        // Редактирование существующего резерва
+        await releasePlanService.updateReserveAssignment(selectedDeparture.id, {
+          busId: selectedBus.id,
+          driverId: selectedDriver?.id ?? null,
+          description: null,
+        })
+      } else {
+        // Создание нового резерва
+        await releasePlanService.assignReserve(date, [
           {
             busId: selectedBus.id,
             driverId: selectedDriver?.id ?? null,
             description: null,
           },
         ])
-      } else {
-        // Уже существующий → обновляем
-        await releasePlanService.updateReserveAssignment(selectedDeparture.id, {
-          busId: selectedBus.id,
-          driverId: selectedDriver?.id ?? null,
-          description: null,
-        })
       }
   
       toast({ title: "Назначение сохранено" })
