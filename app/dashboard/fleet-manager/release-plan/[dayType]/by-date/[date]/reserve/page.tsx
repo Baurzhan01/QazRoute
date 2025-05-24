@@ -35,7 +35,7 @@ export default function ReservePage() {
   const convoyId = (params.convoyId as string) || localAuth?.convoyId;
 
   const [departures, setDepartures] = useState<ReserveDepartureUI[]>([]);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDeparture, setSelectedDeparture] = useState<ReserveDepartureUI | null>(null);
   const [selectedBus, setSelectedBus] = useState<DisplayBus | null>(null);
   const [selectedDriver, setSelectedDriver] = useState<DisplayDriver | null>(null);
@@ -45,130 +45,71 @@ export default function ReservePage() {
 
   useBeforeUnload(hasChanges, "У вас есть несохранённые изменения. Вы уверены, что хотите покинуть страницу?");
 
-  // 🚚 Загрузка резерва с сервера
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const res = await releasePlanService.getReservesByDate(dateString);
-        const reserves = res.value ?? [];
+  const loadData = async () => {
+    try {
+      const res = await releasePlanService.getReservesByDate(dateString);
+      const reserves = res.value ?? [];
 
-        if (reserves.length) {
-          setDepartures(
-            reserves.map((r: any, index: number) => ({
-              id: r.id ?? uuidv4(),
-              sequenceNumber: index + 1,
-              departureTime: "",
-              scheduleTime: "",
-              endTime: r.endTime ?? "",
-              bus: r.busId
-                ? {
-                    id: r.busId,
-                    garageNumber: r.garageNumber,
-                    govNumber: r.govNumber,
-                    status: "OnWork",
-                    convoyId: convoyId,
-                  }
-                : undefined,
-              driver: r.driverTabNumber
-                ? {
-                    id: r.driverId,
-                    fullName: r.driverFullName,
-                    serviceNumber: r.driverTabNumber,
-                    convoyId: convoyId,
-                    driverStatus: "OnWork",
-                  }
-                : undefined,
-              additionalInfo: r.description ?? "",
-            }))
-          );
-        } else {
-          // Если ничего нет — покажем 5 пустых строк
-          setDepartures(
-            Array.from({ length: 5 }).map((_, index) => ({
-              id: uuidv4(),
-              sequenceNumber: index + 1,
-              departureTime: "",
-              scheduleTime: "",
-              endTime: "",
-            }))
-          );
-        }
-      } catch (error) {
-        toast({ title: "Ошибка", description: "Не удалось загрузить резерв", variant: "destructive" });
+      if (reserves.length) {
+        setDepartures(
+          reserves.map((r: any, index: number) => ({
+            id: r.id ?? uuidv4(),
+            sequenceNumber: index + 1,
+            departureTime: "",
+            scheduleTime: "",
+            endTime: r.endTime ?? "",
+            bus: r.busId
+              ? {
+                  id: r.busId,
+                  garageNumber: r.garageNumber,
+                  govNumber: r.govNumber,
+                  status: "OnWork",
+                  convoyId: convoyId,
+                }
+              : undefined,
+            driver: r.driverTabNumber
+              ? {
+                  id: r.driverId,
+                  fullName: r.driverFullName,
+                  serviceNumber: r.driverTabNumber,
+                  convoyId: convoyId,
+                  driverStatus: "OnWork",
+                }
+              : undefined,
+            additionalInfo: r.description ?? "",
+          }))
+        );
+      } else {
+        setDepartures([]);
       }
-    };
+    } catch (error) {
+      toast({ title: "Ошибка", description: "Не удалось загрузить резерв", variant: "destructive" });
+    }
+  };
 
+  useEffect(() => {
     loadData();
   }, [dateString]);
 
-  const handleOpenAddDialog = (departure: ReserveDepartureUI) => {
+  const handleOpenDialog = (departure: ReserveDepartureUI | null = null) => {
     setSelectedDeparture(departure);
-    setSelectedBus(null);
-    setSelectedDriver(null);
+    setSelectedBus(departure?.bus ?? null);
+    setSelectedDriver(departure?.driver ?? null);
     setBusSearchQuery("");
     setDriverSearchQuery("");
-    setIsAddDialogOpen(true);
+    setIsDialogOpen(true);
   };
 
-  const handleUpdateAssignment = (updated: ReserveDepartureUI) => {
-    setDepartures((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
-    setHasChanges(true);
-  };
-
-  const handleRemoveAssignment = (departureId: string) => {
-    setDepartures((prev) =>
-      prev.map((d) =>
-        d.id === departureId ? { ...d, bus: undefined, driver: undefined } : d
-      )
-    );
-    setHasChanges(true);
-  };
-
-  // 🆕 Локальное добавление строки (не отправляется на сервер)
-  const handleAddLocalRow = () => {
-    setDepartures((prev) => [
-      ...prev,
-      {
-        id: uuidv4(),
-        sequenceNumber: prev.length + 1,
-        departureTime: "",
-        scheduleTime: "",
-        endTime: "",
-        bus: undefined,
-        driver: undefined,
-        additionalInfo: "",
-        isEmptyRow: false, // ❗️ ВАЖНО: чтобы таблица показывала кнопку «Назначить»
-      },
-    ])
-    setHasChanges(true)
-  }
-  
-
-  const handleSaveAll = async () => {
+  const handleSave = async (bus: DisplayBus | null, driver: DisplayDriver | null) => {
     try {
-      const assignments = departures
-        .filter((d) => d.bus || d.driver)
-        .map((d) => ({
-          driverId: d.driver?.id ?? null,
-          busId: d.bus?.id ?? null,
-          driverFullName: d.driver?.fullName ?? "",
-          driverTabNumber: d.driver?.serviceNumber ?? "",
-          garageNumber: d.bus?.garageNumber ?? "",
-          govNumber: d.bus?.govNumber ?? "",
-          description: d.additionalInfo ?? "",
-          endTime: d.endTime ?? "",
-          dispatchBusLineId: d.id,
-        }));
-
-      if (assignments.length > 0) {
-        await releasePlanService.assignReserve(dateString, assignments);
-      }
-
-      toast({ title: "Сохранено", description: "Назначения сохранены" });
-      setHasChanges(false);
-      router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}`);
+      await loadData(); // Сначала обновляем данные
+      toast({ title: "Сохранено" });
     } catch {
-      toast({ title: "Ошибка", description: "Не удалось сохранить резерв", variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: "Не удалось сохранить резерв",
+        variant: "destructive",
+      });
     }
   };
 
@@ -188,37 +129,57 @@ export default function ReservePage() {
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <Card>
-          <CardHeader className="bg-gray-800 text-white">
+          <CardHeader className="bg-gray-800 text-white flex justify-between items-center">
             <CardTitle>Резерв</CardTitle>
+            <div className="flex gap-2">
+              <Button 
+                variant="secondary" 
+                className="bg-white text-black hover:bg-gray-100"
+                onClick={async () => {
+                  try {
+                    await releasePlanService.assignReserve(dateString, [
+                      {
+                        busId: null,
+                        driverId: null,
+                        description: null,
+                      },
+                    ]);
+                    toast({ title: "Пустое поле добавлено" });
+                    await loadData(); // Перезагружаем данные вместо перезагрузки страницы
+                  } catch {
+                    toast({
+                      title: "Ошибка",
+                      description: "Не удалось добавить пустое поле",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
+                <Plus className="h-4 w-4 mr-1" /> Добавить пустое поле
+              </Button>
+              <Button 
+                variant="secondary"
+                className="bg-white text-black hover:bg-gray-100"
+                onClick={() => handleOpenDialog()}
+              >
+                <Plus className="h-4 w-4 mr-1" /> Добавить в резерв
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <ReserveTable
               departures={departures}
-              onAddAssignment={handleOpenAddDialog}
-              onRemoveAssignment={handleRemoveAssignment}
-              onUpdateDepartures={setDepartures}
-              onUpdateAssignment={handleUpdateAssignment}
+              onEditAssignment={handleOpenDialog}
               date={dateString}
-              onReload={() => location.reload()}
+              onReload={loadData}
               convoyId={convoyId}
             />
           </CardContent>
         </Card>
 
-        <div className="mt-6 flex justify-between">
-        <Button onClick={handleAddLocalRow}>
-          <Plus className="h-4 w-4" />
-          Добавить строку
-        </Button>
-          <Button onClick={handleSaveAll}>
-            <Save className="h-4 w-4" />
-            Сохранить
-          </Button>
-        </div>
-
         <AssignmentDialog
-          open={isAddDialogOpen}
-          onClose={() => setIsAddDialogOpen(false)}
+          open={isDialogOpen}
+          onClose={() => setIsDialogOpen(false)}
           selectedDeparture={selectedDeparture}
           selectedBus={selectedBus}
           selectedDriver={selectedDriver}
@@ -230,17 +191,7 @@ export default function ReservePage() {
           onSelectDriver={setSelectedDriver}
           convoyId={convoyId}
           date={dateString}
-          onSave={(bus, driver) => {
-            if (!selectedDeparture) return;
-            setDepartures((prev) =>
-              prev.map((d) =>
-                d.id === selectedDeparture.id
-                  ? { ...d, bus: bus ?? undefined, driver: driver ?? undefined }
-                  : d
-              )
-            );
-            setHasChanges(true);
-          }}
+          onSave={handleSave}
         />
       </motion.div>
     </div>

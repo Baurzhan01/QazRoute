@@ -114,16 +114,12 @@ export default function AssignmentDialog({
     `${driver.fullName} ${driver.serviceNumber}`.toLowerCase().includes(debouncedDriverSearch.toLowerCase())
   )
 
-  if (!selectedDeparture) return null
-
   const handleSave = async () => {
-    if (!selectedDeparture || !selectedBus) return
-  
     try {
-      if (selectedDeparture.id) {
+      if (selectedDeparture?.id) {
         // Редактирование существующего резерва
         await releasePlanService.updateReserveAssignment(selectedDeparture.id, {
-          busId: selectedBus.id,
+          busId: selectedBus?.id ?? null,
           driverId: selectedDriver?.id ?? null,
           description: null,
         })
@@ -131,7 +127,7 @@ export default function AssignmentDialog({
         // Создание нового резерва
         await releasePlanService.assignReserve(date, [
           {
-            busId: selectedBus.id,
+            busId: selectedBus?.id ?? null,
             driverId: selectedDriver?.id ?? null,
             description: null,
           },
@@ -139,8 +135,8 @@ export default function AssignmentDialog({
       }
   
       toast({ title: "Назначение сохранено" })
-      onSave(selectedBus, selectedDriver)
       onClose()
+      onSave(selectedBus, selectedDriver)
     } catch {
       toast({
         title: "Ошибка",
@@ -184,40 +180,38 @@ export default function AssignmentDialog({
             />
           </div>
 
-          {selectedBus && (
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <Label className="text-lg font-semibold">Водитель</Label>
-                {!forceDriverMode && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setForceDriverMode(true)
-                      setDrivers([])
-                      onDriverSearchChange("")
-                    }}
-                  >
-                    Принудительно назначить
-                  </Button>
-                )}
-              </div>
-              <SearchInput value={driverSearchQuery} onChange={onDriverSearchChange} placeholder="🔍 Поиск водителя..." />
-              <SelectableList
-                items={filteredDrivers}
-                selected={selectedDriver}
-                onSelect={onSelectDriver}
-                labelKey="fullName"
-                subLabelKey={(d) => `№ ${d.serviceNumber}`}
-                status={(d) =>
-                  d.isAssigned
-                    ? { label: "НАЗНАЧЕН", color: "red" }
-                    : { label: "НЕ назначен", color: "green" }
-                }
-                disableItem={(d) => !!d.isAssigned}
-              />
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <Label className="text-lg font-semibold">Водитель</Label>
+              {!forceDriverMode && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setForceDriverMode(true)
+                    setDrivers([])
+                    onDriverSearchChange("")
+                  }}
+                >
+                  Принудительно назначить
+                </Button>
+              )}
             </div>
-          )}
+            <SearchInput value={driverSearchQuery} onChange={onDriverSearchChange} placeholder="🔍 Поиск водителя..." />
+            <SelectableList
+              items={filteredDrivers}
+              selected={selectedDriver}
+              onSelect={onSelectDriver}
+              labelKey="fullName"
+              subLabelKey={(d) => `№ ${d.serviceNumber}`}
+              status={(d) =>
+                d.isAssigned
+                  ? { label: "НАЗНАЧЕН", color: "red" }
+                  : { label: "НЕ назначен", color: "green" }
+              }
+              disableItem={(d) => !!d.isAssigned}
+            />
+          </div>
         </div>
 
         <DialogFooter className="pt-6">
