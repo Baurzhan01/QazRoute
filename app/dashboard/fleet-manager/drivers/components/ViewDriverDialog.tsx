@@ -10,6 +10,7 @@ interface ViewDriverDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   driver: Driver | null
+  busInfo?: any // <--- Добавь это
 }
 
 export default function ViewDriverDialog({ open, onOpenChange, driver,  }: ViewDriverDialogProps) {

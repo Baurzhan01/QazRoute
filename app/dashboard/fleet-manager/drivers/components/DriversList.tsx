@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from "react"
 import { Users, Plus, Search } from "lucide-react"
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -44,7 +45,7 @@ interface DriversListProps {
   onStatusFilter: (status: DriverStatus | null) => void
 }
 
-export default function DriversList({
+function DriversList({
   drivers,
   loading,
   error,
@@ -86,6 +87,7 @@ export default function DriversList({
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
           <Input
             type="search"
+            autoFocus
             placeholder="Поиск по имени или номеру..."
             className="pl-8"
             value={searchQuery}
@@ -198,8 +200,7 @@ export default function DriversList({
                           e.preventDefault()
                           if (currentPage > 1) onPageChange(currentPage - 1)
                         }}
-                        className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                      />
+                        className={currentPage === 1 ? "pointer-events-none opacity-50" : ""} />
                     </PaginationItem>
 
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
@@ -224,8 +225,7 @@ export default function DriversList({
                           e.preventDefault()
                           if (currentPage < totalPages) onPageChange(currentPage + 1)
                         }}
-                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                      />
+                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""} />
                     </PaginationItem>
                   </PaginationContent>
                 </Pagination>
@@ -237,3 +237,5 @@ export default function DriversList({
     </>
   )
 }
+
+export default memo(DriversList)

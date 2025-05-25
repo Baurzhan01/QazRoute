@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ArrowLeft } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { useDrivers } from "../drivers/hooks/useDrivers"
+import { Button } from "@/components/ui/button"
+import { useDebounce } from "./hooks/useDebounce"
+import { useDrivers } from "./hooks/useDrivers"
+
 import DriversList from "./components/DriversList"
 import AddDriverDialog from "./components/AddDriverDialog"
 import EditDriverDialog from "./components/EditDriverDialog"
@@ -13,6 +15,9 @@ import ViewDriverDialog from "./components/ViewDriverDialog"
 import type { Driver } from "@/types/driver.types"
 
 export default function DriversPage() {
+  const [rawSearch, setRawSearch] = useState("")
+  const debouncedSearch = useDebounce(rawSearch, 100)
+
   const {
     drivers,
     loading,
@@ -37,36 +42,36 @@ export default function DriversPage() {
     filterByStatus,
   } = useDrivers()
 
+  useEffect(() => {
+    setSearchQuery(debouncedSearch)
+  }, [debouncedSearch, setSearchQuery])
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null)
 
-  // Обработчики для открытия диалогов
   const openAddDialog = () => setIsAddDialogOpen(true)
-
   const openEditDialog = (driver: Driver) => {
     setSelectedDriver(driver)
     setIsEditDialogOpen(true)
   }
-
   const openDeleteDialog = (driver: Driver) => {
     setSelectedDriver(driver)
     setIsDeleteDialogOpen(true)
   }
-
   const openViewDialog = (driver: Driver) => {
     setSelectedDriver(driver)
     setIsViewDialogOpen(true)
   }
 
   const handleAddToReserve = (driver: Driver) => {
-    addToReserve(driver.id as string)
+    if (driver.id) addToReserve(driver.id)
   }
 
   const handleRemoveFromReserve = (driver: Driver) => {
-    removeFromReserve(driver.id as string)
+    if (driver.id) removeFromReserve(driver.id)
   }
 
   return (
@@ -87,8 +92,8 @@ export default function DriversPage() {
         drivers={drivers}
         loading={loading}
         error={error}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        searchQuery={rawSearch}                   // 🔍 локальный ввод
+        onSearchChange={setRawSearch}             // 🔄 изменение строки поиска
         onAddClick={openAddDialog}
         onEditClick={openEditDialog}
         onDeleteClick={openDeleteDialog}
@@ -108,8 +113,11 @@ export default function DriversPage() {
         onStatusFilter={filterByStatus}
       />
 
-      {/* Диалоги */}
-      <AddDriverDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onSubmit={addDriver} />
+      <AddDriverDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        onSubmit={addDriver}
+      />
 
       <EditDriverDialog
         open={isEditDialogOpen}
@@ -122,16 +130,23 @@ export default function DriversPage() {
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         driver={selectedDriver}
-        onConfirm={deleteDriver}
+        onConfirm={async (id) => {
+          const success = await deleteDriver(id)
+          if (success) setIsDeleteDialogOpen(false)
+          return success
+        }}
       />
 
       <ViewDriverDialog
         open={isViewDialogOpen}
         onOpenChange={setIsViewDialogOpen}
         driver={selectedDriver}
-        busInfo={selectedDriver?.busId ? busInfo[selectedDriver.busId] : null}
+        busInfo={
+          selectedDriver?.busId && busInfo[selectedDriver.busId]
+            ? busInfo[selectedDriver.busId]
+            : null
+        }
       />
     </div>
   )
 }
-

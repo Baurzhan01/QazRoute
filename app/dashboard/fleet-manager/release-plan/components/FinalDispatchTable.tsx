@@ -5,6 +5,7 @@ import type { FinalDispatchData } from "@/types/releasePlanTypes"
 import { Wrench } from "lucide-react"
 import { formatDayOfWeek, getMonthName } from "../utils/dateUtils"
 import Link from "next/link"
+import { useState } from "react"
 
 interface FinalDispatchTableProps {
   data: FinalDispatchData
@@ -38,6 +39,9 @@ export default function FinalDispatchTable({
   } = data
 
   const displayDate = new Date(date)
+  const [showDayOffBuses, setShowDayOffBuses] = useState(false)
+  const [showDayOffDrivers, setShowDayOffDrivers] = useState(false)
+
 
   function formatShortName(fullName?: string, serviceNumber?: string) {
     if (!fullName) return "—"
@@ -48,7 +52,7 @@ export default function FinalDispatchTable({
   }
   
   return (
-    <div className="text-[15px] leading-relaxed space-y-8 text-gray-900">
+    <div className="text-[18px] leading-relaxed space-y-2 text-gray-900">
       {/* 🧾 Верхняя панель */}
       <div className="flex justify-between border px-6 py-4 bg-gray-50 rounded-lg shadow-sm">
         <div className="space-y-1">
@@ -71,7 +75,7 @@ export default function FinalDispatchTable({
         <div key={group.routeId}>
           <Link
             href={`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${date}/route/${group.routeId}?from=final-dispatch`}
-            className="block bg-sky-600 text-white font-bold text-sm px-3 py-2 rounded-t mt-6 shadow-sm tracking-wide hover:bg-sky-700 transition"
+            className="block bg-sky-600 text-white font-bold text-sm px-3 py-2 rounded-t mt-3 shadow-sm tracking-wide hover:bg-sky-700 transition"
           >
             🚌 Маршрут № {group.routeNumber}
           </Link>
@@ -126,7 +130,7 @@ export default function FinalDispatchTable({
       {/* 🟨 Резерв */}
       {reserveAssignments.length > 0 && (
         <>
-          <div className="bg-yellow-400 text-black font-bold text-sm px-3 py-2 rounded-t mt-6 shadow-sm tracking-wide">
+          <div className="bg-yellow-400 text-black font-bold text-sm px-3 py-2 rounded-t mt-3 shadow-sm tracking-wide">
             🟨 Резерв
           </div>
           <table className="w-full border text-sm">
@@ -174,7 +178,7 @@ export default function FinalDispatchTable({
         </>
       )}
       {/* 📦 Нижние блоки: адаптивные и разделённые */}
-        <div className="grid grid-cols-1 md:grid-cols-1 xl:grid-cols-1 gap-6 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-1 xl:grid-cols-1 gap-3 mt-3">
           {/* 🔧 Ремонт */}
           <div className="bg-gray-50 border rounded-lg p-4 shadow-sm">
             <h4 className="font-bold text-sky-700 mb-3 flex items-center gap-2">
@@ -189,14 +193,28 @@ export default function FinalDispatchTable({
 
           {/* 🚫 На выходном */}
           <div className="bg-gray-50 border rounded-lg p-4 shadow-sm">
-            <h4 className="font-bold text-red-700 mb-3 flex items-center gap-2">
-              <span className="text-xl">🚫</span> Автобусы на выходном
+            <h4 className="font-bold text-red-700 mb-3 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <span className="text-xl">🚫</span> Автобусы на выходном
+                <span className="text-sm text-gray-500">({dayOffBuses.length})</span>
+              </span>
+              {dayOffBuses.length > 0 && (
+                <button
+                  onClick={() => setShowDayOffBuses(!showDayOffBuses)}
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  {showDayOffBuses ? "Скрыть" : "Показать"}
+                </button>
+              )}
             </h4>
-            <div className="flex flex-wrap gap-2">
-              {dayOffBuses.length ? dayOffBuses.map((b, i) => (
-                <span key={i} className="px-3 py-1 bg-white rounded border text-sm shadow-sm">{b}</span>
-              )) : <span className="text-gray-400">—</span>}
-            </div>
+
+            {showDayOffBuses && (
+              <div className="flex flex-wrap gap-2">
+                {dayOffBuses.map((b, i) => (
+                  <span key={i} className="px-3 py-1 bg-white rounded border text-sm shadow-sm">{b}</span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* ✅ Назначено */}
@@ -212,40 +230,80 @@ export default function FinalDispatchTable({
         </div>
 
       {/* Driver statuses в табличной форме */}
-      <div className="grid grid-cols-1 md:grid-cols-1 xl:grid-cols-1 gap-6 mt-4">
-        {renderDriverStatusTable("👤 Водители на выходном", driverStatuses?.DayOff, formatShortName)}
-        {renderDriverStatusTable("🤒 Больничный", driverStatuses?.OnSickLeave, formatShortName)}
-        {renderDriverStatusTable("🏖️ Отпуск", driverStatuses?.OnVacation, formatShortName)}
-        {renderDriverStatusTable("🧪 Стажёры", driverStatuses?.Intern, formatShortName)}
-      </div>
-    </div>
-  )
-}
+      <div className="grid grid-cols-1 md:grid-cols-1 xl:grid-cols-1 gap-3 mt-3">
+      {renderDriverStatusTable(
+        "👤 Водители на выходном",
+        driverStatuses?.DayOff,
+        formatShortName,
+        showDayOffDrivers,
+        () => setShowDayOffDrivers(!showDayOffDrivers)
+      )}
+        {renderDriverStatusTable(
+          "🤒 Больничный",
+          driverStatuses?.OnSickLeave,
+          formatShortName,
+          true,              // всегда показывать
+          () => {}           // заглушка, не нужна кнопка
+        )}
 
-function renderDriverStatusTable(
-  title: string,
-  list: string[] | undefined,
-  formatShortName: (name?: string) => string,
-  colorClass = "text-gray-700"
-) {
+        {renderDriverStatusTable(
+          "🏖️ Отпуск",
+          driverStatuses?.OnVacation,
+          formatShortName,
+          true,
+          () => {}
+        )}
+
+        {renderDriverStatusTable(
+          "🧪 Стажёры",
+          driverStatuses?.Intern,
+          formatShortName,
+          true,
+          () => {}
+        )}
+        </div>
+      </div>
+    )
+  }
+
+  function renderDriverStatusTable(
+    title: string,
+    list: string[] | undefined,
+    formatShortName: (name?: string) => string,
+    show: boolean = true,
+    toggleShow: () => void = () => {},
+    colorClass = "text-gray-700"
+  ) {
   return (
     <div className="bg-gray-50 border rounded-lg p-4 shadow-sm">
-      <h4 className={`font-bold mb-3 ${colorClass}`}>{title}</h4>
+      <h4 className={`font-bold mb-3 flex items-center justify-between ${colorClass}`}>
+        <span className="flex items-center gap-2">
+          {title} <span className="text-sm text-gray-500">({list?.length ?? 0})</span>
+        </span>
+        {list?.length ? (
+          <button
+            onClick={toggleShow}
+            className="text-sm text-blue-600 hover:underline"
+          >
+            {show ? "Скрыть" : "Показать"}
+          </button>
+        ) : null}
+      </h4>
+      {show && (
       <table className="w-full border text-sm text-gray-900">
         <tbody>
           <tr className="flex flex-wrap gap-2">
-            {list?.length ? (
-              list.map((fullName, i) => (
-                <td key={i} className="border px-2 py-1 bg-white shadow-sm">
-                  {formatShortName(fullName)}
-                </td>
-              ))
-            ) : (
-              <td className="text-gray-400">—</td>
-            )}
+            {list?.map((fullName, i) => (
+              <td key={i} className="border px-2 py-1 bg-white shadow-sm">
+                {formatShortName(fullName)}
+              </td>
+            ))}
           </tr>
         </tbody>
       </table>
+    )}
+
+    {!show && <div className="text-sm text-gray-400">Скрыто</div>}
     </div>
   )
 }
