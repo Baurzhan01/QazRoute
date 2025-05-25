@@ -137,7 +137,7 @@ export default function AssignmentDialog({
 
   return (
           <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="!w-[95vw] !max-w-[1400px] !max-h-[95vh] min-h-[500px] px-6 py-8 overflow-y-auto rounded-2xl shadow-xl">
+            <DialogContent className="!w-[55vw] !max-w-[1400px] !max-h-[95vh] min-h-[500px] px-6 py-8 overflow-y-auto rounded-2xl shadow-xl">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold tracking-wide text-gray-800">
                 Назначение автобуса и водителя

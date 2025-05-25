@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -21,9 +21,13 @@ import { useBeforeUnload } from "react-use";
 
 export default function ReservePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
+
   const dateString = params.date as string;
   const dayType = params.dayType as string;
+  const from = searchParams.get("from"); // ← определяем, откуда пришли
+
   const date = useMemo(() => parseDate(dateString), [dateString]);
 
   const localAuth = useMemo(() => {
@@ -102,7 +106,7 @@ export default function ReservePage() {
 
   const handleSave = async (bus: DisplayBus | null, driver: DisplayDriver | null) => {
     try {
-      await loadData(); // Сначала обновляем данные
+      await loadData();
       toast({ title: "Сохранено" });
     } catch {
       toast({
@@ -113,10 +117,15 @@ export default function ReservePage() {
     }
   };
 
+  const backHref =
+    from === "final-dispatch"
+      ? `/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}/final-dispatch`
+      : `/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}`;
+
   return (
     <div className="flex flex-col gap-4 p-4 md:p-8">
       <div className="flex items-center gap-2 mb-6">
-        <Link href={`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}`}>
+        <Link href={backHref}>
           <Button variant="outline" size="icon">
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -132,8 +141,8 @@ export default function ReservePage() {
           <CardHeader className="bg-gray-800 text-white flex justify-between items-center">
             <CardTitle>Резерв</CardTitle>
             <div className="flex gap-2">
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 className="bg-white text-black hover:bg-gray-100"
                 onClick={async () => {
                   try {
@@ -145,7 +154,7 @@ export default function ReservePage() {
                       },
                     ]);
                     toast({ title: "Пустое поле добавлено" });
-                    await loadData(); // Перезагружаем данные вместо перезагрузки страницы
+                    await loadData();
                   } catch {
                     toast({
                       title: "Ошибка",
@@ -157,7 +166,7 @@ export default function ReservePage() {
               >
                 <Plus className="h-4 w-4 mr-1" /> Добавить пустое поле
               </Button>
-              <Button 
+              <Button
                 variant="secondary"
                 className="bg-white text-black hover:bg-gray-100"
                 onClick={() => handleOpenDialog()}

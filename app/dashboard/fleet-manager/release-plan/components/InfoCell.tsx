@@ -1,48 +1,68 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { toast } from "@/components/ui/use-toast";
-import { releasePlanService } from "@/service/releasePlanService";
-import { formatDate } from "../utils/dateUtils";
+import { useState } from "react"
+import { toast } from "@/components/ui/use-toast"
+import { releasePlanService } from "@/service/releasePlanService"
+import { formatDate } from "../utils/dateUtils"
 
-const colorOptions = ["#000000", "#dc3545", "#28a745", "#007bff", "#ffc107"];
+const colorOptions = ["#000000", "#dc3545", "#28a745", "#007bff", "#ffc107"]
 
 interface InfoCellProps {
-  initialValue: string;
-  dispatchBusLineId: string;
-  date: Date;
+  initialValue: string
+  assignmentId: string
+  date: Date
+  type?: "route" | "reserve"
+  busId?: string | null
+  driverId?: string | null
 }
 
 export function InfoCell({
   initialValue,
-  dispatchBusLineId,
+  assignmentId,
   date,
+  type = "route",
+  busId = null,
+  driverId = null,
 }: InfoCellProps) {
-  const [value, setValue] = useState(initialValue ?? "");
-  const [textColor, setTextColor] = useState("#000000");
-  const [showColorMenu, setShowColorMenu] = useState(false);
-  const [anchorPoint, setAnchorPoint] = useState({ x: 0, y: 0 });
+  const [value, setValue] = useState(initialValue ?? "")
+  const [textColor, setTextColor] = useState("#000000")
+  const [showColorMenu, setShowColorMenu] = useState(false)
+  const [anchorPoint, setAnchorPoint] = useState({ x: 0, y: 0 })
 
   const handleSave = async () => {
-    try {
-      await releasePlanService.updateBusLineDescription(
-        dispatchBusLineId,
-        formatDate(date),
-        value.trim()
-      );
-      toast({ title: "Сохранено", description: "Доп. информация обновлена" });
-    } catch {
-      toast({ title: "Ошибка", description: "Не удалось сохранить" });
+    if (!assignmentId) {
+      toast({ title: "Ошибка", description: "Не указан ID назначения" })
+      return
     }
-  };
+
+    try {
+      if (type === "reserve") {
+        await releasePlanService.updateReserveAssignment(assignmentId, {
+          busId,
+          driverId,
+          description: value.trim(),
+        })
+      } else {
+        await releasePlanService.updateBusLineDescription(
+          assignmentId,
+          formatDate(date),
+          value.trim()
+        )
+      }
+
+      toast({ title: "Сохранено", description: "Доп. информация обновлена" })
+    } catch {
+      toast({ title: "Ошибка", description: "Не удалось сохранить" })
+    }
+  }
 
   return (
     <div
       className="relative"
       onContextMenu={(e) => {
-        e.preventDefault();
-        setAnchorPoint({ x: e.clientX, y: e.clientY });
-        setShowColorMenu(true);
+        e.preventDefault()
+        setAnchorPoint({ x: e.clientX, y: e.clientY })
+        setShowColorMenu(true)
       }}
     >
       <input
@@ -65,13 +85,13 @@ export function InfoCell({
               className="w-6 h-6 rounded-full cursor-pointer border mb-1"
               style={{ backgroundColor: color }}
               onClick={() => {
-                setTextColor(color);
-                setShowColorMenu(false);
+                setTextColor(color)
+                setShowColorMenu(false)
               }}
             />
           ))}
         </div>
       )}
     </div>
-  );
+  )
 }

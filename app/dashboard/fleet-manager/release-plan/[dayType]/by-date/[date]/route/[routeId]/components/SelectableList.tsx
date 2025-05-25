@@ -8,8 +8,10 @@ interface SelectableListProps<T extends { id: string }> {
   items: T[]
   selected: T | null
   onSelect: (item: T) => void
-  labelKey: keyof T | ((item: T) => string)
+  labelKey?: keyof T | ((item: T) => string)
   subLabelKey?: keyof T | ((item: T) => string)
+  labelRender?: (item: T) => React.ReactNode
+  subLabelRender?: (item: T) => React.ReactNode
   status?: (item: T) => StatusType
   disableItem?: (item: T) => boolean
   noAvailableMessage?: string
@@ -21,6 +23,8 @@ export default function SelectableList<T extends { id: string }>({
   onSelect,
   labelKey,
   subLabelKey,
+  labelRender,
+  subLabelRender,
   status,
   disableItem,
   noAvailableMessage = "Нет доступных элементов",
@@ -34,18 +38,26 @@ export default function SelectableList<T extends { id: string }>({
   }
 
   return (
-    <div className="border rounded-md h-48 overflow-y-auto p-2 space-y-2">
+    <div className="max-h-[280px] overflow-y-auto border rounded-md p-2 space-y-2">
       {items.map((item) => {
         const isSelected = selected?.id === item.id
         const isDisabled = disableItem?.(item) ?? false
 
-        const label = typeof labelKey === "function" ? labelKey(item) : String(item[labelKey])
+        const label =
+          labelRender?.(item) ??
+          (typeof labelKey === "function"
+            ? labelKey(item)
+            : labelKey
+            ? String(item[labelKey])
+            : "")
+
         const subLabel =
-          typeof subLabelKey === "function"
+          subLabelRender?.(item) ??
+          (typeof subLabelKey === "function"
             ? subLabelKey(item)
             : subLabelKey
             ? String(item[subLabelKey])
-            : null
+            : null)
 
         const itemStatus = status
           ? status(item)
@@ -70,8 +82,8 @@ export default function SelectableList<T extends { id: string }>({
             onClick={() => !isDisabled && onSelect(item)}
           >
             <div>
-              <div className="font-medium">{label}</div>
-              {subLabel && <div className="text-sm text-muted-foreground">{subLabel}</div>}
+              <div className="font-semibold text-base">{label}</div>
+              {subLabel && <div className="text-sm font-semibold text-gray-800">{subLabel}</div>}
 
               {itemStatus && (
                 <div className="text-xs mt-1">

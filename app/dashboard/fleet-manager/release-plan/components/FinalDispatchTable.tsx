@@ -110,11 +110,12 @@ export default function FinalDispatchTable({
                   <td className="border p-1">{a.departureTime}</td>
                   <td className="border p-1">{a.scheduleTime}</td>
                   <td className="border p-1">
-                    <InfoCell
-                      initialValue={a.additionalInfo ?? ""}
-                      dispatchBusLineId={a.dispatchBusLineId}
-                      date={displayDate}
-                    />
+                  <InfoCell
+                    initialValue={a.additionalInfo ?? ""}
+                    assignmentId={a.dispatchBusLineId}
+                    date={displayDate}
+                    type="route"
+                  />
                   </td>
                   <td className="border p-1">{a.shift2AdditionalInfo ?? "—"}</td>
                   <td className="border p-1">{a.shift2Driver?.fullName ?? "—"}</td>
@@ -130,9 +131,12 @@ export default function FinalDispatchTable({
       {/* 🟨 Резерв */}
       {reserveAssignments.length > 0 && (
         <>
-          <div className="bg-yellow-400 text-black font-bold text-sm px-3 py-2 rounded-t mt-3 shadow-sm tracking-wide">
-            🟨 Резерв
-          </div>
+           <Link
+            href={`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${date}/reserve?from=final-dispatch`}
+            className="block bg-yellow-400 text-black font-bold text-sm px-3 py-2 rounded-t mt-3 shadow-sm tracking-wide hover:bg-yellow-300 transition"
+          >
+            🟨 Резерв 
+          </Link>
           <table className="w-full border text-sm">
             <thead className="bg-yellow-100 text-black">
               <tr>
@@ -161,11 +165,14 @@ export default function FinalDispatchTable({
                   <td className="border p-1">—</td>
                   <td className="border p-1">—</td>
                   <td className="border p-1">
-                    <InfoCell
-                      initialValue={r.additionalInfo ?? ""}
-                      dispatchBusLineId={r.dispatchBusLineId}
-                      date={displayDate}
-                    />
+                  <InfoCell
+                    initialValue={r.additionalInfo ?? ""}
+                    assignmentId={r.dispatchBusLineId}
+                    date={displayDate}
+                    type="reserve"
+                    busId={null}
+                    driverId={null}
+                  />
                   </td>
                   <td className="border p-1">—</td>
                   <td className="border p-1">{r.shift2Driver?.fullName || "—"}</td>

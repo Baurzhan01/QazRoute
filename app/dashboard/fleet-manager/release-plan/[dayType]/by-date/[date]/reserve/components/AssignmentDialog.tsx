@@ -60,6 +60,7 @@ export default function AssignmentDialog({
   const [drivers, setDrivers] = useState<DisplayDriver[]>([])
   const [freeDrivers, setFreeDrivers] = useState<DisplayDriver[]>([])
   const [forceDriverMode, setForceDriverMode] = useState(false)
+  const [description, setDescription] = useState("")
 
   const debouncedBusSearch = useDebounce(busSearchQuery, 300)
   const debouncedDriverSearch = useDebounce(driverSearchQuery, 300)
@@ -86,6 +87,7 @@ export default function AssignmentDialog({
   useEffect(() => {
     if (!open) return
     setForceDriverMode(false)
+    setDescription("")
     fetchBuses()
     fetchFreeDrivers()
   }, [open, date, convoyId])
@@ -117,23 +119,21 @@ export default function AssignmentDialog({
   const handleSave = async () => {
     try {
       if (selectedDeparture?.id) {
-        // Редактирование существующего резерва
         await releasePlanService.updateReserveAssignment(selectedDeparture.id, {
           busId: selectedBus?.id ?? null,
           driverId: selectedDriver?.id ?? null,
-          description: null,
+          description: description || null,
         })
       } else {
-        // Создание нового резерва
         await releasePlanService.assignReserve(date, [
           {
             busId: selectedBus?.id ?? null,
             driverId: selectedDriver?.id ?? null,
-            description: null,
+            description: description || null,
           },
         ])
       }
-  
+
       toast({ title: "Назначение сохранено" })
       onClose()
       onSave(selectedBus, selectedDriver)
@@ -145,11 +145,10 @@ export default function AssignmentDialog({
       })
     }
   }
-  
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="!w-[95vw] !max-w-[1400px] !max-h-[95vh] min-h-[500px] px-6 py-8 overflow-y-auto rounded-2xl shadow-xl">
+      <DialogContent className="!w-[50vw] !max-w-[1400px] !max-h-[95vh] min-h-[500px] px-6 py-8 overflow-y-auto rounded-2xl shadow-xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold tracking-wide text-gray-800">
             Назначение автобуса и водителя
@@ -157,10 +156,11 @@ export default function AssignmentDialog({
         </DialogHeader>
 
         <div className="space-y-10 text-lg text-gray-700">
+          {/* 🚍 Автобус */}
           <div>
             <Label className="block mb-2 text-lg font-semibold">Автобус</Label>
             <SearchInput value={busSearchQuery} onChange={onBusSearchChange} placeholder="🔍 Поиск автобуса..." />
-            <SelectableList
+            <SelectableList<DisplayBus>
               items={filteredBuses}
               selected={selectedBus}
               onSelect={(bus) => {
@@ -169,17 +169,18 @@ export default function AssignmentDialog({
                 setDrivers([])
                 onDriverSearchChange("")
               }}
-              labelKey="garageNumber"
-              subLabelKey={(bus) => bus.govNumber}
-              status={(bus) =>
+              labelRender={(bus: DisplayBus) => <span className="font-bold text-base">{bus.garageNumber}</span>}
+              subLabelRender={(bus: DisplayBus) => <span className="font-bold text-gray-700">{bus.govNumber}</span>}
+              status={(bus: DisplayBus) =>
                 bus.isAssigned
                   ? { label: "НАЗНАЧЕН", color: "red" }
                   : { label: "НЕ назначен", color: "green" }
               }
-              disableItem={(bus) => !!bus.isAssigned}
+              disableItem={(bus: DisplayBus) => !!bus.isAssigned}
             />
           </div>
 
+          {/* 👤 Водитель */}
           <div>
             <div className="flex justify-between items-center mb-2">
               <Label className="text-lg font-semibold">Водитель</Label>
@@ -198,22 +199,33 @@ export default function AssignmentDialog({
               )}
             </div>
             <SearchInput value={driverSearchQuery} onChange={onDriverSearchChange} placeholder="🔍 Поиск водителя..." />
-            <SelectableList
+            <SelectableList<DisplayDriver>
               items={filteredDrivers}
               selected={selectedDriver}
               onSelect={onSelectDriver}
-              labelKey="fullName"
-              subLabelKey={(d) => `№ ${d.serviceNumber}`}
-              status={(d) =>
+              labelRender={(d: DisplayDriver) => <span className="font-bold text-base">{d.fullName}</span>}
+              subLabelRender={(d: DisplayDriver) => <span className="font-bold text-gray-700">№ {d.serviceNumber}</span>}
+              status={(d: DisplayDriver) =>
                 d.isAssigned
                   ? { label: "НАЗНАЧЕН", color: "red" }
                   : { label: "НЕ назначен", color: "green" }
               }
-              disableItem={(d) => !!d.isAssigned}
+              disableItem={(d: DisplayDriver) => !!d.isAssigned}
             />
           </div>
         </div>
-
+          {selectedBus && (
+            <div className="mt-4 text-lg text-gray-700">
+              <Label className="block mb-1 text-sm font-medium text-gray-700">Доп. информация</Label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full border rounded-md px-3 py-2 text-sm resize-none shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={3}
+                placeholder="Например: автобус из другого парка, резервный и т.д."
+              />
+            </div>
+          )}
         <DialogFooter className="pt-6">
           <Button variant="outline" onClick={onClose}>Отмена</Button>
           <Button onClick={handleSave}>Сохранить</Button>
