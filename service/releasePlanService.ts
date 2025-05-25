@@ -34,8 +34,10 @@ export const releasePlanService = {
   
 
 
-assignReserve: async (date: string, assignments: { driverId: string | null; busId: string | null }[]) =>
-  apiClient.post(`/dispatches/reserve/${date}/assignments`, assignments).then((res) => res.data),
+assignReserve: async (date: string, assignments: { driverId: string | null; busId: string | null; description: string | null }[]) => {
+  const response = await apiClient.post(`/dispatches/reserve/${date}/assignments`, assignments)
+  return response.data
+},
 
 
   updateDispatchRoute: async (
