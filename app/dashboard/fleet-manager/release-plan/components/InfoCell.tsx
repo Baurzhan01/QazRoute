@@ -14,6 +14,8 @@ interface InfoCellProps {
   type?: "route" | "reserve"
   busId?: string | null
   driverId?: string | null
+  textClassName?: string
+  readOnly?: boolean
 }
 
 export function InfoCell({
@@ -23,6 +25,8 @@ export function InfoCell({
   type = "route",
   busId = null,
   driverId = null,
+  textClassName = "text-red-600 font-medium",
+  readOnly = false,
 }: InfoCellProps) {
   const [value, setValue] = useState(initialValue ?? "")
   const [textColor, setTextColor] = useState("#000000")
@@ -56,6 +60,14 @@ export function InfoCell({
     }
   }
 
+  if (readOnly) {
+    return (
+      <span className={`block text-xs px-1 py-0.5 rounded ${textClassName}`}>
+        {value || "—"}
+      </span>
+    )
+  }
+
   return (
     <div
       className="relative"
@@ -66,8 +78,7 @@ export function InfoCell({
       }}
     >
       <input
-        className="w-full text-xs p-1 border rounded outline-none"
-        style={{ color: textColor }}
+        className={`w-full text-xs px-1 py-0.5 border rounded outline-none ${textClassName}`}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onBlur={handleSave}
