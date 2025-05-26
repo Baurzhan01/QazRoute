@@ -8,6 +8,7 @@ import FinalDispatchTable from "../../../../components/FinalDispatchTable"
 import { useFinalDispatch } from "../../../../hooks/useFinalDispatch"
 import { formatDateLabel, formatDayOfWeek, parseDate } from "../../../../utils/dateUtils"
 import type { ValidDayType } from "@/types/releasePlanTypes"
+import html2canvas from "html2canvas"
 
 function normalizeDayType(value?: string): ValidDayType | undefined {
   const map: Record<string, ValidDayType> = {
@@ -56,6 +57,23 @@ export default function FinalDispatchPage() {
     error,
   } = useFinalDispatch(displayDate, dayType)
 
+  const handleSaveAsImage = async () => {
+    const element = document.getElementById("final-dispatch-capture");
+    if (!element) return;
+  
+    const canvas = await html2canvas(element, {
+      scrollY: -window.scrollY,
+      useCORS: true,
+      scale: 2,
+    });
+  
+    const dataUrl = canvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.href = dataUrl;
+    link.download = `План_выпуска_${dateParam}.png`;
+    link.click();
+  };
+
   const depotName = convoyNumber ? `Автоколонна №${convoyNumber}` : "—"
 
   const handleGoBack = () => {
@@ -79,17 +97,9 @@ export default function FinalDispatchPage() {
         </div>
 
         <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={() =>
-              window.open(
-                `/print/${dayType}/${dateParam}`,
-                "_blank"
-              )
-            }
-          >
-            📄 Файл для печати
-          </Button>
+        <Button variant="outline" onClick={handleSaveAsImage}>
+          📷 Файл на печать
+        </Button>
           {finalDispatch && (
             <FinalDispatchExport
               date={displayDate}
@@ -103,7 +113,7 @@ export default function FinalDispatchPage() {
         </div>
       </div>
 
-      <div className="bg-white p-6 shadow rounded-lg">
+      <div id="final-dispatch-capture" className="bg-white p-6 shadow rounded-lg">
         {loading && <p className="text-gray-500">Загрузка данных...</p>}
         {error && <p className="text-red-500">Ошибка: {error}</p>}
         {!loading && !error && finalDispatch && (
