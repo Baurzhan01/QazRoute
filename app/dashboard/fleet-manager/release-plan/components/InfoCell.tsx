@@ -29,6 +29,7 @@ export function InfoCell({
   readOnly = false,
 }: InfoCellProps) {
   const [value, setValue] = useState(initialValue ?? "")
+  const [editing, setEditing] = useState(false)
   const [textColor, setTextColor] = useState("#000000")
   const [showColorMenu, setShowColorMenu] = useState(false)
   const [anchorPoint, setAnchorPoint] = useState({ x: 0, y: 0 })
@@ -60,9 +61,12 @@ export function InfoCell({
     }
   }
 
-  if (readOnly) {
+  if (readOnly && !editing) {
     return (
-      <span className={`block text-xs px-1 py-0.5 rounded ${textClassName}`}>
+      <span
+        className={`block text-xs px-1 py-0.5 rounded cursor-pointer ${textClassName}`}
+        onClick={() => setEditing(true)}
+      >
         {value || "—"}
       </span>
     )
@@ -81,7 +85,11 @@ export function InfoCell({
         className={`w-full text-xs px-1 py-0.5 border rounded outline-none ${textClassName}`}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        onBlur={handleSave}
+        autoFocus
+        onBlur={() => {
+          setEditing(false)
+          if (value.trim() !== initialValue?.trim()) handleSave()
+        }}
       />
 
       {showColorMenu && (

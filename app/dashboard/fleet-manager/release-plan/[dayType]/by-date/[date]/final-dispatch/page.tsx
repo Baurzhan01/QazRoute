@@ -9,6 +9,9 @@ import { useFinalDispatch } from "../../../../hooks/useFinalDispatch"
 import { formatDateLabel, formatDayOfWeek, parseDate } from "../../../../utils/dateUtils"
 import type { ValidDayType } from "@/types/releasePlanTypes"
 import html2canvas from "html2canvas"
+import { telegramService } from "@/service/telegramService"
+import { toast } from "@/components/ui/use-toast"
+import { getAuthData } from "@/lib/auth-utils"
 
 function normalizeDayType(value?: string): ValidDayType | undefined {
   const map: Record<string, ValidDayType> = {
@@ -32,6 +35,9 @@ export default function FinalDispatchPage() {
   const [hydrated, setHydrated] = useState(false)
   const [displayDate, setDisplayDate] = useState<Date | null>(null)
   const { refetch } = useFinalDispatch(displayDate, dayType)
+  const authData = getAuthData()
+  const convoyId = authData?.convoyId
+  const [readOnlyExportMode, setReadOnlyExportMode] = useState(false)
 
   useEffect(() => {
     if (hydrated && displayDate && dayType) {
@@ -58,21 +64,28 @@ export default function FinalDispatchPage() {
   } = useFinalDispatch(displayDate, dayType)
 
   const handleSaveAsImage = async () => {
-    const element = document.getElementById("final-dispatch-capture");
-    if (!element) return;
+    const captureEl = document.getElementById("final-dispatch-capture")
+    if (!captureEl) return
   
-    const canvas = await html2canvas(element, {
+    setReadOnlyExportMode(true) // 🔥 Включаем readOnly
+  
+    await new Promise((r) => setTimeout(r, 100)) // подождать отрисовку
+  
+    const canvas = await html2canvas(captureEl, {
       scrollY: -window.scrollY,
       useCORS: true,
       scale: 2,
-    });
+    })
   
-    const dataUrl = canvas.toDataURL("image/png");
-    const link = document.createElement("a");
-    link.href = dataUrl;
-    link.download = `План_выпуска_${dateParam}.png`;
-    link.click();
-  };
+    setReadOnlyExportMode(false) // 🔥 Вернуть обратно
+  
+    const dataUrl = canvas.toDataURL("image/png")
+    const link = document.createElement("a")
+    link.href = dataUrl
+    link.download = `План_выпуска_${dateParam}.png`
+    link.click()
+  }
+  
 
   const depotName = convoyNumber ? `Автоколонна №${convoyNumber}` : "—"
 
@@ -97,6 +110,27 @@ export default function FinalDispatchPage() {
         </div>
 
         <div className="flex gap-3">
+          <Button
+              variant="default"
+              onClick={async () => {
+                if (!displayDate || !convoyId) return
+                try {
+                  const res = await telegramService.sendDispatchToDrivers(
+                    displayDate.toISOString().split("T")[0],
+                    convoyId
+                  )
+                  if (res.isSuccess) {
+                    toast({ title: "✅ Разнарядка отправлена водителям" })
+                  } else {
+                    toast({ title: "❌ Ошибка", description: res.error || "Не удалось отправить сообщение" })
+                  }
+                } catch (error) {
+                  toast({ title: "Ошибка", description: "Ошибка при отправке Telegram-сообщений" })
+                }
+              }}
+            >
+              📩 Разослать водителям
+          </Button>
         <Button variant="outline" onClick={handleSaveAsImage}>
           📷 Файл на печать
         </Button>
@@ -124,6 +158,7 @@ export default function FinalDispatchPage() {
             busesCount={busesCount}
             convoySummary={convoySummary}
             dayType={dayType ?? "workday"}
+            readOnlyMode={readOnlyExportMode}
           />
         )}
       </div>

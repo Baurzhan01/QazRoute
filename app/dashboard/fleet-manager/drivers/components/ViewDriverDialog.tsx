@@ -60,7 +60,15 @@ export default function ViewDriverDialog({ open, onOpenChange, driver,  }: ViewD
                     <div>{driver.serviceNumber}</div>
                   </div>
                 </div>
-
+                {driver.iin && (
+                  <div className="flex items-start gap-3">
+                    <User className="h-5 w-5 text-gray-500 mt-0.5" />
+                    <div>
+                      <div className="text-sm font-medium text-gray-500">ИИН</div>
+                      <div>{driver.iin}</div>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-start gap-3">
                   <Phone className="h-5 w-5 text-gray-500 mt-0.5" />
                   <div>

@@ -19,6 +19,7 @@ interface FinalDispatchTableProps {
     busOnWork?: number
   }
   dayType: string
+  readOnlyMode?: boolean
 }
 
 export default function FinalDispatchTable({
@@ -28,6 +29,7 @@ export default function FinalDispatchTable({
   busesCount,
   convoySummary,
   dayType,
+  readOnlyMode = false,
 }: FinalDispatchTableProps) {
   const {
     routeGroups = [],
@@ -124,7 +126,7 @@ export default function FinalDispatchTable({
                           busId={null}
                           driverId={null}
                           textClassName="text-red-600 font-semibold"
-                          readOnly={false}
+                          readOnly={readOnlyMode} // ← вот здесь
                         />
                         </td>
                         <td className="px-1 py-[2px] border font-semibold">{a.shift2AdditionalInfo ?? "—"}</td>
@@ -188,7 +190,7 @@ export default function FinalDispatchTable({
                         busId={null}
                         driverId={null}
                         textClassName="text-red-600 font-semibold"
-                        readOnly={true}
+                        readOnly={readOnlyMode} // ← вот здесь
                       />
                     </td>
                     <td className="px-1 py-[2px] border font-semibold">—</td>

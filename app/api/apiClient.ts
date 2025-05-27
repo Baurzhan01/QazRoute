@@ -1,9 +1,10 @@
 // app/api/apiClient.ts
 import axios from 'axios';
 import type { ApiResponse } from '@/types/api.types';
+import { API_BASE_URL } from './apiService';
 
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://82.115.49.203/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },

@@ -31,6 +31,7 @@ export default function EditDriverDialog({ open, onOpenChange, driver, onSubmit 
     driverStatus: "OnWork",
     busId: "",
     convoyId: "",
+    iin: "",
   })
   const [birthDate, setBirthDate] = useState<Date | undefined>(undefined)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -47,6 +48,7 @@ export default function EditDriverDialog({ open, onOpenChange, driver, onSubmit 
         driverStatus: driver.driverStatus,
         busId: driver.busId,
         convoyId: driver.convoyId,
+        iin: driver.iin ?? "",
       })
 
       // Устанавливаем дату рождения
@@ -94,6 +96,7 @@ export default function EditDriverDialog({ open, onOpenChange, driver, onSubmit 
       driverStatus: formData.driverStatus || "OnWork",
       busId: formData.busId?.trim() ? formData.busId : null,         // ✅ fix 1
       convoyId: currentConvoyId || formData.convoyId || "1",         // ✅ fix 2
+      iin: formData.iin ?? null,
       birthDate: birthDate
         ? birthDate.toISOString().split("T")[0]
         : driver?.birthDate ?? null,
@@ -139,6 +142,16 @@ export default function EditDriverDialog({ open, onOpenChange, driver, onSubmit 
               onChange={handleChange}
               className="col-span-3"
             />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="iin" className="text-right">ИИН</Label>
+            <Input
+              id="iin"
+              name="iin"
+              value={formData.iin ?? ""}
+              onChange={handleChange}
+              className="col-span-3"
+          />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="birthDate" className="text-right">

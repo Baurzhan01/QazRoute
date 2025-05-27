@@ -41,6 +41,7 @@ export interface Driver {
   convoyId?: string
   inReserve?: boolean
   buses?: Bus[] // 🔥 добавь это
+  iin?: string | null
 }
 
 export interface DisplayDriver {

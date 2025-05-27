@@ -29,6 +29,7 @@ export default function AddDriverDialog({ open, onOpenChange, onSubmit }: AddDri
     driverStatus: "OnWork",
     busId: "",
     convoyId: "", // установим из localStorage
+    iin: "",
   })
 
   const [birthDate, setBirthDate] = useState<Date | undefined>(undefined)
@@ -77,6 +78,7 @@ export default function AddDriverDialog({ open, onOpenChange, onSubmit }: AddDri
       driverStatus: formData.driverStatus || "OnWork",
       busId: null,
       convoyId: formData.convoyId || "",
+      iin: formData.iin ?? null,
       birthDate: birthDate ? format(birthDate, "yyyy-MM-dd") : "1990-01-01"
     }
 
@@ -113,14 +115,22 @@ export default function AddDriverDialog({ open, onOpenChange, onSubmit }: AddDri
             </Label>
             <Input id="fullName" name="fullName" value={formData.fullName} onChange={handleChange} className="col-span-3" />
           </div>
-
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="serviceNumber" className="text-right">
               Табельный номер *
             </Label>
             <Input id="serviceNumber" name="serviceNumber" value={formData.serviceNumber} onChange={handleChange} className="col-span-3" />
           </div>
-
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="iin" className="text-right">ИИН</Label>
+            <Input
+              id="iin"
+              name="iin"
+              value={formData.iin ?? ""}
+              onChange={handleChange}
+              className="col-span-3"
+          />
+          </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="birthDate" className="text-right">
               Дата рождения
