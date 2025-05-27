@@ -116,14 +116,16 @@ export default function FinalDispatchTable({
                         <td className="px-1 py-[2px] border font-semibold text-center">{a.departureTime}</td>
                         <td className="px-1 py-[2px] border font-semibold text-center">{a.scheduleTime}</td>
                         <td className="px-1 py-[2px] border font-semibold">
-                          <InfoCell
-                            initialValue={a.additionalInfo ?? ""}
-                            assignmentId={a.dispatchBusLineId}
-                            date={displayDate}
-                            type="route"
-                            textClassName="text-red-600 font-semibold"
-                            readOnly={true}
-                          />
+                        <InfoCell
+                          initialValue={a.additionalInfo ?? ""}
+                          assignmentId={a.dispatchBusLineId}
+                          date={displayDate}
+                          type="route"
+                          busId={null}
+                          driverId={null}
+                          textClassName="text-red-600 font-semibold"
+                          readOnly={false}
+                        />
                         </td>
                         <td className="px-1 py-[2px] border font-semibold">{a.shift2AdditionalInfo ?? "—"}</td>
                         <td className="px-1 py-[2px] border font-semibold">{a.shift2Driver?.fullName ?? "—"}</td>
@@ -172,7 +174,7 @@ export default function FinalDispatchTable({
                   <tr key={i} className="even:bg-gray-50 font-medium">
                     <td className="px-1 py-[2px] border font-semibold text-center">{r.sequenceNumber || i + 1}</td>
                     <td className="px-1 py-[2px] border font-semibold">{r.garageNumber || "—"}</td>
-                    <td className="px-1 py-[2px] border font-semibold">{r.stateNumber || "—"}</td>
+                    <td className="px-1 py-[2px] border font-semibold">{r.govNumber || "—"}</td>
                     <td className="px-1 py-[2px] border font-semibold">{formatShortName(r.driver?.fullName || "—")}</td>
                     <td className="px-1 py-[2px] border font-semibold text-center">{r.driver?.serviceNumber || "—"}</td>
                     <td className="px-1 py-[2px] border font-semibold">—</td>

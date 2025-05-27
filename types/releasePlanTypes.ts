@@ -168,7 +168,7 @@ export interface ReserveAssignment {
   dispatchBusLineId: string;
   sequenceNumber: number
   garageNumber: string
-  stateNumber: string
+  govNumber: string
   driver: {
     serviceNumber: string
     fullName: string

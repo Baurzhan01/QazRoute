@@ -34,11 +34,18 @@ export const releasePlanService = {
   
 
 
-assignReserve: async (date: string, assignments: { driverId: string | null; busId: string | null; description: string | null }[]) => {
-  const response = await apiClient.post(`/dispatches/reserve/${date}/assignments`, assignments)
-  return response.data
-},
-
+  assignReserve: async (
+    date: string,
+    assignments: { driverId: string | null; busId: string | null; description: string | null }[],
+    convoyId: string
+  ): Promise<ApiResponse<boolean>> => {
+    const response = await apiClient.post(
+      `/dispatches/reserve/${date}/assignments/${convoyId}`,
+      assignments
+    )
+    return response.data
+  },
+  
 
   updateDispatchRoute: async (
     payload: DispatchRouteUpdateRequest
@@ -78,11 +85,16 @@ assignReserve: async (date: string, assignments: { driverId: string | null; busI
 
   assignToReserve: async (
     date: string,
-    payload: ReserveAssignmentDto[]
+    payload: ReserveAssignmentDto[],
+    convoyId: string
   ): Promise<ApiResponse<boolean>> => {
-    const { data } = await apiClient.post(`/dispatches/reserve/${date}/assignments`, payload)
+    const { data } = await apiClient.post(
+      `/dispatches/reserve/${date}/assignments?convoyId=${convoyId}`,
+      payload
+    )
     return data
-  },  
+  },
+  
 
   removeFromReserve: async (ids: string[]): Promise<ApiResponse<boolean>> => {
     const { data } = await apiClient.delete(`/dispatches/reserve/assignments`, { data: ids })
@@ -120,10 +132,16 @@ assignReserve: async (date: string, assignments: { driverId: string | null; busI
     return data
   },
 
-  getReserveAssignmentsByDate: async (date: string): Promise<ApiResponse<ReserveAssignment[]>> => {
-    const { data } = await apiClient.get(`/dispatches/reserve/${date}/all`)
+  getReserveAssignmentsByDate: async (
+    date: string,
+    convoyId: string
+  ): Promise<ApiResponse<ReserveAssignment[]>> => {
+    const { data } = await apiClient.get(
+      `/dispatches/reserve/${date}/all/${convoyId}`
+    )
     return data
-  },
+  },  
+  
   
   updateReserveAssignment: async (
     id: string,

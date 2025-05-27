@@ -26,7 +26,7 @@ export default function ReservePage() {
 
   const dateString = params.date as string;
   const dayType = params.dayType as string;
-  const from = searchParams.get("from"); // ← определяем, откуда пришли
+  const from = searchParams.get("from");
 
   const date = useMemo(() => parseDate(dateString), [dateString]);
 
@@ -51,41 +51,37 @@ export default function ReservePage() {
 
   const loadData = async () => {
     try {
-      const res = await releasePlanService.getReservesByDate(dateString);
+      const res = await releasePlanService.getReserveAssignmentsByDate(dateString, convoyId);
       const reserves = res.value ?? [];
 
-      if (reserves.length) {
-        setDepartures(
-          reserves.map((r: any, index: number) => ({
-            id: r.id ?? uuidv4(),
-            sequenceNumber: index + 1,
-            departureTime: "",
-            scheduleTime: "",
-            endTime: r.endTime ?? "",
-            bus: r.busId
-              ? {
-                  id: r.busId,
-                  garageNumber: r.garageNumber,
-                  govNumber: r.govNumber,
-                  status: "OnWork",
-                  convoyId: convoyId,
-                }
-              : undefined,
-            driver: r.driverTabNumber
-              ? {
-                  id: r.driverId,
-                  fullName: r.driverFullName,
-                  serviceNumber: r.driverTabNumber,
-                  convoyId: convoyId,
-                  driverStatus: "OnWork",
-                }
-              : undefined,
-            additionalInfo: r.description ?? "",
-          }))
-        );
-      } else {
-        setDepartures([]);
-      }
+      setDepartures(
+        reserves.map((r: any, index: number) => ({
+          id: r.id ?? uuidv4(),
+          sequenceNumber: r.sequenceNumber ?? index + 1,
+          departureTime: r.departureTime ?? "",
+          scheduleTime: r.scheduleTime ?? "",
+          endTime: r.endTime ?? "",
+          bus: r.busId
+            ? {
+                id: r.busId,
+                garageNumber: r.garageNumber,
+                govNumber: r.govNumber,
+                busStatus: "OnWork", // обязательно!
+                convoyId,
+              }
+            : undefined,
+          driver: r.driverTabNumber
+            ? {
+                id: r.driverId,
+                fullName: r.driverFullName,
+                serviceNumber: r.driverTabNumber,
+                convoyId,
+                driverStatus: "OnWork",
+              }
+            : undefined,
+          additionalInfo: r.description ?? "",
+        }))
+      );
     } catch (error) {
       toast({ title: "Ошибка", description: "Не удалось загрузить резерв", variant: "destructive" });
     }
@@ -146,13 +142,11 @@ export default function ReservePage() {
                 className="bg-white text-black hover:bg-gray-100"
                 onClick={async () => {
                   try {
-                    await releasePlanService.assignReserve(dateString, [
-                      {
-                        busId: null,
-                        driverId: null,
-                        description: null,
-                      },
-                    ]);
+                    await releasePlanService.assignReserve(
+                      dateString,
+                      [{ busId: null, driverId: null, description: null }],
+                      convoyId
+                    );
                     toast({ title: "Пустое поле добавлено" });
                     await loadData();
                   } catch {

@@ -81,7 +81,7 @@ export default function AssignmentDialog({
       isAssigned: d.isBusy ?? false,
     }))
     setFreeDrivers(drivers)
-    setDrivers(drivers)
+    setDrivers([])
   }
 
   useEffect(() => {
@@ -125,13 +125,17 @@ export default function AssignmentDialog({
           description: description || null,
         })
       } else {
-        await releasePlanService.assignReserve(date, [
-          {
-            busId: selectedBus?.id ?? null,
-            driverId: selectedDriver?.id ?? null,
-            description: description || null,
-          },
-        ])
+        await releasePlanService.assignReserve(
+          date,
+          [
+            {
+              busId: selectedBus?.id ?? null,
+              driverId: selectedDriver?.id ?? null,
+              description: description || null,
+            },
+          ],
+          convoyId // ✅ передаём convoyId
+        )
       }
 
       toast({ title: "Назначение сохранено" })
@@ -190,7 +194,7 @@ export default function AssignmentDialog({
                   size="sm"
                   onClick={() => {
                     setForceDriverMode(true)
-                    setDrivers([])
+                    setDrivers(freeDrivers)
                     onDriverSearchChange("")
                   }}
                 >
@@ -214,18 +218,20 @@ export default function AssignmentDialog({
             />
           </div>
         </div>
-          {selectedBus && (
-            <div className="mt-4 text-lg text-gray-700">
-              <Label className="block mb-1 text-sm font-medium text-gray-700">Доп. информация</Label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full border rounded-md px-3 py-2 text-sm resize-none shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={3}
-                placeholder="Например: автобус из другого парка, резервный и т.д."
-              />
-            </div>
-          )}
+
+        {selectedBus && (
+          <div className="mt-4 text-lg text-gray-700">
+            <Label className="block mb-1 text-sm font-medium text-gray-700">Доп. информация</Label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full border rounded-md px-3 py-2 text-sm resize-none shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={3}
+              placeholder="Например: автобус из другого парка, резервный и т.д."
+            />
+          </div>
+        )}
+
         <DialogFooter className="pt-6">
           <Button variant="outline" onClick={onClose}>Отмена</Button>
           <Button onClick={handleSave}>Сохранить</Button>

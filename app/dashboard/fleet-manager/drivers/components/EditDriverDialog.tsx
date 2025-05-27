@@ -180,7 +180,7 @@ export default function EditDriverDialog({ open, onOpenChange, driver, onSubmit 
                 <SelectItem value="OnVacation">В отпуске</SelectItem>
                 <SelectItem value="OnSickLeave">На больничном</SelectItem>
                 <SelectItem value="Intern">Стажер</SelectItem>
-                <SelectItem value="Fired">Уволен</SelectItem>
+                <SelectItem value="Fired">Отстранен</SelectItem>
               </SelectContent>
             </Select>
           </div>

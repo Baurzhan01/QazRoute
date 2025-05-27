@@ -54,7 +54,7 @@ export function useFinalDispatch(date: Date | null, dayType?: ValidDayType) {
         repairBusesRes,
       ] = await Promise.all([
         releasePlanService.getFullDispatchByDate(dateStr, convoyId, routeStatus),
-        releasePlanService.getReserveAssignmentsByDate(dateStr),
+        releasePlanService.getReserveAssignmentsByDate(dateStr,convoyId),
         convoyService.getConvoySummary(convoyId, dateStr),
         convoyService.getById(convoyId),
         driverService.getWeekendDrivers(dateStr, convoyId),
@@ -135,7 +135,7 @@ export function useFinalDispatch(date: Date | null, dayType?: ValidDayType) {
         dispatchBusLineId: r.dispatchBusLineId,
         sequenceNumber: r.sequenceNumber ?? index + 1,
         garageNumber: r.garageNumber ?? "",
-        stateNumber: r.stateNumber ?? "",
+        govNumber: r.govNumber ?? "",
         driver: r.driver
           ? r.driver
           : {
