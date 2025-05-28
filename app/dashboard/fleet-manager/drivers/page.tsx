@@ -77,6 +77,8 @@ export default function DriversPage() {
   }
   const searchParams = useSearchParams()
   const initialStatus = searchParams.get("status") as DriverStatus | null
+  const dateParam = searchParams.get("date")
+
   
   useEffect(() => {
     if (initialStatus) {
@@ -93,8 +95,8 @@ export default function DriversPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        {searchParams.get("status") && (
-          <Link href="/dashboard/fleet-manager/release-plan/workday/by-date/2025-05-26/final-dispatch">
+        {searchParams.get("status") && dateParam && (
+          <Link href={`/dashboard/fleet-manager/release-plan/workday/by-date/${dateParam}/final-dispatch`}>
             <Button variant="ghost" className="mb-2 text-blue-600 hover:underline">
               ← Назад к разнарядке
             </Button>

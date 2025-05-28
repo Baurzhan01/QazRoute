@@ -1,24 +1,20 @@
 // service/telegramService.ts
 
 import apiClient from "@/app/api/apiClient"
-import type { ApiResponse } from "@/types/api.types"
 
 export const telegramService = {
-  async sendDispatchToDrivers(date: string, convoyId: string): Promise<ApiResponse<number>> {
+  async sendDispatchToDrivers(date: string, convoyId: string): Promise<string> {
     try {
-      const response = await apiClient.post<ApiResponse<number>>(
+      const response = await apiClient.post<string>(
         "/telegram/send-by-dispatch",
         null,
         { params: { date, convoyId } }
       )
-      return response.data
+      return response.data // просто строка!
     } catch (error: any) {
-      return {
-        isSuccess: false,
-        error: error?.response?.data?.message || "Ошибка при отправке Telegram-сообщений",
-        statusCode: error?.response?.status || 500,
-        value: null,
-      }
+      const message =
+        error?.response?.data || error?.response?.data?.message || "Ошибка при отправке Telegram-сообщений"
+      throw new Error(message)
     }
   },
 }

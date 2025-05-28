@@ -118,27 +118,18 @@ export default function FinalDispatchPage() {
           onClick={async () => {
             if (!displayDate || !convoyId) return
             try {
-              const res = await telegramService.sendDispatchToDrivers(
+              const responseText = await telegramService.sendDispatchToDrivers(
                 displayDate.toISOString().split("T")[0],
                 convoyId
               )
-              if (res.isSuccess) {
-                // Показываем сообщение от сервера (если есть)
-                const message = res.value
-                  ? `Успешно отправлено ${res.value} сообщений.`
-                  : "Успешно отправлено.";
-                setModalMessage(message)
-              } else {
-                setModalMessage(res.error || "Ошибка при отправке.")
-              }
-            } catch (error) {
-              setModalMessage("Ошибка при отправке Telegram-сообщений")
+              setModalMessage(responseText) // ← просто показываем, что пришло от сервера
+            } catch (error: any) {
+              setModalMessage(error.message || "Ошибка при отправке Telegram-сообщений")
             }
           }}
         >
           📩 Разослать водителям
         </Button>
-
 
         <Button variant="outline" onClick={handleSaveAsImage}>
           📷 Файл на печать

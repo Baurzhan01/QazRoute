@@ -270,37 +270,43 @@ export default function FinalDispatchTable({
         "👤 Водители на выходном",
         driverStatuses?.DayOff,
         formatShortName,
+        date,
         showDayOffDrivers,
-        () => setShowDayOffDrivers(!showDayOffDrivers)
+        () => setShowDayOffDrivers(!showDayOffDrivers),
+        "text-red-700",
+        undefined
       )}
         {renderDriverStatusTable(
           "🤒 Больничный",
           driverStatuses?.OnSickLeave,
           formatShortName,
-          true,              // всегда показывать
-          () => {},         // заглушка, не нужна кнопка
-           "text-orange-700",
-            "OnSickLeave"
+          date,
+          true,
+          () => {},
+          "text-orange-700",
+          "OnSickLeave"
         )}
 
         {renderDriverStatusTable(
           "🏖️ Отпуск",
           driverStatuses?.OnVacation,
           formatShortName,
+          date,
           true,
           () => {},
           "text-yellow-700",
-            "OnVacation"
+          "OnVacation"
         )}
 
         {renderDriverStatusTable(
           "🧪 Стажёры",
           driverStatuses?.Intern,
           formatShortName,
+          date,
           true,
           () => {},
-           "text-cyan-700",
-            "Intern"
+          "text-cyan-700",
+          "Intern"
         )}
         </div>
       </div>
@@ -311,25 +317,29 @@ export default function FinalDispatchTable({
     title: string,
     list: string[] | undefined,
     formatShortName: (name?: string) => string,
+    date: string,
     show: boolean = true,
     toggleShow: () => void = () => {},
     colorClass = "text-gray-700",
-    statusKey?: "OnSickLeave" | "OnVacation" | "Intern" // 👈 добавлен
+    statusKey?: "OnSickLeave" | "OnVacation" | "Intern"
   ) {
     const router = useRouter()
+    const displayDate = new Date(date)
   
     const goToDriversPage = () => {
-      if (statusKey) {
-        router.push(`/dashboard/fleet-manager/drivers?status=${statusKey}`)
-      }
-    }
+      const baseUrl = "/dashboard/fleet-manager/drivers"
+      const url = statusKey
+        ? `${baseUrl}?status=${statusKey}&date=${date}`
+        : `${baseUrl}?date=${date}`
+      router.push(url)
+    }    
   
     return (
       <div
         className={`bg-gray-50 border rounded-lg p-3 shadow-sm ${
           statusKey ? "hover:bg-gray-100 cursor-pointer" : ""
         }`}
-        onClick={statusKey ? goToDriversPage : undefined} // 👈 обработчик только если нужен
+        onClick={goToDriversPage}
       >
         <h4 className={`font-bold mb-2 flex items-center justify-between ${colorClass}`}>
           <span className="flex items-center gap-2">
