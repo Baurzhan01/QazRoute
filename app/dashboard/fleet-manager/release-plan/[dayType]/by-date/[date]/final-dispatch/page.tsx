@@ -12,6 +12,8 @@ import html2canvas from "html2canvas"
 import { telegramService } from "@/service/telegramService"
 import { toast } from "@/components/ui/use-toast"
 import { getAuthData } from "@/lib/auth-utils"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+
 
 function normalizeDayType(value?: string): ValidDayType | undefined {
   const map: Record<string, ValidDayType> = {
@@ -31,6 +33,7 @@ export default function FinalDispatchPage() {
   const dateParam = params?.date as string | undefined
   const rawDayType = params?.dayType as string | undefined
   const dayType = normalizeDayType(rawDayType)
+  const [modalMessage, setModalMessage] = useState<string | null>(null)
 
   const [hydrated, setHydrated] = useState(false)
   const [displayDate, setDisplayDate] = useState<Date | null>(null)
@@ -110,27 +113,33 @@ export default function FinalDispatchPage() {
         </div>
 
         <div className="flex gap-3">
-          <Button
-              variant="default"
-              onClick={async () => {
-                if (!displayDate || !convoyId) return
-                try {
-                  const res = await telegramService.sendDispatchToDrivers(
-                    displayDate.toISOString().split("T")[0],
-                    convoyId
-                  )
-                  if (res.isSuccess) {
-                    toast({ title: "✅ Разнарядка отправлена водителям" })
-                  } else {
-                    toast({ title: "❌ Ошибка", description: res.error || "Не удалось отправить сообщение" })
-                  }
-                } catch (error) {
-                  toast({ title: "Ошибка", description: "Ошибка при отправке Telegram-сообщений" })
-                }
-              }}
-            >
-              📩 Разослать водителям
-          </Button>
+        <Button
+          variant="default"
+          onClick={async () => {
+            if (!displayDate || !convoyId) return
+            try {
+              const res = await telegramService.sendDispatchToDrivers(
+                displayDate.toISOString().split("T")[0],
+                convoyId
+              )
+              if (res.isSuccess) {
+                // Показываем сообщение от сервера (если есть)
+                const message = res.value
+                  ? `Успешно отправлено ${res.value} сообщений.`
+                  : "Успешно отправлено.";
+                setModalMessage(message)
+              } else {
+                setModalMessage(res.error || "Ошибка при отправке.")
+              }
+            } catch (error) {
+              setModalMessage("Ошибка при отправке Telegram-сообщений")
+            }
+          }}
+        >
+          📩 Разослать водителям
+        </Button>
+
+
         <Button variant="outline" onClick={handleSaveAsImage}>
           📷 Файл на печать
         </Button>
@@ -162,6 +171,17 @@ export default function FinalDispatchPage() {
           />
         )}
       </div>
+      <Dialog open={!!modalMessage} onOpenChange={() => setModalMessage(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>📨 Telegram-рассылка</DialogTitle>
+          </DialogHeader>
+          <div className="text-base">{modalMessage}</div>
+          <DialogFooter>
+            <Button onClick={() => setModalMessage(null)}>ОК</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

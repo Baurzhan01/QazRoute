@@ -101,15 +101,37 @@ export default function EditBusDialog({ bus, open, onClose, refetch }: EditBusDi
   };
 
   const handleAssignDriver = async (driverId: string) => {
-    await busService.assignDrivers(bus.id, [driverId]);
-    refetch();
+    try {
+      await busService.assignDrivers(bus.id, [driverId]);
+  
+      const assigned = availableDrivers.find((d) => d.id === driverId);
+      if (assigned) {
+        setAssignedDrivers((prev) => [...prev, assigned]);
+        setAvailableDrivers((prev) => prev.filter((d) => d.id !== driverId));
+      }
+  
+      toast({ title: "Водитель назначен" });
+    } catch (error) {
+      toast({ title: "Ошибка", description: "Не удалось назначить водителя", variant: "destructive" });
+    }
   };
+  
 
   const handleUnassignDriver = async (driverId: string) => {
-    await busService.removeDriver(bus.id, driverId);
-    refetch();
+    try {
+      await busService.removeDriver(bus.id, driverId);
+  
+      const removed = assignedDrivers.find((d) => d.id === driverId);
+      if (removed) {
+        setAvailableDrivers((prev) => [...prev, removed]);
+        setAssignedDrivers((prev) => prev.filter((d) => d.id !== driverId));
+      }
+  
+      toast({ title: "Водитель снят с автобуса" });
+    } catch (error) {
+      toast({ title: "Ошибка", description: "Не удалось снять водителя", variant: "destructive" });
+    }
   };
-
   const handleSave = async () => {
     try {
       setSaving(true);
