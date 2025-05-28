@@ -27,7 +27,7 @@ interface BusLine {
 }
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://82.115.49.203/api";
-//const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://localhost:7250/api";
+//export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://localhost:7250/api";
 
 // Вспомогательная функция для обработки ответов API
 async function handleResponse<T>(response: Response): Promise<ApiResponse<T>> {

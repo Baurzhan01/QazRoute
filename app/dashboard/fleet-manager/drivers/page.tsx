@@ -12,7 +12,9 @@ import AddDriverDialog from "./components/AddDriverDialog"
 import EditDriverDialog from "./components/EditDriverDialog"
 import DeleteDriverDialog from "./components/DeleteDriverDialog"
 import ViewDriverDialog from "./components/ViewDriverDialog"
-import type { Driver } from "@/types/driver.types"
+import type { Driver, DriverStatus } from "@/types/driver.types"
+import { useSearchParams, useRouter } from "next/navigation"
+
 
 export default function DriversPage() {
   const [rawSearch, setRawSearch] = useState("")
@@ -73,6 +75,15 @@ export default function DriversPage() {
   const handleRemoveFromReserve = (driver: Driver) => {
     if (driver.id) removeFromReserve(driver.id)
   }
+  const searchParams = useSearchParams()
+  const initialStatus = searchParams.get("status") as DriverStatus | null
+  
+  useEffect(() => {
+    if (initialStatus) {
+      filterByStatus(initialStatus)
+    }
+  }, [initialStatus])
+  
 
   return (
     <div className="flex flex-col gap-4 p-4 md:p-8">
@@ -82,6 +93,13 @@ export default function DriversPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
+        {searchParams.get("status") && (
+          <Link href="/dashboard/fleet-manager/release-plan/workday/by-date/2025-05-26/final-dispatch">
+            <Button variant="ghost" className="mb-2 text-blue-600 hover:underline">
+              ← Назад к разнарядке
+            </Button>
+          </Link>
+        )}
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-amber-500">Управление водителями</h1>
           <p className="text-gray-500 mt-1">Информация о водителях, графики работы и статусы</p>

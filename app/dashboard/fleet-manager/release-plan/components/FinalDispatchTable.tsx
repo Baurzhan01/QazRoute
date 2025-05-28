@@ -6,6 +6,8 @@ import { Wrench } from "lucide-react"
 import { formatDayOfWeek, getMonthName } from "../utils/dateUtils"
 import Link from "next/link"
 import { useState } from "react"
+import { useRouter } from "next/navigation"  // вверху файла
+
 
 interface FinalDispatchTableProps {
   data: FinalDispatchData
@@ -43,6 +45,7 @@ export default function FinalDispatchTable({
   const displayDate = new Date(date)
   const [showDayOffBuses, setShowDayOffBuses] = useState(false)
   const [showDayOffDrivers, setShowDayOffDrivers] = useState(false)
+  const router = useRouter()
 
 
   function formatShortName(fullName?: string, serviceNumber?: string) {
@@ -275,7 +278,9 @@ export default function FinalDispatchTable({
           driverStatuses?.OnSickLeave,
           formatShortName,
           true,              // всегда показывать
-          () => {}           // заглушка, не нужна кнопка
+          () => {},         // заглушка, не нужна кнопка
+           "text-orange-700",
+            "OnSickLeave"
         )}
 
         {renderDriverStatusTable(
@@ -283,7 +288,9 @@ export default function FinalDispatchTable({
           driverStatuses?.OnVacation,
           formatShortName,
           true,
-          () => {}
+          () => {},
+          "text-yellow-700",
+            "OnVacation"
         )}
 
         {renderDriverStatusTable(
@@ -291,7 +298,9 @@ export default function FinalDispatchTable({
           driverStatuses?.Intern,
           formatShortName,
           true,
-          () => {}
+          () => {},
+           "text-cyan-700",
+            "Intern"
         )}
         </div>
       </div>
@@ -304,17 +313,34 @@ export default function FinalDispatchTable({
     formatShortName: (name?: string) => string,
     show: boolean = true,
     toggleShow: () => void = () => {},
-    colorClass = "text-gray-700"
+    colorClass = "text-gray-700",
+    statusKey?: "OnSickLeave" | "OnVacation" | "Intern" // 👈 добавлен
   ) {
+    const router = useRouter()
+  
+    const goToDriversPage = () => {
+      if (statusKey) {
+        router.push(`/dashboard/fleet-manager/drivers?status=${statusKey}`)
+      }
+    }
+  
     return (
-      <div className="bg-gray-50 border rounded-lg p-3 shadow-sm">
+      <div
+        className={`bg-gray-50 border rounded-lg p-3 shadow-sm ${
+          statusKey ? "hover:bg-gray-100 cursor-pointer" : ""
+        }`}
+        onClick={statusKey ? goToDriversPage : undefined} // 👈 обработчик только если нужен
+      >
         <h4 className={`font-bold mb-2 flex items-center justify-between ${colorClass}`}>
           <span className="flex items-center gap-2">
             {title} <span className="text-sm text-gray-500">({list?.length ?? 0})</span>
           </span>
-          {list?.length ? (
+          {list?.length && !statusKey ? (
             <button
-              onClick={toggleShow}
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleShow()
+              }}
               className="text-sm text-blue-600 hover:underline"
             >
               {show ? "Скрыть" : "Показать"}
@@ -339,7 +365,8 @@ export default function FinalDispatchTable({
           </table>
         )}
   
-        {!show && <div className="text-sm text-gray-400">Скрыто</div>}
+        {!show && !statusKey && <div className="text-sm text-gray-400">Скрыто</div>}
       </div>
-  )
-}
+    )
+  }
+  
