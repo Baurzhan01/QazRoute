@@ -247,6 +247,7 @@ export default function RouteDialog({
                 <SelectItem value="Будни">Будни</SelectItem>
                 <SelectItem value="Суббота">Суббота</SelectItem>
                 <SelectItem value="Воскресенье">Воскресенье</SelectItem>
+                <SelectItem value="Праздничный">Праздничный</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -1,7 +1,7 @@
 import type { BusLine } from "@/types/busLine.types"
 
-export type RouteStatus = "Workday" | "Saturday" | "Sunday"
-export type DayType = "workdays" | "saturday" | "sunday"
+export type RouteStatus = "Workday" | "Saturday" | "Sunday" | "Holiday" 
+export type DayType = "workdays" | "saturday" | "sunday" | "holiday"
 
 // Станция отправления маршрута
 export interface Station {

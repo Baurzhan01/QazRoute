@@ -18,7 +18,7 @@ export function useFinalDispatch(date: Date | null, dayType?: ValidDayType) {
     workday: "Workday",
     saturday: "Saturday",
     sunday: "Sunday",
-    holiday: "Workday",
+    holiday: "Holiday",
   }
 
   function formatDriverName(fullName?: string, serviceNumber?: string) {

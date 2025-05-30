@@ -50,7 +50,7 @@ function getRouteStatusFromDayType(dayType: string): RouteStatus {
     workday: "Workday",
     saturday: "Saturday",
     sunday: "Sunday",
-    holiday: "Workday",
+    holiday: "Holiday",
   }
   return map[dayType] ?? "Workday"
 }

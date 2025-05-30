@@ -117,13 +117,12 @@ export default function RoutesPage() {
 
       {/* фильтры */}
       <div className="flex flex-wrap gap-2 mb-6">
-        {(["Все", "Будни", "Суббота", "Воскресенье"] as (FrontendRouteStatus | "Все")[]).map((filter) => (
+        {(["Все", "Будни", "Суббота", "Воскресенье", "Праздничный"] as (FrontendRouteStatus | "Все")[]).map((filter) => (
           <Button key={filter} onClick={() => setSelectedFilter(filter)}>
             {filter}
           </Button>
         ))}
       </div>
-
       {/* список маршрутов */}
       <Card>
         <CardHeader>
