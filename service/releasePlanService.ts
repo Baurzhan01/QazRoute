@@ -178,12 +178,19 @@ export const releasePlanService = {
   getFullDispatchByDate: async (
     date: string,
     convoyId: string,
-    routeStatus?: string
+    routeStatus?: string,
+    search?: string
   ): Promise<ApiResponse<FinalDispatchData>> => {
+    const params: Record<string, string> = {}
+  
+    if (routeStatus) params.routStatus = routeStatus
+    if (search) params.search = search
+  
     const res = await apiClient.get(`/dispatches/${date}/full/${convoyId}`, {
-      params: routeStatus ? { routStatus: routeStatus } : {}
+      params
     })
+  
     return res.data
-  }
+  }  
 } as const
 

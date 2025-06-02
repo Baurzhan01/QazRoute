@@ -1,3 +1,4 @@
+// DispatcherDashboardPage.tsx
 "use client"
 
 import { useEffect, useState } from "react"
@@ -13,6 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getAuthData } from "@/lib/auth-utils"
 import type { Convoy } from "@/types/convoy.types"
 import ConvoySummaryCard from "./components/ConvoySummaryCard"
+import { getDayTypeFromDate } from "./convoy/[id]/release-plan/utils/dateUtils"
+import type { ValidDayType } from "@/types/releasePlanTypes"
 
 export default function DispatcherDashboardPage() {
   const router = useRouter()
@@ -32,6 +35,14 @@ export default function DispatcherDashboardPage() {
   const authData = getAuthData()
   const depotId = authData?.busDepotId || ""
   const today = new Date().toISOString().split("T")[0]
+  const dayType: ValidDayType = getDayTypeFromDate(today)
+
+  const dayTypeMap: Record<ValidDayType, string> = {
+    workday: "Workday",
+    saturday: "Saturday",
+    sunday: "Sunday",
+    holiday: "Holiday",
+  }
 
   useEffect(() => {
     const role = localStorage.getItem("userRole")
@@ -59,7 +70,7 @@ export default function DispatcherDashboardPage() {
 
         const summaries = await Promise.all(
           convoys.map(async (convoy) => {
-            const [buses, routes, drivers] = await Promise.all([
+            const [buses, allRoutes, drivers] = await Promise.all([
               busService.getByConvoy(convoy.id),
               routeService.getByConvoyId(convoy.id),
               driverService.filter({
@@ -70,9 +81,13 @@ export default function DispatcherDashboardPage() {
                 phone: null,
                 driverStatus: null,
                 page: 1,
-                pageSize: 1
+                pageSize: 1,
               })
             ])
+
+            const filteredRoutes = allRoutes.value?.filter(
+              (r) => r.routeStatus === dayTypeMap[dayType]
+            ) ?? []
 
             let routeGroups: { assignments: any[] }[] = []
             try {
@@ -96,7 +111,7 @@ export default function DispatcherDashboardPage() {
               number: convoy.number,
               driverCount: drivers.value?.totalCount ?? 0,
               busCount: buses.length,
-              routeCount: routes.value?.length ?? 0
+              routeCount: filteredRoutes.length,
             }
           })
         )
@@ -111,7 +126,7 @@ export default function DispatcherDashboardPage() {
     }
 
     loadData()
-  }, [depotId, today])
+  }, [depotId, today, dayType])
 
   if (authError) {
     return <div className="p-6 text-red-600">{authError}</div>

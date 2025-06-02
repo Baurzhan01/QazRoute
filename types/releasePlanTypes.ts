@@ -136,7 +136,12 @@ export interface FinalDispatchData {
   }
 }
 
-
+export enum DispatchBusLineStatus {
+  Undefined = 0,
+  Released = 1,
+  Replaced = 2,
+  Removed = 3,
+}
 
 export interface RouteGroup {
   routeId: string
@@ -150,14 +155,17 @@ export interface RouteAssignment {
   garageNumber: string
   stateNumber: string
   driver: {
+    id: string
     serviceNumber: string
     fullName: string
   } | null
   departureTime: string
+  status?: DispatchBusLineStatus
   scheduleTime: string
   additionalInfo?: string
   shift2AdditionalInfo?: string
   shift2Driver?: {
+    id: string
     serviceNumber: string
     fullName: string
   }
@@ -170,13 +178,16 @@ export interface ReserveAssignment {
   garageNumber: string
   govNumber: string
   driver: {
+    id: string
     serviceNumber: string
     fullName: string
   }
   departureTime: string
   scheduleTime: string
+  status?: DispatchBusLineStatus
   additionalInfo?: string
   shift2Driver?: {
+    id: string
     serviceNumber: string
     fullName: string
   }
@@ -227,5 +238,6 @@ export interface FullDispatchBusLine {
     serviceNumber: string
   }
   scheduleStart?: TimeObject
+  status?: DispatchBusLineStatus
   scheduleShiftChange?: TimeObject
 }

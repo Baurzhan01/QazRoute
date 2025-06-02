@@ -91,6 +91,7 @@ export default function FinalDispatchPage() {
   
 
   const depotName = convoyNumber ? `Автоколонна №${convoyNumber}` : "—"
+  const [isSending, setIsSending] = useState(false)
 
   const handleGoBack = () => {
     router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateParam}`)
@@ -117,18 +118,22 @@ export default function FinalDispatchPage() {
           variant="default"
           onClick={async () => {
             if (!displayDate || !convoyId) return
+            setIsSending(true)
             try {
               const responseText = await telegramService.sendDispatchToDrivers(
                 displayDate.toISOString().split("T")[0],
                 convoyId
               )
-              setModalMessage(responseText) // ← просто показываем, что пришло от сервера
+              setModalMessage(responseText)
             } catch (error: any) {
               setModalMessage(error.message || "Ошибка при отправке Telegram-сообщений")
+            } finally {
+              setIsSending(false)
             }
           }}
+          disabled={isSending}
         >
-          📩 Разослать водителям
+          {isSending ? "📨 Отправка..." : "📩 Разослать водителям"}
         </Button>
 
         <Button variant="outline" onClick={handleSaveAsImage}>

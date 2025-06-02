@@ -43,8 +43,8 @@ export default function FinalDispatchTable({
   } = data
 
   const displayDate = new Date(date)
-  const [showDayOffBuses, setShowDayOffBuses] = useState(false)
-  const [showDayOffDrivers, setShowDayOffDrivers] = useState(false)
+  const [showDayOffBuses, setShowDayOffBuses] = useState(true)
+  const [showDayOffDrivers, setShowDayOffDrivers] = useState(true)
   const router = useRouter()
 
 
@@ -94,32 +94,34 @@ export default function FinalDispatchTable({
               <table className="w-full border text-sm">
                 <thead className="bg-sky-100 text-sky-900">
                   <tr>
-                    <th className="p-2 border">№</th>
-                    <th className="p-2 border">Гар. номер</th>
-                    <th className="p-2 border">Гос. номер</th>
-                    <th className="p-2 border">ФИО</th>
-                    <th className="p-2 border">Таб. номер</th>
-                    <th className="p-2 border">Время выхода</th>
-                    <th className="p-2 border">По графику</th>
-                    <th className="p-2 border">Доп. информация</th>
-                    <th className="p-2 border w-[80px] text-center">Пересменка</th>
-                    <th className="p-2 border">ФИО</th>
-                    <th className="p-2 border">Таб. номер</th>
-                    <th className="p-2 border">Конец</th>
+                    <th className="px-1 py-[2px] border font-semibold text-center text-xl">№</th>
+                    <th className="px-1 py-[2px] border font-semibold text-center text-xl">Гар. номер</th>
+                    <th className="px-1 py-[2px] border font-semibold text-center text-xl">Гос. номер</th>
+                    <th className="px-1 py-[2px] border font-semibold text-center text-xl">ФИО</th>
+                    <th className="px-1 py-[2px] border font-semibold text-center text-xl">Таб. номер</th>
+                    <th className="px-1 py-[2px] border font-semibold text-center text-xl">Время выхода</th>
+                    <th className="px-1 py-[2px] border font-semibold text-center text-xl">Доп. информация</th>
+                    {group.assignments.some(a => a.shift2Driver) && (
+                        <>
+                            <th className="px-1 py-[2px] border font-semibold text-center text-xl">Пересменка</th>
+                            <th className="px-1 py-[2px] border font-semibold text-center text-xl">ФИО</th>
+                            <th className="px-1 py-[2px] border font-semibold text-center text-xl">Таб. номер</th>
+                        </>
+                        )}
+                    <th className="px-1 py-[2px] border font-semibold text-center text-xl">Конец</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[...group.assignments]
                     .sort((a, b) => parseInt(a.busLineNumber) - parseInt(b.busLineNumber))
                     .map((a, i) => (
-                      <tr key={i} className="even:bg-gray-50 font-medium">
+                      <tr key={i} className="even:bg-gray-50 font-medium text-xl">
                         <td className="px-1 py-[2px] border font-semibold text-center">{a.busLineNumber ?? "—"}</td>
                         <td className="px-1 py-[2px] border font-semibold">{a.garageNumber}</td>
                         <td className="px-1 py-[2px] border font-semibold">{a.stateNumber}</td>
                         <td className="px-1 py-[2px] border font-semibold">{formatShortName(a.driver?.fullName ?? "—")}</td>
                         <td className="px-1 py-[2px] border font-semibold text-center">{a.driver?.serviceNumber ?? "—"}</td>
                         <td className="px-1 py-[2px] border font-semibold text-center">{a.departureTime}</td>
-                        <td className="px-1 py-[2px] border font-semibold text-center">{a.scheduleTime}</td>
                         <td className="px-1 py-[2px] border font-semibold">
                         <InfoCell
                           initialValue={a.additionalInfo ?? ""}
@@ -132,9 +134,9 @@ export default function FinalDispatchTable({
                           readOnly={readOnlyMode} // ← вот здесь
                         />
                         </td>
-                        <td className="px-1 py-[2px] border font-semibold">{a.shift2AdditionalInfo ?? "—"}</td>
-                        <td className="px-1 py-[2px] border font-semibold">{a.shift2Driver?.fullName ?? "—"}</td>
-                        <td className="px-1 py-[2px] border font-semibold text-center">{a.shift2Driver?.serviceNumber ?? "—"}</td>
+                        {a.shift2Driver && <td className="px-1 py-[2px] border font-semibold">{a.shift2AdditionalInfo ?? "—"}</td>}
+                        {a.shift2Driver && <td className="px-1 py-[2px] border font-semibold">{formatShortName(a.shift2Driver?.fullName)}</td>}
+                        {a.shift2Driver && <td className="px-1 py-[2px] border font-semibold text-center">{a.shift2Driver?.serviceNumber ?? "—"}</td>}
                         <td className="px-1 py-[2px] border font-semibold">{a.endTime}</td>
                       </tr>
                     ))}
@@ -158,31 +160,25 @@ export default function FinalDispatchTable({
           {/* Справа: таблица */}
           <div className="flex-1">
             <table className="w-full border text-sm">
-              <thead className="bg-yellow-100 text-black">
+            <thead className="bg-yellow-100 text-black">
                 <tr>
-                  <th className="p-2 border">№</th>
-                  <th className="p-2 border">Гар. номер</th>
-                  <th className="p-2 border">Гос. номер</th>
-                  <th className="p-2 border">ФИО</th>
-                  <th className="p-2 border">Таб. номер</th>
-                  <th className="p-2 border">Время выхода</th>
-                  <th className="p-2 border">По графику</th>
-                  <th className="p-2 border">Доп. информация</th>
-                  <th className="p-2 border">Пересменка</th>
-                  <th className="p-2 border">ФИО</th>
-                  <th className="p-2 border">Таб. номер</th>
-                  <th className="p-2 border">Конец</th>
+                <th className="px-1 py-[2px] border font-semibold text-center text-xl">№</th>
+                <th className="px-1 py-[2px] border font-semibold text-center text-xl">Гар. номер</th>
+                <th className="px-1 py-[2px] border font-semibold text-center text-xl">Гос. номер</th>
+                <th className="px-1 py-[2px] border font-semibold text-center text-xl">ФИО</th>
+                <th className="px-1 py-[2px] border font-semibold text-center text-xl">Таб. номер</th>
+                <th className="px-1 py-[2px] border font-semibold text-center text-xl">Время выхода</th>
+                <th className="px-1 py-[2px] border font-semibold text-center text-xl">Доп. информация</th>
                 </tr>
               </thead>
               <tbody>
                 {reserveAssignments.map((r, i) => (
-                  <tr key={i} className="even:bg-gray-50 font-medium">
+                  <tr key={i} className="even:bg-gray-50 font-medium text-xl">
                     <td className="px-1 py-[2px] border font-semibold text-center">{r.sequenceNumber || i + 1}</td>
                     <td className="px-1 py-[2px] border font-semibold">{r.garageNumber || "—"}</td>
                     <td className="px-1 py-[2px] border font-semibold">{r.govNumber || "—"}</td>
                     <td className="px-1 py-[2px] border font-semibold">{formatShortName(r.driver?.fullName || "—")}</td>
                     <td className="px-1 py-[2px] border font-semibold text-center">{r.driver?.serviceNumber || "—"}</td>
-                    <td className="px-1 py-[2px] border font-semibold">—</td>
                     <td className="px-1 py-[2px] border font-semibold">—</td>
                     <td className="px-1 py-[2px] border font-semibold">
                       <InfoCell
@@ -193,13 +189,9 @@ export default function FinalDispatchTable({
                         busId={null}
                         driverId={null}
                         textClassName="text-red-600 font-semibold"
-                        readOnly={readOnlyMode} // ← вот здесь
+                        readOnly={readOnlyMode}
                       />
                     </td>
-                    <td className="px-1 py-[2px] border font-semibold">—</td>
-                    <td className="px-1 py-[2px] border font-semibold">{r.shift2Driver?.fullName || "—"}</td>
-                    <td className="px-1 py-[2px] border font-semibold">{r.shift2Driver?.serviceNumber || "—"}</td>
-                    <td className="px-1 py-[2px] border font-semibold">{r.endTime || "—"}</td>
                   </tr>
                 ))}
               </tbody>

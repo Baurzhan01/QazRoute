@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { convoyService } from "@/service/convoyService"
 import type { Convoy } from "@/types/convoy.types"
 import { CalendarCheck2, FileText } from "lucide-react"
+import { getDayType, formatDate } from "./release-plan/utils/dateUtils"
+import { holidays } from "@/app/dashboard/fleet-manager/release-plan/data/holidays"
 
 export default function DispatcherConvoyPage() {
   const { id } = useParams()
@@ -14,6 +16,14 @@ export default function DispatcherConvoyPage() {
   const convoyId = id as string
 
   const [convoy, setConvoy] = useState<Convoy | null>(null)
+
+  const todayDate = new Date()
+  const today = formatDate(todayDate) // YYYY-MM-DD
+  const dayType = getDayType(
+    todayDate,
+    holidays.map(h => new Date(h.date))
+  )
+  
 
   useEffect(() => {
     if (!convoyId) return
@@ -27,8 +37,6 @@ export default function DispatcherConvoyPage() {
     }
     fetchConvoy()
   }, [convoyId])
-
-  const today = new Date().toISOString().split("T")[0]
 
   if (!convoy) return <div className="p-6 text-gray-600">Загрузка данных...</div>
 
@@ -52,7 +60,9 @@ export default function DispatcherConvoyPage() {
             <Button
               className="w-full"
               onClick={() =>
-                router.push(`/dashboard/dispatcher/convoy/${convoyId}/release-plan?date=${today}`)
+                router.push(
+                  `/dashboard/dispatcher/convoy/${convoyId}/release-plan/${dayType}?date=${today}`
+                )
               }
             >
               Перейти к плану выпуска
@@ -73,7 +83,9 @@ export default function DispatcherConvoyPage() {
             <Button
               className="w-full"
               onClick={() =>
-                router.push(`/dashboard/fleet-manager/release-plan/workday/by-date/${today}`)
+                router.push(
+                  `/dashboard/fleet-manager/release-plan/${dayType}/by-date/${today}/final-dispatch`
+                )
               }
             >
               Перейти к ведомости
