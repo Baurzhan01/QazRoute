@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { convoyService, authService } from "@/app/api/apiService";
+import { convoyService } from "@/service/convoyService";
+import { authService } from "@/service/authService";
 import { toast } from "@/components/ui/use-toast";
 import type { Convoy, ConvoyFormData, User } from "../types";
 
