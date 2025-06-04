@@ -47,9 +47,13 @@ export const authService = {
     return response.data
   },
   
-  changePassword: async (userId: string, newPassword: string): Promise<ApiResponse<void>> => {
-    const response = await apiClient.delete<ApiResponse<void>>(
-      `/auth/password/${userId}/${newPassword}`
+  changePassword: async (
+    userId: string,
+    newPassword: string
+  ): Promise<ApiResponse<void>> => {
+    const response = await apiClient.put<ApiResponse<void>>(
+      `/auth/password/${userId}`,
+      { newPassword }
     )
     return response.data
   },
