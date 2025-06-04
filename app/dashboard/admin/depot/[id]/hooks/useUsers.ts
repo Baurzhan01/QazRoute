@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import type { User, Convoy, UserFormData } from "../types";
-import type { UpdateUserRequest, RegisterRequest, UserRole } from "@/app/api/types";
+import type { UpdateUserRequest, RegisterRequest } from "@/types/auth.types";
+import type { UserRole } from "../types";
 import { toast } from "@/components/ui/use-toast";
-import { authService } from "@/app/api/apiService";
+import { authService } from "@/service/authService";
 
 interface UseUsersProps {
   initialUsers: User[];
