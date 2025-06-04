@@ -1,7 +1,7 @@
 "use client"
 
-import { useParams } from "next/navigation"
 import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { CalendarDays } from "lucide-react"
@@ -11,6 +11,7 @@ import { ru } from "date-fns/locale"
 import { getDayTypeFromDate } from "../utils/dateUtils"
 import { useConvoyReleasePlan } from "../../../../hooks/useConvoyReleasePlan"
 import ConvoyDispatchTable from "../../../../components/ConvoyDispatchTable"
+import { useConvoy } from "../../../../context/ConvoyContext"
 import type { ValidDayType } from "@/types/releasePlanTypes"
 import { DispatchBusLineStatus } from "@/types/releasePlanTypes"
 
@@ -22,8 +23,8 @@ const statusFilters = [
 ]
 
 export default function ConvoyReleasePlanPage() {
-  const { id } = useParams()
-  const convoyId = id as string
+  const { convoyId } = useConvoy()
+  const router = useRouter()
 
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0])
   const [search, setSearch] = useState("")
@@ -31,12 +32,11 @@ export default function ConvoyReleasePlanPage() {
 
   const dayType: ValidDayType = useMemo(() => getDayTypeFromDate(date), [date])
 
-  const { data, loading, error } = useConvoyReleasePlan(date, convoyId, dayType, search)
+  const { data, loading, error, summary } = useConvoyReleasePlan(date, convoyId ?? "", dayType, search)
 
   const { routeGroups = [], driverStatuses } = data ?? {}
   const totalBuses = routeGroups.reduce((sum, g) => sum + g.assignments.length, 0)
 
-  // ⚙️ Фильтрация по статусу
   const filteredRouteGroups = useMemo(() => {
     if (!selectedStatus || !data) return routeGroups
     const statusNum = parseInt(selectedStatus)
@@ -48,16 +48,21 @@ export default function ConvoyReleasePlanPage() {
       .filter(group => group.assignments.length > 0)
   }, [routeGroups, selectedStatus, data])
 
+  if (!convoyId) {
+    return <div className="text-red-500 p-6">Ошибка: не выбрана автоколонна</div>
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* 🔙 Назад */}
       <div className="pt-4">
-        <button
-          onClick={() => window.location.href = `/dashboard/dispatcher/convoy/${convoyId}`}
-          className="text-sm text-blue-600 hover:underline"
+        <Button
+          variant="link"
+          onClick={() => router.push(`/dashboard/dispatcher/convoy/${convoyId}`)}
+          className="text-sm p-0 text-blue-600"
         >
           ← Назад к колонне
-        </button>
+        </Button>
       </div>
 
       {/* 📅 Дата */}
@@ -104,18 +109,14 @@ export default function ConvoyReleasePlanPage() {
       {/* 📋 Таблица */}
       {data && (
         <ConvoyDispatchTable
-          data={{
-            ...data,
-            routeGroups: filteredRouteGroups
-          }}
-          driversCount={driverStatuses?.total ?? 0}
-          busesCount={totalBuses}
-          convoySummary={{
-            totalDrivers: driverStatuses?.total,
-            totalBuses,
-          }}
+          data={{ ...data, routeGroups: filteredRouteGroups }}
+          convoySummary={summary ?? undefined}
+          date={date}
           dayType={dayType}
           readOnlyMode={true}
+          selectedStatus={selectedStatus}
+          search={search}
+          onlyChecked={false}
         />
       )}
     </div>

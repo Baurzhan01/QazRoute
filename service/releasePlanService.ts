@@ -12,7 +12,8 @@ import type {
   DispatchBusLineDto,
   BusLineAssignmentRequest,
   DayPlan,
-  FinalDispatchData
+  FinalDispatchData,
+  ReserveReplacementCandidate
 } from "@/types/releasePlanTypes"
 
 
@@ -31,8 +32,26 @@ export const releasePlanService = {
       throw new Error(error.response?.data?.error || "Не удалось создать разнарядку")
     }
   },
-  
 
+  replaceAssignment: async (
+    dispatchBusLineId: string,
+    isFirstShift: boolean,
+    replacementType: string,
+    newDriverId: string,
+    newBusId: string
+  ): Promise<ApiResponse<boolean>> => {
+    const { data } = await apiClient.put(
+      `/dispatches/replace/${dispatchBusLineId}/${isFirstShift}/${replacementType}`,
+      null,
+      {
+        params: {
+          newDriverId,
+          newBusId,
+        },
+      }
+    )
+    return data
+  },  
 
   assignReserve: async (
     date: string,
@@ -142,6 +161,15 @@ export const releasePlanService = {
     return data
   },  
   
+  getReserveReplacementsByDate: async (
+    date: string,
+    convoyId: string
+  ): Promise<ApiResponse<ReserveReplacementCandidate[]>> => {
+    const { data } = await apiClient.get(
+      `/dispatches/reserve/${date}/all/${convoyId}`
+    )
+    return data
+  },  
   
   updateReserveAssignment: async (
     id: string,
@@ -174,6 +202,16 @@ export const releasePlanService = {
     const { data } = await apiClient.get(`/dispatches/reserve/${date}/all`)
     return data
   },
+
+  updateDispatchStatus: async (dispatchBusLineId: string, status: number): Promise<ApiResponse<boolean>> => {
+    const { data } = await apiClient.put(`/dispatches/update-status/${dispatchBusLineId}/${status}`);
+    return data;
+  },
+  
+  updateSolarium: async (dispatchBusLineId: string, solarium: string): Promise<ApiResponse<boolean>> => {
+    const { data } = await apiClient.put(`/dispatches/update-solarium/${dispatchBusLineId}`, { solarium });
+    return data;
+  },  
 
   getFullDispatchByDate: async (
     date: string,

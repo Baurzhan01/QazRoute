@@ -9,24 +9,25 @@ import type { Convoy } from "@/types/convoy.types"
 import { CalendarCheck2, FileText } from "lucide-react"
 import { getDayType, formatDate } from "./release-plan/utils/dateUtils"
 import { holidays } from "@/app/dashboard/fleet-manager/release-plan/data/holidays"
+import { useConvoy } from "../../context/ConvoyContext"
 
 export default function DispatcherConvoyPage() {
   const { id } = useParams()
   const router = useRouter()
   const convoyId = id as string
 
+  const { setConvoyId } = useConvoy()
   const [convoy, setConvoy] = useState<Convoy | null>(null)
 
   const todayDate = new Date()
-  const today = formatDate(todayDate) // YYYY-MM-DD
-  const dayType = getDayType(
-    todayDate,
-    holidays.map(h => new Date(h.date))
-  )
-  
+  const today = formatDate(todayDate)
+  const dayType = getDayType(todayDate, holidays.map(h => new Date(h.date)))
 
   useEffect(() => {
     if (!convoyId) return
+
+    setConvoyId(convoyId) // 🔄 сохраняем выбранную колонну в контекст
+
     const fetchConvoy = async () => {
       try {
         const res = await convoyService.getById(convoyId)
@@ -35,8 +36,9 @@ export default function DispatcherConvoyPage() {
         console.error("Ошибка загрузки колонны", err)
       }
     }
+
     fetchConvoy()
-  }, [convoyId])
+  }, [convoyId, setConvoyId])
 
   if (!convoy) return <div className="p-6 text-gray-600">Загрузка данных...</div>
 
@@ -47,7 +49,7 @@ export default function DispatcherConvoyPage() {
       </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 📅 План выпуска */}
+        {/* План выпуска */}
         <Card className="hover:shadow-md transition">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sky-700">
@@ -60,9 +62,7 @@ export default function DispatcherConvoyPage() {
             <Button
               className="w-full"
               onClick={() =>
-                router.push(
-                  `/dashboard/dispatcher/convoy/${convoyId}/release-plan/${dayType}?date=${today}`
-                )
+                router.push(`/dashboard/dispatcher/convoy/${convoyId}/release-plan/${dayType}?date=${today}`)
               }
             >
               Перейти к плану выпуска
@@ -70,7 +70,7 @@ export default function DispatcherConvoyPage() {
           </CardContent>
         </Card>
 
-        {/* 📄 Ведомость */}
+        {/* Ведомость */}
         <Card className="hover:shadow-md transition">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-yellow-700">
@@ -83,9 +83,7 @@ export default function DispatcherConvoyPage() {
             <Button
               className="w-full"
               onClick={() =>
-                router.push(
-                  `/dashboard/fleet-manager/release-plan/${dayType}/by-date/${today}/final-dispatch`
-                )
+                router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${today}/final-dispatch`)
               }
             >
               Перейти к ведомости

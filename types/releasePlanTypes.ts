@@ -136,11 +136,25 @@ export interface FinalDispatchData {
   }
 }
 
+export interface ReserveReplacementCandidate {
+  id: string
+  busId: string
+  driverId: string
+  driverFullName: string
+  driverTabNumber: string
+  garageNumber: string
+  govNumber: string
+  description?: string
+  isReplace: boolean
+}
+
+
 export enum DispatchBusLineStatus {
   Undefined = 0,
-  Released = 1,
-  Replaced = 2,
-  Removed = 3,
+  Released = 1, //выпущенно
+  Replaced = 2, //Заменен резерва
+  Permutation = 3,//Перестановка
+  Removed = 4,//Снятно (удалено)
 }
 
 export interface RouteGroup {
@@ -154,6 +168,11 @@ export interface RouteAssignment {
   busLineNumber: string;
   garageNumber: string
   stateNumber: string
+  bus?: {
+    id: string
+    garageNumber: string
+    govNumber: string
+  }
   driver: {
     id: string
     serviceNumber: string
@@ -161,6 +180,8 @@ export interface RouteAssignment {
   } | null
   departureTime: string
   status?: DispatchBusLineStatus
+  isRealsed: boolean
+  releasedTime?: string
   scheduleTime: string
   additionalInfo?: string
   shift2AdditionalInfo?: string
@@ -185,6 +206,7 @@ export interface ReserveAssignment {
   departureTime: string
   scheduleTime: string
   status?: DispatchBusLineStatus
+  isReplace:boolean
   additionalInfo?: string
   shift2Driver?: {
     id: string

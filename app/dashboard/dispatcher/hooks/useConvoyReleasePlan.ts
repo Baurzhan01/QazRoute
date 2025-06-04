@@ -4,6 +4,7 @@ import { convoyService } from "@/service/convoyService"
 import { busService } from "@/service/busService"
 import { driverService } from "@/service/driverService"
 import type { FinalDispatchData, RouteGroup, ValidDayType } from "@/types/releasePlanTypes"
+import type { ConvoySummary } from "@/types/convoy.types"
 
 const routeStatusMap: Record<ValidDayType, string> = {
   workday: "Workday",
@@ -25,9 +26,9 @@ export function useConvoyReleasePlan(
     driverOnWork?: number
     busOnWork?: number
   } | null>(null)
-  const [routesCount, setRoutesCount] = useState<number>(0)
-  const [driversCount, setDriversCount] = useState<number>(0)
-  const [busesCount, setBusesCount] = useState<number>(0)
+  const [routesCount, setRoutesCount] = useState(0)
+  const [driversCount, setDriversCount] = useState(0)
+  const [busesCount, setBusesCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -48,7 +49,7 @@ export function useConvoyReleasePlan(
           sickLeaveDriversRes,
           vacationDriversRes,
           internDriversRes,
-          repairBusesRes,
+          repairBusesRes
         ] = await Promise.all([
           releasePlanService.getFullDispatchByDate(date, convoyId, routeStatus, search),
           releasePlanService.getReserveAssignmentsByDate(date, convoyId),
@@ -110,7 +111,8 @@ export function useConvoyReleasePlan(
             endTime: bl.endTime ?? "—",
             additionalInfo: bl.description ?? "",
             shift2AdditionalInfo: bl.shift2AdditionalInfo ?? "",
-            status: bl.status, // 👈 добавлено, если приходит с сервера
+            status: bl.status,
+            releasedTime: bl.releasedTime ?? "",
           })),
         }))
 
@@ -127,7 +129,8 @@ export function useConvoyReleasePlan(
           endTime: r.endTime ?? "",
           departureTime: r.departureTime ?? "",
           scheduleTime: r.scheduleTime ?? "",
-          status: r.status, // 👈 если есть
+          status: r.status,
+          isReplace: r.status === 2,
         }))
 
         const formatName = (fullName?: string, serviceNumber?: string) => {
@@ -172,12 +175,15 @@ export function useConvoyReleasePlan(
         setBusesCount(uniqueBuses.size)
         setRoutesCount(routeGroups.length)
         setData(finalDispatch)
+
+        const summary = summaryRes.value as ConvoySummary
         setSummary({
-          totalDrivers: summaryRes.value?.totalDrivers,
-          totalBuses: summaryRes.value?.totalBuses,
-          driverOnWork: summaryRes.value?.driverOnWork,
-          busOnWork: summaryRes.value?.busOnWork,
+          totalDrivers: summary?.totalDrivers,
+          totalBuses: summary?.totalBuses,
+          driverOnWork: summary?.driverOnWork,
+          busOnWork: summary?.busOnWork,
         })
+
         setError(null)
       } catch (err: any) {
         console.error("Ошибка useConvoyReleasePlan:", err)
@@ -193,15 +199,15 @@ export function useConvoyReleasePlan(
     }
 
     load()
-  }, [date, convoyId, dayType, search]) // 👈 добавили search в зависимости
+  }, [date, convoyId, dayType, search])
 
   return {
     data,
     summary,
     routeGroups: data?.routeGroups ?? [],
     routesCount,
-    driversCount,
-    busesCount,
+    driversAssigned: driversCount,
+    busesAssigned: busesCount,
     loading,
     error,
   }
