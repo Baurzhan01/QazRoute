@@ -134,8 +134,12 @@ export interface FinalDispatchData {
     Intern?: string[]
     total?: number
   }
-}
 
+  // 🆕 Добавленные поля для замены (optional — чтобы не ломать другие места)
+  buses?: DisplayBus[]
+  drivers?: DisplayDriver[]
+  reserve?: ReserveReplacementCandidate[]
+}
 export interface ReserveReplacementCandidate {
   id: string
   busId: string
@@ -181,6 +185,7 @@ export interface RouteAssignment {
   departureTime: string
   status?: DispatchBusLineStatus
   isRealsed: boolean
+  fuelAmount?: string 
   releasedTime?: string
   scheduleTime: string
   additionalInfo?: string

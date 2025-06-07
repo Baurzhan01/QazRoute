@@ -3,6 +3,7 @@
 import apiClient from "@/app/api/apiClient"
 import type { RouteDispatchDetails } from "@/types/schedule.types"
 import type { ApiResponse } from "@/types/api.types"
+import { DispatchBusLineStatus } from "@/types/releasePlanTypes"
 import type {
   DateDto,
   DispatchRouteCreateRequest,
@@ -16,6 +17,14 @@ import type {
   ReserveReplacementCandidate
 } from "@/types/releasePlanTypes"
 
+
+const statusEnumMap: Record<DispatchBusLineStatus, string> = {
+  [DispatchBusLineStatus.Undefined]: "Undefined",
+  [DispatchBusLineStatus.Released]: "Released",
+  [DispatchBusLineStatus.Replaced]: "Replaced",
+  [DispatchBusLineStatus.Permutation]: "Permutation",
+  [DispatchBusLineStatus.Removed]: "Removed",
+}
 
 
 export const releasePlanService = {
@@ -32,6 +41,7 @@ export const releasePlanService = {
       throw new Error(error.response?.data?.error || "Не удалось создать разнарядку")
     }
   },
+  
 
   replaceAssignment: async (
     dispatchBusLineId: string,
@@ -40,6 +50,9 @@ export const releasePlanService = {
     newDriverId: string,
     newBusId: string
   ): Promise<ApiResponse<boolean>> => {
+    const date = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  
+    // Основной запрос на замену
     const { data } = await apiClient.put(
       `/dispatches/replace/${dispatchBusLineId}/${isFirstShift}/${replacementType}`,
       null,
@@ -49,9 +62,24 @@ export const releasePlanService = {
           newBusId,
         },
       }
-    )
-    return data
-  },  
+    );
+  
+    // Если замена прошла успешно — добавим пометку "Снят с маршрута"
+    if (data?.isSuccess) {
+      try {
+        await apiClient.put(`/dispatches/update-description`, {
+          dispatchBusLineId,
+          date,
+          description: "Снят с маршрута",
+        });
+      } catch (err) {
+        console.warn("⚠️ Ошибка при добавлении описания:", err);
+      }
+    }
+  
+    return data;
+  },
+  
 
   assignReserve: async (
     date: string,
@@ -113,7 +141,6 @@ export const releasePlanService = {
     )
     return data
   },
-  
 
   removeFromReserve: async (ids: string[]): Promise<ApiResponse<boolean>> => {
     const { data } = await apiClient.delete(`/dispatches/reserve/assignments`, { data: ids })
@@ -203,14 +230,17 @@ export const releasePlanService = {
     return data
   },
 
-  updateDispatchStatus: async (dispatchBusLineId: string, status: number): Promise<ApiResponse<boolean>> => {
-    const { data } = await apiClient.put(`/dispatches/update-status/${dispatchBusLineId}/${status}`);
-    return data;
-  },
+  updateDispatchStatus(dispatchId: string, status: DispatchBusLineStatus, isRealsed: boolean) {
+    const statusString = statusEnumMap[status];
+    return apiClient.put(`/dispatches/update-status/${dispatchId}/${statusString}`, null, {
+      params: { isRealsed },
+    });
+  },  
   
-  updateSolarium: async (dispatchBusLineId: string, solarium: string): Promise<ApiResponse<boolean>> => {
-    const { data } = await apiClient.put(`/dispatches/update-solarium/${dispatchBusLineId}`, { solarium });
-    return data;
+  async updateSolarium(dispatchBusLineId: string, solarium: string) {
+    return apiClient.put(`/dispatches/update-solarium/${dispatchBusLineId}`, null, {
+      params: { solarium },
+    })
   },  
 
   getFullDispatchByDate: async (

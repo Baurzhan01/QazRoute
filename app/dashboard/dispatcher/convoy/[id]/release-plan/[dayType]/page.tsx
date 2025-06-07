@@ -32,7 +32,7 @@ export default function ConvoyReleasePlanPage() {
 
   const dayType: ValidDayType = useMemo(() => getDayTypeFromDate(date), [date])
 
-  const { data, loading, error, summary } = useConvoyReleasePlan(date, convoyId ?? "", dayType, search)
+  const { data, loading, error, summary, refetch } = useConvoyReleasePlan(date, convoyId ?? "", dayType, search)
 
   const { routeGroups = [], driverStatuses } = data ?? {}
   const totalBuses = routeGroups.reduce((sum, g) => sum + g.assignments.length, 0)
@@ -117,6 +117,7 @@ export default function ConvoyReleasePlanPage() {
           selectedStatus={selectedStatus}
           search={search}
           onlyChecked={false}
+          onReload={() => refetch()} // 🟢 ДОБАВЬ ЭТУ СТРОКУ
         />
       )}
     </div>

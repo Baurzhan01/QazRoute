@@ -1,9 +1,10 @@
 "use client"
 
 import { useConvoy } from "../context/ConvoyContext"
-import { InfoCell } from "@/app/dashboard/fleet-manager/release-plan/components/InfoCell"
+import { InfoCell } from "./InfoCell"
 import type { ReserveAssignment } from "@/types/releasePlanTypes"
 import { formatShortName } from "../convoy/[id]/release-plan/utils/driverUtils"
+import { useMemo } from "react"
 
 interface ReserveTableProps {
   departures: ReserveAssignment[]
@@ -11,6 +12,7 @@ interface ReserveTableProps {
   readOnly?: boolean
   fuelNorms: Record<string, string>
   setFuelNorms: React.Dispatch<React.SetStateAction<Record<string, string>>>
+  search?: string
 }
 
 export default function ReserveTable({
@@ -19,8 +21,21 @@ export default function ReserveTable({
   readOnly = false,
   fuelNorms,
   setFuelNorms,
+  search = "",
 }: ReserveTableProps) {
   const { convoyId } = useConvoy()
+
+  const filteredDepartures = useMemo(() => {
+    return departures.filter((r) => {
+      const fullName = r.driver?.fullName?.toLowerCase() || ""
+      const tabNumber = r.driver?.serviceNumber || ""
+      return (
+        !search ||
+        fullName.includes(search.toLowerCase()) ||
+        tabNumber.includes(search)
+      )
+    })
+  }, [departures, search])
 
   return (
     <div className="mt-6 border rounded-lg shadow overflow-hidden bg-white">
@@ -43,56 +58,56 @@ export default function ReserveTable({
             </tr>
           </thead>
           <tbody>
-            {departures.map((r, i) => {
+            {filteredDepartures.map((r, i) => {
               const key = r.dispatchBusLineId ?? `fallback-${i}`
               return (
                 <tr
-                key={key}
-                className={`font-medium ${
+                  key={key}
+                  className={`font-medium ${
                     r.isReplace ? "bg-yellow-50" : i % 2 === 1 ? "bg-gray-50" : ""
-                }`}
+                  }`}
                 >
-                <td className="px-1 py-[2px] border text-center font-semibold">
+                  <td className="px-1 py-[2px] border text-center font-semibold">
                     {r.sequenceNumber || i + 1}
-                </td>
-                <td className="px-1 py-[2px] border font-semibold">{r.garageNumber || "—"}</td>
-                <td className="px-1 py-[2px] border font-semibold">{r.govNumber || "—"}</td>
-                <td className="px-1 py-[2px] border font-semibold">
+                  </td>
+                  <td className="px-1 py-[2px] border font-semibold">{r.garageNumber || "—"}</td>
+                  <td className="px-1 py-[2px] border font-semibold">{r.govNumber || "—"}</td>
+                  <td className="px-1 py-[2px] border font-semibold">
                     {formatShortName(r.driver?.fullName || "—")}
                     {r.isReplace && (
-                    <span className="ml-2 text-xs text-blue-800 italic">🔁 Назначен на маршрут</span>
+                      <span className="ml-2 text-xs text-blue-800 italic">🔁 Назначен на маршрут</span>
                     )}
-                </td>
-                <td className="px-1 py-[2px] border text-center font-semibold">
+                  </td>
+                  <td className="px-1 py-[2px] border text-center font-semibold">
                     {r.driver?.serviceNumber || "—"}
-                </td>
-                <td className="px-1 py-[2px] border text-center">
+                  </td>
+                  <td className="px-1 py-[2px] border text-center">
                     <input
-                    type="text"
-                    value={fuelNorms[key] ?? ""}
-                    onChange={(e) =>
+                      type="text"
+                      value={fuelNorms[key] ?? ""}
+                      onChange={(e) =>
                         setFuelNorms((prev) => ({
-                        ...prev,
-                        [key]: e.target.value,
+                          ...prev,
+                          [key]: e.target.value,
                         }))
-                    }
-                    className="w-16 text-center text-red-600 font-semibold border border-red-300 rounded px-1 py-[2px] outline-none focus:ring-1 focus:ring-red-400"
-                    placeholder="—"
+                      }
+                      className="w-16 text-center text-red-600 font-semibold border border-red-300 rounded px-1 py-[2px] outline-none focus:ring-1 focus:ring-red-400"
+                      placeholder="—"
                     />
-                </td>
-                <td className="px-1 py-[2px] border text-center font-semibold">—</td>
-                <td className="px-1 py-[2px] border font-semibold">
+                  </td>
+                  <td className="px-1 py-[2px] border text-center font-semibold">—</td>
+                  <td className="px-1 py-[2px] border font-semibold">
                     <InfoCell
-                    initialValue={r.additionalInfo ?? ""}
-                    assignmentId={r.dispatchBusLineId}
-                    date={displayDate}
-                    type="reserve"
-                    busId={null}
-                    driverId={r.driver?.id ?? null}
-                    textClassName="text-red-600 font-semibold"
-                    readOnly={readOnly}
+                      initialValue={r.additionalInfo ?? ""}
+                      assignmentId={r.dispatchBusLineId}
+                      date={displayDate}
+                      type="reserve"
+                      busId={null}
+                      driverId={r.driver?.id ?? null}
+                      textClassName="text-red-600 font-semibold"
+                      readOnly={readOnly}
                     />
-                </td>
+                  </td>
                 </tr>
               )
             })}

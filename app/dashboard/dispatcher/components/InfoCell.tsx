@@ -3,8 +3,9 @@
 import { useState } from "react"
 import { toast } from "@/components/ui/use-toast"
 import { releasePlanService } from "@/service/releasePlanService"
-import { formatDate } from "../utils/dateUtils"
+import { formatDate } from "../convoy/[id]/release-plan/utils/dateUtils"
 import { AlertTriangle, RefreshCcw, XCircle } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 const colorOptions = ["#000000", "#dc3545", "#28a745", "#007bff", "#ffc107"]
 
@@ -15,8 +16,8 @@ interface InfoCellProps {
   type?: "route" | "reserve"
   busId?: string | null
   driverId?: string | null
-  textClassName?: string
   readOnly?: boolean
+  textClassName?: string 
 }
 
 export function InfoCell({
@@ -26,7 +27,6 @@ export function InfoCell({
   type = "route",
   busId = null,
   driverId = null,
-  textClassName = "text-red-600 font-medium",
   readOnly = false,
 }: InfoCellProps) {
   const [value, setValue] = useState(initialValue ?? "")
@@ -34,6 +34,7 @@ export function InfoCell({
   const [textColor, setTextColor] = useState("#000000")
   const [showColorMenu, setShowColorMenu] = useState(false)
   const [anchorPoint, setAnchorPoint] = useState({ x: 0, y: 0 })
+  const router = useRouter()
 
   const handleSave = async () => {
     if (!assignmentId) {
@@ -57,23 +58,33 @@ export function InfoCell({
       }
 
       toast({ title: "Сохранено", description: "Доп. информация обновлена" })
+      router.refresh()
     } catch {
       toast({ title: "Ошибка", description: "Не удалось сохранить" })
     }
   }
 
   const getIcon = () => {
-    if (value.includes("❌")) return <XCircle className="w-4 h-4 text-red-600 inline-block mr-1" />
-    if (value.includes("🔄")) return <RefreshCcw className="w-4 h-4 text-blue-600 inline-block mr-1" />
-    if (value.includes("🔁")) return <AlertTriangle className="w-4 h-4 text-yellow-600 inline-block mr-1" />
+    if (value.includes("❌"))
+      return <XCircle className="w-4 h-4 text-red-600 inline-block mr-1" />
+    if (value.includes("🔄"))
+      return <RefreshCcw className="w-4 h-4 text-blue-600 inline-block mr-1" />
+    if (value.includes("🔁"))
+      return <AlertTriangle className="w-4 h-4 text-yellow-600 inline-block mr-1" />
     return null
   }
 
   if (readOnly && !editing) {
     return (
       <span
-        className={`block text-xs px-1 py-0.5 rounded cursor-pointer ${textClassName}`}
+        className={`block text-xs px-1 py-0.5 rounded cursor-pointer`}
+        style={{ color: textColor }}
         onClick={() => setEditing(true)}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          setAnchorPoint({ x: e.clientX, y: e.clientY })
+          setShowColorMenu(true)
+        }}
       >
         {getIcon()}
         {value || "—"}
@@ -91,7 +102,7 @@ export function InfoCell({
       }}
     >
       <input
-        className={`w-full text-xs px-1 py-0.5 border rounded outline-none ${textClassName}`}
+        className="w-full text-xs px-1 py-0.5 border rounded outline-none"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         autoFocus
@@ -99,6 +110,7 @@ export function InfoCell({
           setEditing(false)
           if (value.trim() !== initialValue?.trim()) handleSave()
         }}
+        style={{ color: textColor }}
       />
 
       {showColorMenu && (
