@@ -6,7 +6,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, MapPin } from "lucide-react";
-import { busDepotService, authService } from "@/app/api/apiService";
+import { busDepotService } from "@/service/busDepotService";
+import { authService } from "@/service/authService";
 import { toast } from "@/components/ui/use-toast";
 
 import type { BusDepot, User, Convoy } from "./types";

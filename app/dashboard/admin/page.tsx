@@ -18,13 +18,13 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Bus, MapPin, Plus, Search } from "lucide-react"
 
-import { busDepotService } from "@/app/api/apiService"
-import type { BusDepot, CreateDepotRequest } from "@/app/api/types"
+import { busDepotService } from "@/service/busDepotService"
+import type { BusDepot, CreateBusDepotRequest } from "@/types/depot.types"
 
 export default function AdminDashboard() {
   const [busDepots, setBusDepots] = useState<BusDepot[]>([])
   const [isAddDepotDialogOpen, setIsAddDepotDialogOpen] = useState(false)
-  const [newDepotData, setNewDepotData] = useState<CreateDepotRequest>({ name: "", city: "", address: "" })
+  const [newDepotData, setNewDepotData] = useState<CreateBusDepotRequest>({ name: "", city: "", address: "" })
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
 
