@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { CalendarDays } from "lucide-react"
+import { Card } from "@/components/ui/card"
+import { CalendarDays, Search } from "lucide-react"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
 
@@ -37,17 +38,6 @@ export default function ConvoyReleasePlanPage() {
   const { routeGroups = [], driverStatuses } = data ?? {}
   const totalBuses = routeGroups.reduce((sum, g) => sum + g.assignments.length, 0)
 
-  const filteredRouteGroups = useMemo(() => {
-    if (!selectedStatus || !data) return routeGroups
-    const statusNum = parseInt(selectedStatus)
-    return routeGroups
-      .map(group => ({
-        ...group,
-        assignments: group.assignments.filter(a => a.status === statusNum)
-      }))
-      .filter(group => group.assignments.length > 0)
-  }, [routeGroups, selectedStatus, data])
-
   if (!convoyId) {
     return <div className="text-red-500 p-6">Ошибка: не выбрана автоколонна</div>
   }
@@ -65,11 +55,16 @@ export default function ConvoyReleasePlanPage() {
         </Button>
       </div>
 
-      {/* 📅 Дата */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-2xl font-bold text-sky-700">
-          План выпуска — {format(new Date(date), "d MMMM yyyy", { locale: ru })}
-        </h1>
+      {/* 📅 Дата и Заголовок */}
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-sky-800 tracking-tight">
+            📅 План выпуска — {format(new Date(date), "d MMMM yyyy", { locale: ru })}
+          </h1>
+          <p className="text-gray-600 text-sm mt-1">
+            {dayType === "workday" ? "Будний день" : dayType === "saturday" ? "Суббота" : dayType === "sunday" ? "Воскресенье" : "Праздничный день"}
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           <CalendarDays className="text-muted-foreground" />
           <Input
@@ -81,27 +76,23 @@ export default function ConvoyReleasePlanPage() {
         </div>
       </div>
 
-      {/* 🔍 Поиск и фильтры */}
-      <div className="flex flex-wrap items-center gap-4">
-        <Input
-          placeholder="Поиск по ФИО или табельному номеру..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm"
-        />
-        <div className="flex gap-2">
-          {statusFilters.map(f => (
-            <Button
-              key={f.value}
-              variant={selectedStatus === f.value ? "default" : "outline"}
-              onClick={() => setSelectedStatus(f.value)}
-            >
-              {f.label}
-            </Button>
-          ))}
+      {/* 🔍 Фильтры */}
+      <Card className="p-4 border space-y-4">
+        <div className="flex items-center gap-3">
+          <Search className="text-muted-foreground" />
+          <Input
+            placeholder="Поиск по ФИО, табельному номеру или автобусу..."
+            value={search}
+            onChange={(e) => {
+              const value = e.target.value
+              setSearch(value)
+              if (selectedStatus) setSelectedStatus("") // сброс фильтра статуса при любом вводе
+              if (value === "") refetch()               // ⬅️ авто-refetch при очистке поиска
+            }}
+            className="max-w-md"
+          />
         </div>
-      </div>
-
+      </Card>
       {/* 🌀 Загрузка / ошибка */}
       {loading && <p className="text-muted-foreground">Загрузка данных...</p>}
       {error && <p className="text-red-500">Ошибка: {error}</p>}
@@ -109,7 +100,7 @@ export default function ConvoyReleasePlanPage() {
       {/* 📋 Таблица */}
       {data && (
         <ConvoyDispatchTable
-          data={{ ...data, routeGroups: filteredRouteGroups }}
+          data={data}
           convoySummary={summary ?? undefined}
           date={date}
           dayType={dayType}
@@ -117,7 +108,7 @@ export default function ConvoyReleasePlanPage() {
           selectedStatus={selectedStatus}
           search={search}
           onlyChecked={false}
-          onReload={() => refetch()} // 🟢 ДОБАВЬ ЭТУ СТРОКУ
+          onReload={() => refetch()}
         />
       )}
     </div>

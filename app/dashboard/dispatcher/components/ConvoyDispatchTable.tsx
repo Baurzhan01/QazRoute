@@ -69,7 +69,8 @@ export default function ConvoyDispatchTable(props: ConvoyDispatchTableProps) {
   const handleResetSearch = () => {
     setSearchQuery("")
     setIsSearchActive(false)
-  }
+  }  
+
 
   const reserveRef = useRef<HTMLDivElement>(null)
 
@@ -129,46 +130,74 @@ export default function ConvoyDispatchTable(props: ConvoyDispatchTableProps) {
     }
   }
 
-  const filteredGroups = useMemo(() => {
-    const fullCopy = [...routeGroups]
+  const normalize = (str?: string) =>
+    str?.toLowerCase().replace(/\./g, "").replace(/\s+/g, "") ?? ""
   
-    const filtered = fullCopy.map(group => {
-      const filteredAssignments = group.assignments
-        .filter(a => {
-          if (!searchQuery) return true
-          
-          const searchLower = searchQuery.toLowerCase()
-          const fullName = a.driver?.fullName?.toLowerCase() || ""
-          const serviceNumber = a.driver?.serviceNumber || ""
-          
-          return fullName.includes(searchLower) || serviceNumber.includes(searchQuery)
-        })
-        .filter(a => {
-          return !selectedStatus || a.status?.toString() === selectedStatus
-        })
-        .filter(a => {
-          return !onlyChecked || checkedDepartures[a.dispatchBusLineId]
-        })
+  const searchWords = useMemo(
+    () => searchQuery.toLowerCase().split(" ").filter(Boolean),
+    [searchQuery]
+  )
+  
+  const filteredGroups = useMemo(() => {
+    const groups = routeGroups.map(group => {
+      const filteredAssignments = group.assignments.filter(a => {
+        const fullName = normalize(a.driver?.fullName)
+        const serviceNumber = a.driver?.serviceNumber ?? ""
+        const garageNumber = a.bus?.garageNumber ?? ""
+        const govNumber = a.bus?.govNumber ?? ""
+  
+        const matchesSearch = searchWords.every(word =>
+          fullName.includes(word) ||
+          serviceNumber.includes(word) ||
+          garageNumber.includes(word) ||
+          govNumber.includes(word)
+        )
+  
+        const matchesStatus = !selectedStatus || a.status?.toString() === selectedStatus
+        const matchesChecked = !onlyChecked || checkedDepartures[a.dispatchBusLineId]
+  
+        return (!searchQuery || matchesSearch) && matchesStatus && matchesChecked
+      })
   
       return {
         ...group,
         assignments: filteredAssignments,
       }
-    })
+    }).filter(group => group.assignments.length > 0)
   
-    return filtered.filter(group => group.assignments.length > 0)
-  }, [routeGroups, selectedStatus, searchQuery, onlyChecked, checkedDepartures])
+    // ⬇️ только если действительно активен поиск
+    if (isSearchActive && searchQuery) {
+      return groups.flatMap(group =>
+        group.assignments.map(a => ({
+          ...group,
+          assignments: [a],
+        }))
+      )
+    }
+  
+    return groups
+  }, [routeGroups, searchWords, selectedStatus, onlyChecked, checkedDepartures, searchQuery, isSearchActive])
+  
 
   const filteredReserve = useMemo(() => {
     if (!searchQuery) return reserveAssignments
-
-    const searchLower = searchQuery.toLowerCase()
+  
+    const searchLower = searchQuery.toLowerCase().replace(/\./g, "").replace(/\s+/g, "")
+  
     return reserveAssignments.filter(r => {
-      const fullName = r.driver?.fullName?.toLowerCase() || ""
-      const serviceNumber = r.driver?.serviceNumber || ""
-      return fullName.includes(searchLower) || serviceNumber.includes(searchQuery)
+      const fullName = normalize(r.driver?.fullName)
+      const tabNumber = r.driver?.serviceNumber || ""
+      const garageNumber = r.garageNumber || ""
+      const govNumber = r.govNumber || ""
+  
+      return (
+        fullName.includes(searchLower) ||
+        tabNumber.includes(searchLower) ||
+        garageNumber.includes(searchLower) ||
+        govNumber.includes(searchLower)
+      )
     })
-  }, [reserveAssignments, searchQuery])
+  }, [reserveAssignments, searchQuery])  
 
   const { driversAssigned, busesAssigned } = countUniqueAssignments(routeGroups, reserveAssignments)
 
@@ -181,10 +210,6 @@ export default function ConvoyDispatchTable(props: ConvoyDispatchTableProps) {
         driverOnWork={convoySummary?.driverOnWork ?? driversAssigned}
         busOnWork={convoySummary?.busOnWork ?? busesAssigned}
         onScrollToReserve={scrollToReserve}
-        searchQuery={searchQuery}
-        onSearch={handleSearch}
-        onResetSearch={handleResetSearch}
-        isSearchActive={isSearchActive}
       />
 
       {filteredGroups.map(group => (

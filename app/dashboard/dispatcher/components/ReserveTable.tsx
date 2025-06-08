@@ -60,11 +60,23 @@ export default function ReserveTable({
           <tbody>
             {filteredDepartures.map((r, i) => {
               const key = r.dispatchBusLineId ?? `fallback-${i}`
+              const isGoneToRoute = r.isReplace === true
+              const isRemoved = r.additionalInfo?.toLowerCase().includes("снят с маршрута")
+              const isReplacedAfter = r.additionalInfo?.toLowerCase().includes("резерв после замены")
+
               return (
                 <tr
                   key={key}
                   className={`font-medium ${
-                    r.isReplace ? "bg-yellow-50" : i % 2 === 1 ? "bg-gray-50" : ""
+                    isRemoved
+                      ? "bg-red-100/50"
+                      : isReplacedAfter
+                      ? "bg-red-50"
+                      : isGoneToRoute
+                      ? "bg-yellow-50"
+                      : i % 2 === 1
+                      ? "bg-gray-50"
+                      : ""
                   }`}
                 >
                   <td className="px-1 py-[2px] border text-center font-semibold">
@@ -74,8 +86,11 @@ export default function ReserveTable({
                   <td className="px-1 py-[2px] border font-semibold">{r.govNumber || "—"}</td>
                   <td className="px-1 py-[2px] border font-semibold">
                     {formatShortName(r.driver?.fullName || "—")}
-                    {r.isReplace && (
+                    {isGoneToRoute && (
                       <span className="ml-2 text-xs text-blue-800 italic">🔁 Назначен на маршрут</span>
+                    )}
+                    {isRemoved && (
+                      <span className="ml-2 text-xs text-red-800 italic">❌ Снят с маршрута</span>
                     )}
                   </td>
                   <td className="px-1 py-[2px] border text-center font-semibold">
@@ -93,10 +108,14 @@ export default function ReserveTable({
                       }
                       className="w-16 text-center text-red-600 font-semibold border border-red-300 rounded px-1 py-[2px] outline-none focus:ring-1 focus:ring-red-400"
                       placeholder="—"
+                      disabled={readOnly}
                     />
                   </td>
                   <td className="px-1 py-[2px] border text-center font-semibold">—</td>
                   <td className="px-1 py-[2px] border font-semibold">
+                  {isReplacedAfter && (
+                      <span className="ml-2 text-xs text-rose-700 italic">🔄 Снят с маршрута</span>
+                    )}
                     <InfoCell
                       initialValue={r.additionalInfo ?? ""}
                       assignmentId={r.dispatchBusLineId}

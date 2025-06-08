@@ -123,37 +123,14 @@ interface ReplaceAssignmentModalProps {
             selectedBus?.id || selectedAssignment.bus?.id || ""
           )
       
-          await releasePlanService.updateDispatchStatus(
-            selectedAssignment.dispatchBusLineId,
-            statusEnumMap[status],
-            false
-          )
-      
-          // 🔁 Замена из резерва
           if (status === "Replaced") {
             const reserveEntry = reserve.find(
               (r) => r.driverId === selectedDriver?.id && r.busId === selectedBus?.id
             )
       
             if (reserveEntry) {
-              await releasePlanService.updateReserveAssignment(reserveEntry.id, {
-                driverId: selectedAssignment.driver?.id || null,
-                busId: selectedAssignment.bus?.id || null,
-                description: "Снят с маршрута",
-              })
-      
-              // 🔍 Удалим дубликаты того же автобуса с другими водителями (или наоборот)
-              const duplicates = reserve.filter(
-                (r) =>
-                  r.id !== reserveEntry.id &&
-                  r.busId === reserveEntry.busId &&
-                  r.driverId !== reserveEntry.driverId
-              )
-      
-              const duplicateIds = duplicates.map((d) => d.id)
-              if (duplicateIds.length > 0) {
-                await releasePlanService.removeFromReserve(duplicateIds)
-              }
+              // Удаляем резервную строку, которая пошла на маршрут
+              await releasePlanService.removeFromReserve([reserveEntry.id])
             }
           }
       
@@ -315,6 +292,9 @@ interface ReplaceAssignmentModalProps {
                 {filteredReserve.map((r, index) => {
                 const isRemoved = r.description?.toLowerCase().includes("снят с маршрута")
                 const isRowSelected = isSelected(r)
+                const isGoneToRoute =
+                  !isRemoved &&
+                  !reserve.some((entry) => entry.driverId === r.driverId && entry.busId === r.busId)
 
                 return (
                     <tr
@@ -335,7 +315,9 @@ interface ReplaceAssignmentModalProps {
                         })
                     }}
                     className={`cursor-pointer hover:bg-sky-50 ${
-                        isRowSelected ? "bg-green-100" : isRemoved ? "bg-red-50" : ""
+                      isRowSelected ? "bg-green-100" :
+                      isRemoved ? "bg-red-50" :
+                      isGoneToRoute ? "bg-red-100/50" : ""
                     }`}
                     >
                     <td className="border px-2 py-1 text-center">{index + 1}</td>
