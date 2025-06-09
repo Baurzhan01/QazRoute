@@ -1,102 +1,65 @@
-    "use client";
+"use client"
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Wrench, PlusCircle } from "lucide-react";
-import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Wrench, AlertTriangle, Hammer, Timer } from "lucide-react"
+import { useRouter } from "next/navigation"
 
-// Мок данные ремонта
-const repairs = [
+const repairCards = [
   {
-    id: 1,
-    busNumber: "1234",
-    licensePlate: "A123BC",
-    column: "1",
-    reason: "Замена тормозных колодок",
-    mechanic: "Иванов А.С.",
-    status: "Завершен",
-    date: "2025-05-06T09:30",
+    code: "PR",
+    title: "Плановый ремонт",
+    icon: <Wrench className="h-8 w-8 text-green-600" />,
+    gradient: "from-green-400 to-green-600",
+    description: "Регулярное техобслуживание: ТО, замена деталей, профилактика.",
+    link: "/dashboard/repairs/planned",
   },
   {
-    id: 2,
-    busNumber: "2345",
-    licensePlate: "B234CD",
-    column: "2",
-    reason: "Проблемы с электрикой",
-    mechanic: "Петров И.К.",
-    status: "В процессе",
-    date: "2025-05-07T11:00",
+    code: "НР",
+    title: "Неплановый ремонт",
+    icon: <AlertTriangle className="h-8 w-8 text-red-600" />,
+    gradient: "from-red-400 to-red-600",
+    description: "Срочный ремонт после поломки или внештатной ситуации.",
+    link: "/dashboard/repairs/unplanned",
   },
   {
-    id: 3,
-    busNumber: "3456",
-    licensePlate: "C345DE",
-    column: "3",
-    reason: "Утечка масла",
-    mechanic: "Сидоров В.П.",
-    status: "Завершен",
-    date: "2025-05-05T14:20",
+    code: "ПР",
+    title: "Прочий ремонт",
+    icon: <Hammer className="h-8 w-8 text-yellow-600" />,
+    gradient: "from-yellow-400 to-yellow-600",
+    description: "Электрика, салон, освещение, безопасность и т.д.",
+    link: "/dashboard/repairs/misc",
   },
-];
+  {
+    code: "ДР",
+    title: "Длительный ремонт",
+    icon: <Timer className="h-8 w-8 text-blue-600" />,
+    gradient: "from-blue-400 to-blue-600",
+    description: "Капремонт, кузовные работы, переоборудование.",
+    link: "/dashboard/repairs/longterm",
+  },
+]
 
-export default function RepairsPage() {
+export default function RepairJournal() {
+  const router = useRouter()
+
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Wrench className="h-7 w-7 text-sky-500" />
-          Журнал ремонтов
-        </h1>
-        <Button variant="outline" className="gap-2">
-          <PlusCircle className="h-4 w-4" />
-          Добавить ремонт
-        </Button>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Список ремонтов</CardTitle>
-        </CardHeader>
-
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Автобус</TableHead>
-                <TableHead>Колонна</TableHead>
-                <TableHead>Причина</TableHead>
-                <TableHead>Механик</TableHead>
-                <TableHead>Статус</TableHead>
-                <TableHead>Дата и время</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {repairs.map((repair) => (
-                <TableRow key={repair.id}>
-                  <TableCell>
-                    {repair.busNumber} / {repair.licensePlate}
-                  </TableCell>
-                  <TableCell>{repair.column}</TableCell>
-                  <TableCell>{repair.reason}</TableCell>
-                  <TableCell>{repair.mechanic}</TableCell>
-                  <TableCell>
-                    <Badge className={repair.status === "Завершен" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}>
-                      {repair.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {format(new Date(repair.date), "d MMMM yyyy, HH:mm", { locale: ru })}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      {repairCards.map((card) => (
+        <Card
+          key={card.code}
+          className="cursor-pointer transition-transform hover:scale-[1.02] shadow-md"
+          onClick={() => router.push(card.link)}
+        >
+          <CardHeader className={`text-white bg-gradient-to-r ${card.gradient} rounded-t-md`}>
+            <div className="flex items-center justify-between">
+              <CardTitle>{card.title}</CardTitle>
+              {card.icon}
+            </div>
+            <CardDescription className="text-white/80">{card.code}</CardDescription>
+          </CardHeader>
+          <div className="p-4 text-sm text-gray-700">{card.description}</div>
+        </Card>
+      ))}
     </div>
-  );
+  )
 }

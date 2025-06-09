@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useEffect } from "react"
 import { BusFront } from "lucide-react"
 import AssignmentCell from "./AssignmentCell"
 import { formatShortName } from "../convoy/[id]/release-plan/utils/driverUtils"
@@ -25,6 +26,7 @@ interface RouteGroupTableProps {
   onRemoveClick: (assignment: RouteAssignment) => void
   onReload?: () => void
   onReplaceSuccess?: (updated: RouteAssignment) => void
+  search?: string
 }
 
 export default function RouteGroupTable({
@@ -40,9 +42,14 @@ export default function RouteGroupTable({
   onRemoveClick,
   onReload,
   onReplaceSuccess,
+  search,
 }: RouteGroupTableProps) {
   const { convoyId } = useConvoy()
-  const [assignments, setAssignments] = useState(group.assignments)
+  const [assignments, setAssignments] = useState<RouteAssignment[]>(group.assignments)
+
+  useEffect(() => {
+    setAssignments(group.assignments)
+  }, [group.assignments])
 
   const handleReplaceSuccess = (updated: RouteAssignment) => {
     setAssignments((prev) =>

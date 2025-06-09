@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import RouteGroupTable from "./RouteGroupTable"
 import ReserveTable from "./ReserveTable"
@@ -17,7 +17,7 @@ import { toast } from "@/components/ui/use-toast"
 import type { FinalDispatchData, RouteAssignment, ValidDayType } from "@/types/releasePlanTypes"
 import { countUniqueAssignments } from "../convoy/[id]/release-plan/utils/countUtils"
 
-export interface ConvoyDispatchTableProps {
+interface ConvoyDispatchTableProps {
   data: FinalDispatchData
   convoySummary?: {
     totalDrivers?: number
@@ -25,58 +25,31 @@ export interface ConvoyDispatchTableProps {
     driverOnWork?: number
     busOnWork?: number
   }
-  depotNumber?: number
   date?: string
   dayType?: ValidDayType
   readOnlyMode?: boolean
   selectedStatus?: string
-  search?: string
   onlyChecked?: boolean
   onReload?: () => void
+  search?: string
 }
 
 export default function ConvoyDispatchTable(props: ConvoyDispatchTableProps) {
   const {
     data,
     convoySummary,
-    depotNumber,
     date,
     dayType,
     readOnlyMode = false,
     selectedStatus,
-    search,
     onlyChecked,
     onReload,
+    search,
   } = props
 
   const router = useRouter()
   const { convoyId } = useConvoy()
   const dateObj = date ? new Date(date) : new Date(data.date)
-  const routeGroups = data.routeGroups ?? []
-  const reserveAssignments = data.reserveAssignments ?? []
-  const repairBuses = data.repairBuses ?? []
-  const dayOffBuses = data.dayOffBuses ?? []
-  const driverStatuses = data.driverStatuses ?? {}
-
-  const [searchQuery, setSearchQuery] = useState(search || "")
-  const [isSearchActive, setIsSearchActive] = useState(false)
-
-  const handleSearch = (query: string) => {
-    setSearchQuery(query)
-    setIsSearchActive(!!query)
-  }
-
-  const handleResetSearch = () => {
-    setSearchQuery("")
-    setIsSearchActive(false)
-  }  
-
-
-  const reserveRef = useRef<HTMLDivElement>(null)
-
-  const scrollToReserve = () => {
-    reserveRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-  }
 
   const {
     fuelNorms,
@@ -107,7 +80,6 @@ export default function ConvoyDispatchTable(props: ConvoyDispatchTableProps) {
       }
     } catch (error) {
       console.error("Ошибка загрузки водителя:", error)
-      toast({ title: "Ошибка", description: "Произошла ошибка при загрузке данных водителя", variant: "destructive" })
     }
   }
 
@@ -119,87 +91,22 @@ export default function ConvoyDispatchTable(props: ConvoyDispatchTableProps) {
     setReplaceModalOpen(true)
   }
 
-  const handleRemoveClick = async (a: any) => {
+  const handleRemoveClick = async (a: RouteAssignment) => {
     try {
       await releasePlanService.updateDispatchStatus(a.dispatchBusLineId, 3, false)
       toast({ title: "Снят с выхода", description: `Выход №${a.busLineNumber}`, variant: "default" })
       router.refresh()
-    } catch (error) {
-      console.error("Ошибка при обновлении статуса:", error)
+    } catch {
       toast({ title: "Ошибка", description: "Не удалось снять с выхода", variant: "destructive" })
     }
   }
 
-  const normalize = (str?: string) =>
-    str?.toLowerCase().replace(/\./g, "").replace(/\s+/g, "") ?? ""
-  
-  const searchWords = useMemo(
-    () => searchQuery.toLowerCase().split(" ").filter(Boolean),
-    [searchQuery]
-  )
-  
-  const filteredGroups = useMemo(() => {
-    const groups = routeGroups.map(group => {
-      const filteredAssignments = group.assignments.filter(a => {
-        const fullName = normalize(a.driver?.fullName)
-        const serviceNumber = a.driver?.serviceNumber ?? ""
-        const garageNumber = a.bus?.garageNumber ?? ""
-        const govNumber = a.bus?.govNumber ?? ""
-  
-        const matchesSearch = searchWords.every(word =>
-          fullName.includes(word) ||
-          serviceNumber.includes(word) ||
-          garageNumber.includes(word) ||
-          govNumber.includes(word)
-        )
-  
-        const matchesStatus = !selectedStatus || a.status?.toString() === selectedStatus
-        const matchesChecked = !onlyChecked || checkedDepartures[a.dispatchBusLineId]
-  
-        return (!searchQuery || matchesSearch) && matchesStatus && matchesChecked
-      })
-  
-      return {
-        ...group,
-        assignments: filteredAssignments,
-      }
-    }).filter(group => group.assignments.length > 0)
-  
-    // ⬇️ только если действительно активен поиск
-    if (isSearchActive && searchQuery) {
-      return groups.flatMap(group =>
-        group.assignments.map(a => ({
-          ...group,
-          assignments: [a],
-        }))
-      )
-    }
-  
-    return groups
-  }, [routeGroups, searchWords, selectedStatus, onlyChecked, checkedDepartures, searchQuery, isSearchActive])
-  
+  const reserveRef = useRef<HTMLDivElement>(null)
+  const scrollToReserve = () => reserveRef.current?.scrollIntoView({ behavior: "smooth" })
 
-  const filteredReserve = useMemo(() => {
-    if (!searchQuery) return reserveAssignments
-  
-    const searchLower = searchQuery.toLowerCase().replace(/\./g, "").replace(/\s+/g, "")
-  
-    return reserveAssignments.filter(r => {
-      const fullName = normalize(r.driver?.fullName)
-      const tabNumber = r.driver?.serviceNumber || ""
-      const garageNumber = r.garageNumber || ""
-      const govNumber = r.govNumber || ""
-  
-      return (
-        fullName.includes(searchLower) ||
-        tabNumber.includes(searchLower) ||
-        garageNumber.includes(searchLower) ||
-        govNumber.includes(searchLower)
-      )
-    })
-  }, [reserveAssignments, searchQuery])  
+  const { driversAssigned, busesAssigned } = countUniqueAssignments(data.routeGroups, data.reserveAssignments)
 
-  const { driversAssigned, busesAssigned } = countUniqueAssignments(routeGroups, reserveAssignments)
+  const isSearchMode = !!search?.trim()
 
   return (
     <div className="text-[18px] leading-relaxed space-y-1 text-gray-900">
@@ -211,11 +118,13 @@ export default function ConvoyDispatchTable(props: ConvoyDispatchTableProps) {
         busOnWork={convoySummary?.busOnWork ?? busesAssigned}
         onScrollToReserve={scrollToReserve}
       />
-
-      {filteredGroups.map(group => (
+      {isSearchMode && data.routeGroups.length === 1 && data.routeGroups[0].assignments.length === 1 ? (
         <RouteGroupTable
-          key={group.routeId}
-          group={group}
+          key={`search-${data.routeGroups[0].routeId}-${data.routeGroups[0].assignments[0].dispatchBusLineId}`}
+          group={{
+            ...data.routeGroups[0],
+            assignments: [data.routeGroups[0].assignments[0]],
+          }}
           displayDate={dateObj}
           readOnly={readOnlyMode}
           fuelNorms={fuelNorms}
@@ -227,23 +136,40 @@ export default function ConvoyDispatchTable(props: ConvoyDispatchTableProps) {
           onRemoveClick={handleRemoveClick}
           onReload={() => router.refresh()}
         />
-      ))}
-      {reserveAssignments.length > 0 && (
-        <div ref={reserveRef}>
-          <ReserveTable
-            departures={filteredReserve}
+      ) : (
+        data.routeGroups.map(group => (
+          <RouteGroupTable
+            key={group.routeId}
+            group={group}
             displayDate={dateObj}
             readOnly={readOnlyMode}
             fuelNorms={fuelNorms}
             setFuelNorms={setFuelNorms}
-            search={searchQuery}
+            checkedDepartures={checkedDepartures}
+            setCheckedDepartures={setCheckedDepartures}
+            onDriverClick={handleDriverClick}
+            onReplaceClick={handleReplaceClick}
+            onRemoveClick={handleRemoveClick}
+            onReload={() => router.refresh()}
+            search={search}
+          />
+        ))
+      )}
+      {data.reserveAssignments.length > 0 && (
+        <div ref={reserveRef}>
+          <ReserveTable
+            departures={data.reserveAssignments}
+            displayDate={dateObj}
+            readOnly={readOnlyMode}
+            fuelNorms={fuelNorms}
+            setFuelNorms={setFuelNorms}
           />
         </div>
       )}
 
       <MaintenanceSummary
-        repairBuses={repairBuses}
-        dayOffBuses={dayOffBuses}
+        repairBuses={data.repairBuses}
+        dayOffBuses={data.dayOffBuses}
         driverOnWork={driversAssigned}
         busOnWork={busesAssigned}
       />
@@ -252,18 +178,14 @@ export default function ConvoyDispatchTable(props: ConvoyDispatchTableProps) {
         date={data.date}
         driverStatuses={
           Object.fromEntries(
-            Object.entries(driverStatuses).filter(([key]) => key !== "total")
+            Object.entries(data.driverStatuses).filter(([key]) => key !== "total")
           ) as Record<string, string[]>
         }
         showDayOffDrivers={showDayOffDrivers}
         toggleDayOffDrivers={() => setShowDayOffDrivers(prev => !prev)}
       />
 
-      <ViewDriverDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        driver={selectedDriver}
-      />
+      <ViewDriverDialog open={dialogOpen} onOpenChange={setDialogOpen} driver={selectedDriver} />
       {selectedAssignment && (
         <ReplaceAssignmentModal
           open={replaceModalOpen}

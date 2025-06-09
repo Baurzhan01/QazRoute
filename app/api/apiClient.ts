@@ -22,30 +22,4 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Интерцептор для обработки ответов
-// apiClient.interceptors.response.use(
-//   (response) => {
-//     // Модифицируем response.data в формате ApiResponse
-//     response.data = {
-//       isSuccess: true,
-//       error: null,
-//       statusCode: response.status,
-//       value: response.data,
-//     };
-//     return response;
-//   },
-//   (error) => {
-//     // Модифицируем error.response.data в формате ApiResponse
-//     if (error.response) {
-//       error.response.data = {
-//         isSuccess: false,
-//         error: error.response.data?.error || 'Ошибка запроса',
-//         statusCode: error.response.status,
-//         value: null,
-//       };
-//     }
-//     return Promise.reject(error);
-//   },
-// );
-
 export default apiClient;

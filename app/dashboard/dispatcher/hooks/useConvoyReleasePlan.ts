@@ -98,31 +98,54 @@ export function useConvoyReleasePlan(
       ])
 
       const rawRoutes = (dispatchRes.value as any)?.routes ?? []
-      const routeGroups: RouteGroup[] = rawRoutes.map((route: any) => ({
-        routeId: route.routeId,
-        routeNumber: route.routeNumber,
-        assignments: (route.busLines ?? []).map((bl: any) => {
-          const normalizedStatus = typeof bl.status === "string" ? statusMap[bl.status] ?? 0 : bl.status ?? 0
-          return {
-            dispatchBusLineId: bl.dispatchBusLineId,
-            busLineNumber: bl.busLineNumber ?? "—",
-            garageNumber: bl.bus?.garageNumber ?? "—",
-            stateNumber: bl.bus?.govNumber ?? "—",
-            driver: bl.firstDriver ?? null,
-            shift2Driver: bl.secondDriver ?? undefined,
-            departureTime: bl.exitTime ?? "—",
-            scheduleTime: bl.scheduleStart ?? "—",
-            endTime: bl.endTime ?? "—",
-            additionalInfo: bl.description ?? "",
-            shift2AdditionalInfo: bl.shift2AdditionalInfo ?? "",
-            status: normalizedStatus,
-            isRealsed: bl.isRealsed ?? false,
-            releasedTime: bl.releasedTime ?? "",
-            fuelAmount: bl.normSolarium ?? "",
-            bus: bl.bus ?? undefined,
-          }
-        })
-      }))
+      const lowerSearch = search?.toLowerCase().trim()
+
+      const routeGroups: RouteGroup[] = rawRoutes.map((route: any) => {
+        let busLines = route.busLines ?? []
+
+        // 🔍 Фильтрация выходов по поиску (если строка задана)
+        if (lowerSearch) {
+          busLines = busLines.filter((bl: any) => {
+            const fullName = bl.firstDriver?.fullName?.toLowerCase() ?? ""
+            const serviceNumber = bl.firstDriver?.serviceNumber ?? ""
+            const garage = bl.bus?.garageNumber?.toLowerCase() ?? ""
+            const gov = bl.bus?.govNumber?.toLowerCase() ?? ""
+
+            return (
+              fullName.includes(lowerSearch) ||
+              serviceNumber.includes(lowerSearch) ||
+              garage.includes(lowerSearch) ||
+              gov.includes(lowerSearch)
+            )
+          })
+        }
+
+        return {
+          routeId: route.routeId,
+          routeNumber: route.routeNumber,
+          assignments: busLines.map((bl: any) => {
+            const normalizedStatus = typeof bl.status === "string" ? statusMap[bl.status] ?? 0 : bl.status ?? 0
+            return {
+              dispatchBusLineId: bl.dispatchBusLineId,
+              busLineNumber: bl.busLineNumber ?? "—",
+              garageNumber: bl.bus?.garageNumber ?? "—",
+              stateNumber: bl.bus?.govNumber ?? "—",
+              driver: bl.firstDriver ?? null,
+              shift2Driver: bl.secondDriver ?? undefined,
+              departureTime: bl.exitTime ?? "—",
+              scheduleTime: bl.scheduleStart ?? "—",
+              endTime: bl.endTime ?? "—",
+              additionalInfo: bl.description ?? "",
+              shift2AdditionalInfo: bl.shift2AdditionalInfo ?? "",
+              status: normalizedStatus,
+              isRealsed: bl.isRealsed ?? false,
+              releasedTime: bl.releasedTime ?? "",
+              fuelAmount: bl.normSolarium ?? "",
+              bus: bl.bus ?? undefined,
+            }
+          })
+        }
+      }).filter((group: RouteGroup) => group.assignments.length > 0) // ⬅️ исключаем пустые группы
 
       const reserveAssignments = (reserveRes.value ?? []).map((r: any, index: number) => ({
         dispatchBusLineId: r.dispatchBusLineId,
@@ -196,6 +219,6 @@ export function useConvoyReleasePlan(
     busesAssigned: busesCount,
     loading,
     error,
-    refetch: load, // ✅ теперь доступно для ручного вызова
+    refetch: load,
   }
 }
