@@ -1,6 +1,12 @@
 "use client"
 
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card"
 import { Users, Bus, Map } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -8,18 +14,33 @@ interface ConvoySummaryCardProps {
   convoyNumber: number
   driverCount: number
   busCount: number
-  routeCount: number // ← обязателен
+  routeCount: number
   onManage: () => void
 }
-
 
 export default function ConvoySummaryCard({
   convoyNumber,
   driverCount,
   busCount,
   routeCount,
-  onManage
+  onManage,
 }: ConvoySummaryCardProps) {
+  // Безопасная проверка данных
+  const isInvalid =
+    [convoyNumber, driverCount, busCount, routeCount].some(
+      (val) => typeof val !== "number" || isNaN(val)
+    )
+
+  if (isInvalid) {
+    console.warn("Некорректные данные в ConvoySummaryCard", {
+      convoyNumber,
+      driverCount,
+      busCount,
+      routeCount,
+    })
+    return null
+  }
+
   return (
     <Card className="shadow-sm hover:shadow-md transition-all border border-gray-200">
       <CardHeader className="pb-2">
