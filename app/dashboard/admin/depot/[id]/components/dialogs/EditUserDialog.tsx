@@ -12,8 +12,25 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { Convoy, UserFormData } from "../../types"
+
+const roleOptions = [
+  { value: "fleetManager", label: "Начальник колонны" },
+  { value: "seniorDispatcher", label: "Старший диспетчер" },
+  { value: "dispatcher", label: "Диспетчер" },
+  { value: "mechanic", label: "Механик" },
+  { value: "hr", label: "Отдел кадров" },
+  { value: "taskInspector", label: "Отдел таксировки" },
+  { value: "CTS", label: "КТС" },
+  { value: "MCC", label: "ЦУП" },
+]
 
 interface EditUserDialogProps {
   open: boolean
@@ -34,69 +51,118 @@ export default function EditUserDialog({
   onSelectChange,
   onSubmit,
 }: EditUserDialogProps) {
+  const requiresConvoy = ["fleetManager", "mechanic"].includes(formData.role)
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Редактировать пользователя</DialogTitle>
-          <DialogDescription>Измените информацию о пользователе</DialogDescription>
+          <DialogDescription>
+            Измените информацию о пользователе
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="fullName" className="text-right">ФИО</Label>
-            <Input id="fullName" name="fullName" value={formData.fullName} onChange={onFormChange} className="col-span-3" />
+            <Label htmlFor="fullName" className="text-right text-sm font-medium">
+              ФИО
+            </Label>
+            <Input
+              id="fullName"
+              name="fullName"
+              value={formData.fullName}
+              onChange={onFormChange}
+              className="col-span-3"
+            />
           </div>
+
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="email" className="text-right">Email</Label>
-            <Input id="email" name="email" type="email" value={formData.email} onChange={onFormChange} className="col-span-3" />
+            <Label htmlFor="email" className="text-right text-sm font-medium">
+              Email
+            </Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={onFormChange}
+              className="col-span-3"
+            />
           </div>
+
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="role" className="text-right">Роль</Label>
-            <Select value={formData.role} onValueChange={(value) => onSelectChange("role", value)}>
+            <Label htmlFor="role" className="text-right text-sm font-medium">
+              Роль
+            </Label>
+            <Select
+              value={formData.role}
+              onValueChange={(value) => onSelectChange("role", value)}
+            >
               <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Выберите роль" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="fleetManager">Начальник колонны</SelectItem>
-                <SelectItem value="seniorDispatcher">Старший диспетчер</SelectItem>
-                <SelectItem value="dispatcher">Диспетчер</SelectItem>
-                <SelectItem value="mechanic">Механик</SelectItem>
-                <SelectItem value="hr">Отдел кадров</SelectItem>
-                <SelectItem value="taskInspector">Отдел таксировки</SelectItem>
+                {roleOptions.map((role) => (
+                  <SelectItem key={role.value} value={role.value}>
+                    {role.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
-          {(formData.role === "fleetManager" || formData.role === "mechanic") && (
+          {requiresConvoy && (
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="convoyId" className="text-right">Автоколонна</Label>
-              <Select value={formData.convoyId ?? "not-assigned"} onValueChange={(value) => onSelectChange("convoyId", value === "not-assigned" ? undefined : value)}>
+              <Label htmlFor="convoyId" className="text-right text-sm font-medium">
+                Автоколонна
+              </Label>
+              <Select
+                value={formData.convoyId ?? "not-assigned"}
+                onValueChange={(value) =>
+                  onSelectChange(
+                    "convoyId",
+                    value === "not-assigned" ? undefined : value
+                  )
+                }
+              >
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Выберите автоколонну (необязательно)" />
+                  <SelectValue placeholder="Выберите автоколонну" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="not-assigned">Не назначена</SelectItem>
-                  {convoys.map((convoy) => (
-                    <SelectItem key={convoy.id} value={convoy.id}>
-                      Автоколонна №{convoy.number}
-                    </SelectItem>
-                  ))}
+                  {[...convoys]
+                    .sort((a, b) => a.number - b.number)
+                    .map((convoy) => (
+                      <SelectItem key={convoy.id} value={convoy.id}>
+                        Автоколонна №{convoy.number}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
           )}
 
-          {formData.role !== "fleetManager" && formData.role !== "mechanic" && (
+          {!requiresConvoy && (
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="position" className="text-right">Должность</Label>
-              <Input id="position" name="position" value={formData.position} onChange={onFormChange} className="col-span-3" />
+              <Label htmlFor="position" className="text-right text-sm font-medium">
+                Должность
+              </Label>
+              <Input
+                id="position"
+                name="position"
+                value={formData.position}
+                onChange={onFormChange}
+                className="col-span-3"
+              />
             </div>
           )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Отмена
+          </Button>
           <Button onClick={onSubmit}>Сохранить</Button>
         </DialogFooter>
       </DialogContent>

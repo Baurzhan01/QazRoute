@@ -2,7 +2,7 @@ export interface User {
   id: string;
   fullName: string;
   email: string;
-  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" | "taskInspector";
+  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" |"CTS" |"MCC" | "taskInspector";
   position?: string;
   avatar?: string;
   busDepotId?: string;
@@ -25,7 +25,10 @@ export type UserRole =
   | "dispatcher"
   | "seniorDispatcher"
   | "hr"
+  | "CTS"
+  | "MCC"
   | "taskInspector";
+  
 
 
 // Обновленный интерфейс Convoy
@@ -47,7 +50,7 @@ export interface UserFormData {
   email: string;
   login: string;
   password: string;
-  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" | "taskInspector";
+  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" |"CTS" |"MCC" | "taskInspector";
   position: string;
   busDepotId: string;
   convoyId?: string;

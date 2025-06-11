@@ -1,22 +1,13 @@
 import { useState, useEffect, useCallback } from "react"
 import { repairService } from "@/service/repairService"
-import { busService } from "@/service/busService"
-import { driverService } from "@/service/driverService"
 import { getAuthData } from "@/lib/auth-utils"
+import type { RepairDto } from "@/types/repair.types"
+import type { DisplayDriver, DriverStatus } from "@/types/driver.types"
 import type { DisplayBus } from "@/types/bus.types"
-import type { DisplayDriver } from "@/types/driver.types"
-import type { Bus } from "@/types/bus.types"
-import type { Driver } from "@/types/driver.types"
 
 export interface RepairRecord {
   driver: DisplayDriver
   bus: DisplayBus
-  description: string
-}
-
-export interface RawRepairEntry {
-  busId: string
-  driverId: string
   description: string
 }
 
@@ -30,41 +21,30 @@ export function usePlannedRepairs(date: Date) {
     try {
       const dateStr = date.toISOString().split("T")[0]
       const res = await repairService.getRepairsByDate(dateStr, convoyId)
-      const entries: RawRepairEntry[] = res?.value ?? []
+      const entries: RepairDto[] = res?.value ?? []
 
-      const enriched: RepairRecord[] = await Promise.all(
-        entries.map(async (entry) => {
-          const [busRes, driverRes] = await Promise.all([
-            busService.getById(entry.busId),
-            driverService.getById(entry.driverId)
-          ])
+      const mapped: RepairRecord[] = entries.map((entry) => ({
+        bus: {
+          id: entry.bus.id,
+          govNumber: entry.bus.govNumber,
+          garageNumber: entry.bus.garageNumber,
+          busStatus: "OnWork", // или "Unknown" as BusStatus, если тип позволяет
+          isAssigned: false,
+          isBusy: false
+        },
+        driver: {
+          id: entry.driver.id,
+          fullName: entry.driver.fullName,
+          serviceNumber: entry.driver.serviceNumber,
+          driverStatus: "OnWork" as DriverStatus,
+          isAssigned: false,
+          isBusy: false
+        },
+        description: entry.description
+      }))
+      
 
-          const bus: Bus = busRes.value!
-          const driver: Driver = driverRes.value!
-
-          return {
-            bus: {
-              id: bus.id ?? "",
-              garageNumber: bus.garageNumber,
-              govNumber: bus.govNumber,
-              busStatus: bus.busStatus,
-              isAssigned: false,
-              isBusy: false
-            },
-            driver: {
-              id: driver.id ?? "",
-              fullName: driver.fullName,
-              serviceNumber: driver.serviceNumber,
-              driverStatus: driver.driverStatus,
-              isAssigned: false,
-              isBusy: false
-            },
-            description: entry.description,
-          }
-        })
-      )
-
-      setRepairs(enriched)
+      setRepairs(mapped)
     } catch (e) {
       console.error("Ошибка загрузки ремонтов:", e)
       setRepairs([])
@@ -77,46 +57,28 @@ export function usePlannedRepairs(date: Date) {
     fetchRepairs()
   }, [fetchRepairs])
 
+  const toInputDto = (record: RepairRecord) => ({
+    busId: record.bus.id,
+    driverId: record.driver.id,
+    description: record.description
+  })
+
   const deleteRepair = async (record: RepairRecord) => {
-    try {
-      const dateStr = date.toISOString().split("T")[0]
-      await repairService.deleteRepairs(dateStr, [{
-        busId: record.bus.id,
-        driverId: record.driver.id,
-        description: record.description,
-      }])
-      await fetchRepairs()
-    } catch (e) {
-      console.error("Ошибка удаления ремонта:", e)
-    }
+    const dateStr = date.toISOString().split("T")[0]
+    await repairService.deleteRepairs(dateStr, [toInputDto(record)])
+    await fetchRepairs()
   }
 
   const updateRepair = async (record: RepairRecord) => {
-    try {
-      const dateStr = date.toISOString().split("T")[0]
-      await repairService.updateRepair(dateStr, convoyId, {
-        busId: record.bus.id,
-        driverId: record.driver.id,
-        description: record.description,
-      })
-      await fetchRepairs()
-    } catch (e) {
-      console.error("Ошибка обновления ремонта:", e)
-    }
+    const dateStr = date.toISOString().split("T")[0]
+    await repairService.updateRepair(dateStr, convoyId, toInputDto(record))
+    await fetchRepairs()
   }
 
   const assignRepair = async (record: RepairRecord) => {
-    try {
-      const dateStr = date.toISOString().split("T")[0]
-      await repairService.assignRepairs(dateStr, convoyId, [{
-        busId: record.bus.id,
-        driverId: record.driver.id,
-        description: record.description,
-      }])
-      await fetchRepairs()
-    } catch (e) {
-      console.error("Ошибка назначения ремонта:", e)
-    }
+    const dateStr = date.toISOString().split("T")[0]
+    await repairService.assignRepairs(dateStr, convoyId, [toInputDto(record)])
+    await fetchRepairs()
   }
 
   return {
@@ -125,6 +87,6 @@ export function usePlannedRepairs(date: Date) {
     fetchRepairs,
     assignRepair,
     deleteRepair,
-    updateRepair,
+    updateRepair
   }
 }

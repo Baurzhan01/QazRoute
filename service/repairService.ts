@@ -1,12 +1,11 @@
-// app/service/repairService.ts
-
 import apiClient from "@/app/api/apiClient";
 import type { ApiResponse } from "@/types/api.types";
+import type { RepairDto, GroupedRepairsByConvoy } from "@/types/repair.types";
 
-interface RepairDto {
-  driverId: string
-  busId: string
-  description: string
+export interface RepairInputDto {
+  driverId: string;
+  busId: string;
+  description: string;
 }
 
 export const repairService = {
@@ -18,10 +17,20 @@ export const repairService = {
     return res.data;
   },
 
+  getRepairsByDepotAndDate: async (
+    date: string,
+    depotId: string
+  ): Promise<ApiResponse<GroupedRepairsByConvoy[]>> => {
+    const res = await apiClient.get(`/repair/${date}/all-by-depot`, {
+      params: { depotId },
+    });
+    return res.data;
+  },
+
   assignRepairs: async (
     date: string,
     convoyId: string,
-    data: RepairDto[]
+    data: RepairInputDto[]
   ): Promise<ApiResponse<boolean>> => {
     const res = await apiClient.post(`/repair/${date}/assignments`, data, { params: { convoyId } });
     return res.data;
@@ -30,7 +39,7 @@ export const repairService = {
   updateRepair: async (
     date: string,
     convoyId: string,
-    data: RepairDto
+    data: RepairInputDto
   ): Promise<ApiResponse<boolean>> => {
     const res = await apiClient.put(`/repair/${date}/assignment`, data, { params: { convoyId } });
     return res.data;
@@ -38,7 +47,7 @@ export const repairService = {
 
   deleteRepairs: async (
     date: string,
-    data: RepairDto[]
+    data: RepairInputDto[]
   ): Promise<ApiResponse<boolean>> => {
     const res = await apiClient.delete(`/repair/${date}/assignments`, { data });
     return res.data;

@@ -36,7 +36,18 @@ import { getRoleCardTitle, getRoleName, getRoleKey } from "../../utils/roleUtils
 interface ViewUsersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" | "taskInspector" | null;
+  role:
+    | "fleetManager"
+    | "mechanic"
+    | "admin"
+    | "mechanicOnDuty"
+    | "dispatcher"
+    | "seniorDispatcher"
+    | "hr"
+    | "taskInspector"
+    | "CTS"
+    | "MCC"
+    | null;
   usersByRole: Record<string, User[]>;
   onEdit: (user: User) => void;
   onAddUser: (role: ViewUsersDialogProps["role"]) => void;
@@ -58,7 +69,10 @@ export default function ViewUsersDialog({
   if (!role) return null;
 
   const roleKey = getRoleKey(role);
-  const users = roleKey ? usersByRole[roleKey] : [];
+  const users = roleKey ? [...(usersByRole[roleKey] || [])].sort((a, b) =>
+    a.fullName.localeCompare(b.fullName)
+  ) : [];
+
   const showConvoyColumn = role === "fleetManager" || role === "mechanic";
 
   const handleOpenDeleteDialog = (user: User) => {
@@ -85,56 +99,76 @@ export default function ViewUsersDialog({
         <DialogContent className="sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>{getRoleCardTitle(role)}</DialogTitle>
-            <DialogDescription>Список всех пользователей с ролью {getRoleName(role)}</DialogDescription>
+            <DialogDescription>
+              Список всех пользователей с ролью {getRoleName(role)}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="py-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ФИО</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Должность</TableHead>
-                  {showConvoyColumn && <TableHead>Автоколонна</TableHead>}
-                  <TableHead className="text-right">Действия</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.fullName}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.position}</TableCell>
-                    {showConvoyColumn && (
-                      <TableCell>
-                        {user.convoyNumber ? (
-                          <Badge variant="outline" className="bg-sky-50">Автоколонна №{user.convoyNumber}</Badge>
-                        ) : (
-                          <p className="text-gray-500">Не назначена</p>
-                        )}
-                      </TableCell>
-                    )}
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => { onEdit(user); onOpenChange(false); }}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Редактировать
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleOpenDeleteDialog(user)}>
-                          Удалить
-                        </Button>
-                      </div>
-                    </TableCell>
+            {users.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ФИО</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Должность</TableHead>
+                    {showConvoyColumn && <TableHead>Автоколонна</TableHead>}
+                    <TableHead className="text-right">Действия</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            {users.length === 0 && (
-              <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300 mt-4">
+                </TableHeader>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">{user.fullName}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.position}</TableCell>
+                      {showConvoyColumn && (
+                        <TableCell>
+                          {user.convoyNumber ? (
+                            <Badge variant="outline" className="bg-sky-50 dark:bg-sky-900">
+                              Автоколонна №{user.convoyNumber}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">Не назначена</span>
+                          )}
+                        </TableCell>
+                      )}
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              onEdit(user);
+                              onOpenChange(false);
+                            }}
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Редактировать
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleOpenDeleteDialog(user)}
+                          >
+                            Удалить
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8 bg-muted rounded-lg border border-dashed border-gray-300 mt-4">
                 <Users className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                <h3 className="text-lg font-medium text-gray-900 mb-1">Нет пользователей</h3>
-                <p className="text-gray-500 mb-4">В этой категории пока нет пользователей</p>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
+                  Нет пользователей
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  В этой категории пока нет пользователей
+                </p>
                 <Button onClick={handleAddUser}>
                   <UserPlus className="mr-2 h-4 w-4" />
                   Добавить пользователя
@@ -144,7 +178,9 @@ export default function ViewUsersDialog({
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Закрыть</Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Закрыть
+            </Button>
             <Button onClick={handleAddUser}>
               <UserPlus className="mr-2 h-4 w-4" />
               Добавить пользователя
@@ -158,12 +194,19 @@ export default function ViewUsersDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Подтверждение удаления</AlertDialogTitle>
             <AlertDialogDescription>
-              Вы уверены, что хотите удалить пользователя <span className="font-semibold">{userToDelete?.fullName}</span>? Это действие нельзя отменить.
+              Вы уверены, что хотите удалить пользователя{" "}
+              <span className="font-semibold">{userToDelete?.fullName}</span>? Это действие
+              нельзя отменить.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setUserToDelete(null)}>Отмена</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700">Удалить</AlertDialogAction>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Удалить
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

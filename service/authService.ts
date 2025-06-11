@@ -1,6 +1,13 @@
 // services/authService.ts
 import apiClient from '../app/api/apiClient'
-import type { ApiResponse, AuthRequest, RegisterRequest, LoginResponse, UpdateUserRequest } from '../types/auth.types'
+import type {
+  ApiResponse,
+  AuthRequest,
+  RegisterRequest,
+  LoginResponse,
+  UpdateUserRequest
+} from '../types/auth.types'
+import type { User } from "@/app/dashboard/admin/depot/[id]/types"
 
 const setAuthData = (data: LoginResponse) => {
   if (!data.token) return
@@ -63,8 +70,8 @@ export const authService = {
     return response.data
   },
 
-  updateUser: async (userId: string, data: UpdateUserRequest): Promise<ApiResponse<void>> => {
-    const response = await apiClient.put<ApiResponse<void>>(`/auth/${userId}`, data)
+  updateUser: async (userId: string, data: UpdateUserRequest): Promise<ApiResponse<User>> => {
+    const response = await apiClient.put<ApiResponse<User>>(`/auth/${userId}`, data)
     return response.data
   },
 }

@@ -1,9 +1,19 @@
-"use client";
+"use client"
 
-import { Button } from "@/components/ui/button";
-import { Briefcase, Clock, FileText, Users, Wrench, UserPlus } from "lucide-react";
-import UserCard from "../UserCard";
-import type { User } from "../../types";
+import { Button } from "@/components/ui/button"
+import { 
+  Briefcase, 
+  Clock, 
+  FileText, 
+  Users, 
+  Wrench, 
+  UserPlus, 
+  Shield, 
+  Building2 
+} from "lucide-react"
+
+import UserCard from "../UserCard"
+import type { User, UserRole } from "../../types"
 
 interface UsersTabProps {
   usersByRole: Partial<Record<User["role"], User[]>>;
@@ -13,6 +23,19 @@ interface UsersTabProps {
   onDeleteUser: (userId: string) => void;
 }
 
+const roleDefinitions: { key: UserRole; icon: React.ElementType; label: string }[] = [
+  { key: "fleetManager", icon: Briefcase, label: "Начальники колонн" },
+  { key: "seniorDispatcher", icon: Clock, label: "Старшие диспетчеры" },
+  { key: "dispatcher", icon: Clock, label: "Диспетчеры" },
+  { key: "mechanic", icon: Wrench, label: "Механики" },
+  { key: "hr", icon: Users, label: "Отдел кадров" },
+  { key: "taskInspector", icon: FileText, label: "Отдел таксировки" },
+  { key: "CTS", icon: Shield, label: "КТС (Контроль тех. состояния)" },
+  { key: "MCC", icon: Building2, label: "ЦУП (Центр управления)" },
+]
+
+
+
 export default function UsersTab({
   usersByRole,
   onEditUser,
@@ -20,16 +43,6 @@ export default function UsersTab({
   onAddUser,
   onDeleteUser,
 }: UsersTabProps) {
-
-  const roles: { key: User["role"]; icon: React.ElementType; label: string }[] = [
-    { key: "fleetManager", icon: Briefcase, label: "Начальники колонн" },
-    { key: "seniorDispatcher", icon: Clock, label: "Старшие диспетчеры" },
-    { key: "dispatcher", icon: Clock, label: "Диспетчеры" },
-    { key: "mechanic", icon: Wrench, label: "Механики" },
-    { key: "hr", icon: Users, label: "Отдел кадров" },
-    { key: "taskInspector", icon: FileText, label: "Отдел таксировки" },
-  ];
-
   return (
     <div className="space-y-6">
       <div className="mb-6 flex justify-between items-center">
@@ -41,7 +54,7 @@ export default function UsersTab({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {roles.map(({ key, icon: Icon, label }) => (
+        {roleDefinitions.map(({ key, icon: Icon, label }) => (
           <UserCard
             key={key}
             title={<div className="flex items-center gap-2"><Icon className="h-5 w-5" /> {label}</div>}
@@ -55,5 +68,5 @@ export default function UsersTab({
         ))}
       </div>
     </div>
-  );
+  )
 }

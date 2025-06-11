@@ -3,7 +3,9 @@
 import type { Convoy, User } from "../types"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Building2, Briefcase, Wrench, Edit, Eye } from "lucide-react"
+import { Building2, Edit, Eye } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getRoleBorderColor } from "../utils/roleUtils"
 
 interface ConvoyCardProps {
   convoy: Convoy
@@ -13,36 +15,62 @@ interface ConvoyCardProps {
 }
 
 export default function ConvoyCard({ convoy, users, onEdit, onView }: ConvoyCardProps) {
-  // Используем данные из convoy.chief и convoy.mechanic, если они есть
-  const chiefName = convoy.chief?.fullName || users.find((u) => u.id === convoy.chiefId)?.fullName || "Не назначен";
-  const mechanicName = convoy.mechanic?.fullName || users.find((u) => u.id === convoy.mechanicId)?.fullName || "Не назначен";
+  const chiefUser = users.find(u => u.id === convoy.chiefId)
+  const mechanicUser = users.find(u => u.id === convoy.mechanicId)
+
+  const chief = chiefUser || convoy.chief
+  const mechanic = mechanicUser || convoy.mechanic
+
+  const chiefName = chief?.fullName || "Не назначен"
+  const mechanicName = mechanic?.fullName || "Не назначен"
+  const busesCount = convoy.busIds?.length || convoy.buses?.length || 0
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-      <CardHeader className="bg-gradient-to-r from-sky-500 to-sky-600 text-white">
+    <Card className="overflow-hidden hover:shadow-md transition-transform hover:scale-[1.01] duration-200 ease-in-out">
+      <CardHeader className="bg-gradient-to-r from-sky-500 to-sky-700 text-white">
         <CardTitle className="flex items-center gap-2">
           <Building2 className="h-5 w-5" />
           Автоколонна №{convoy.number}
         </CardTitle>
-        <CardDescription className="text-sky-100">{convoy.busIds?.length || convoy.buses?.length || 0} автобусов</CardDescription>
+        <CardDescription className="text-sky-100">
+          {busesCount} {busesCount === 1 ? "автобус" : "автобусов"}
+        </CardDescription>
       </CardHeader>
 
-      <CardContent className="pt-6">
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Briefcase className="h-5 w-5 text-sky-500" />
-            <div>
-              <p className="text-sm text-gray-500">Начальник колонны</p>
-              <p className="font-medium">{chiefName}</p>
-            </div>
+      <CardContent className="pt-6 space-y-4">
+        {/* Начальник колонны */}
+        <div className="flex items-center gap-3">
+          <Avatar className={`h-10 w-10 border-2 ${getRoleBorderColor("fleetManager")}`}>
+            <AvatarImage src={chiefUser?.avatar} alt={chiefName} />
+            <AvatarFallback>
+              {chiefName
+                .split(" ")
+                .map(n => n[0])
+                .join("")
+                .toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="text-sm text-gray-500">Начальник колонны</p>
+            <p className="font-medium">{chiefName}</p>
           </div>
+        </div>
 
-          <div className="flex items-center gap-3">
-            <Wrench className="h-5 w-5 text-purple-500" />
-            <div>
-              <p className="text-sm text-gray-500">Механик</p>
-              <p className="font-medium">{mechanicName}</p>
-            </div>
+        {/* Механик */}
+        <div className="flex items-center gap-3">
+          <Avatar className={`h-10 w-10 border-2 ${getRoleBorderColor("mechanic")}`}>
+            <AvatarImage src={mechanicUser?.avatar} alt={mechanicName} />
+            <AvatarFallback>
+              {mechanicName
+                .split(" ")
+                .map(n => n[0])
+                .join("")
+                .toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="text-sm text-gray-500">Механик</p>
+            <p className="font-medium">{mechanicName}</p>
           </div>
         </div>
       </CardContent>

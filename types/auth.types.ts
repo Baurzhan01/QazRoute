@@ -10,6 +10,7 @@ export interface RegisterRequest {
   password: string
   role: string
   busDepotId: string
+  convoyId?: string
 }
 
 export interface LoginResponse {
@@ -25,6 +26,9 @@ export interface LoginResponse {
 export interface UpdateUserRequest {
   fullName: string
   role: string
+  busDepotId?: string // ✅ Добавить
+  convoyId?: string   // ✅ Добавить
+  convoyNumber?: number // ✅ Добавить, если используешь
 }
 export interface ApiResponse<T> {
   isSuccess: boolean;

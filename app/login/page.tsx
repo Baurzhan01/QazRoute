@@ -23,6 +23,22 @@ export default function LoginPage() {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
+  function normalizeRolePath(role: string): string {
+    const map: Record<string, string> = {
+      CTS: "cts",
+      MCC: "mcc",
+      fleetManager: "fleet-manager",
+      seniorDispatcher: "senior-dispatcher",
+      dispatcher: "dispatcher",
+      hr: "hr",
+      taskInspector: "task-inspector",
+      admin: "admin"
+    }
+  
+    return map[role] || role.toLowerCase()
+  }
+  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -41,7 +57,7 @@ export default function LoginPage() {
 
       if (response.value) {
         const { role } = response.value
-        const normalizedRole = role.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase()
+        const normalizedRole = normalizeRolePath(role)
         router.push(`/dashboard/${normalizedRole}`)
       }
     } catch {

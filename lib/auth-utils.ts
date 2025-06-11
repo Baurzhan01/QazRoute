@@ -7,6 +7,7 @@ export function getAuthData() {
     try {
       return JSON.parse(stored) as {
         userId: string
+        fullName: string
         convoyId: string
         busDepotId: string
         role: string

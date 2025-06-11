@@ -53,12 +53,12 @@ export const useConvoys = ({ depotId, updateUserConvoy, users }: UseConvoysProps
       return false;
     }
   
-    const convoyData = {
+    const convoyData: any = {
       number: Number(number),
       busDepotId: depotId,
-      chiefId: chiefId === "not-assigned" ? undefined : chiefId,
-      mechanicId: mechanicId === "not-assigned" ? undefined : mechanicId,
     };
+    if (chiefId && chiefId !== "not-assigned") convoyData.chiefId = chiefId;
+    if (mechanicId && mechanicId !== "not-assigned") convoyData.mechanicId = mechanicId;
   
     // Создаем автоколонну
     const createResponse = await convoyService.create(convoyData);
@@ -82,8 +82,7 @@ export const useConvoys = ({ depotId, updateUserConvoy, users }: UseConvoysProps
         if (chiefId && chiefId !== "not-assigned" && chief) {
           await authService.updateUser(chiefId, {
             fullName: chief.fullName,
-            role: "FleetManager",
-            convoyId: newConvoy.id,
+            role: "FleetManager"
           });
           updateUserConvoy(chiefId, newConvoy.id, newConvoy.number);
         }
@@ -92,7 +91,6 @@ export const useConvoys = ({ depotId, updateUserConvoy, users }: UseConvoysProps
           await authService.updateUser(mechanicId, {
             fullName: mechanic.fullName,
             role: "Mechanic",
-            convoyId: newConvoy.id,
           });
           updateUserConvoy(mechanicId, newConvoy.id, newConvoy.number);
         }
@@ -108,12 +106,12 @@ export const useConvoys = ({ depotId, updateUserConvoy, users }: UseConvoysProps
     if (!selectedConvoy) return false;
   
     const { number, chiefId, mechanicId } = newConvoyData;
-    const convoyData = {
+    const convoyData: any = {
       number: Number(number) || selectedConvoy.number,
       busDepotId: selectedConvoy.busDepotId,
-      chiefId: chiefId === "not-assigned" ? undefined : chiefId,
-      mechanicId: mechanicId === "not-assigned" ? undefined : mechanicId,
     };
+    if (chiefId && chiefId !== "not-assigned") convoyData.chiefId = chiefId;
+    if (mechanicId && mechanicId !== "not-assigned") convoyData.mechanicId = mechanicId;
   
     const response = await convoyService.update(selectedConvoy.id, convoyData);
   
@@ -132,8 +130,7 @@ export const useConvoys = ({ depotId, updateUserConvoy, users }: UseConvoysProps
         if (chief) {
           await authService.updateUser(chiefId, {
             fullName: chief.fullName,
-            role: "FleetManager",
-            convoyId: updatedConvoy.id,
+            role: "FleetManager"
           });
           updateUserConvoy(chiefId, updatedConvoy.id, updatedConvoy.number);
         }
@@ -144,7 +141,6 @@ export const useConvoys = ({ depotId, updateUserConvoy, users }: UseConvoysProps
           await authService.updateUser(oldChiefId, {
             fullName: oldChief.fullName,
             role: "FleetManager",
-            convoyId: undefined,
           });
           updateUserConvoy(oldChiefId, undefined, undefined);
         }
@@ -156,7 +152,6 @@ export const useConvoys = ({ depotId, updateUserConvoy, users }: UseConvoysProps
           await authService.updateUser(mechanicId, {
             fullName: mechanic.fullName,
             role: "Mechanic",
-            convoyId: updatedConvoy.id,
           });
           updateUserConvoy(mechanicId, updatedConvoy.id, updatedConvoy.number);
         }
@@ -167,7 +162,6 @@ export const useConvoys = ({ depotId, updateUserConvoy, users }: UseConvoysProps
           await authService.updateUser(oldMechanicId, {
             fullName: oldMechanic.fullName,
             role: "Mechanic",
-            convoyId: undefined,
           });
           updateUserConvoy(oldMechanicId, undefined, undefined);
         }
