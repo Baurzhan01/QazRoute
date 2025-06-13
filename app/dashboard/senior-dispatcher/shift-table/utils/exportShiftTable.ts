@@ -51,19 +51,21 @@ export async function exportToExcel(shifts: UserWorkShift[], monthData: MonthDat
   worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
   
   // Автоматическая ширина столбцов
-  worksheet.columns?.forEach((column: Column) => {
-    column.width = 15
+  worksheet.columns?.forEach((column) => {
+    if (column) {
+      column.width = 15
+    }
   })
 
   // Сохраняем файл
-  const fileName = `Табель_${year}_${month}.xlsx`
-  await workbook.xlsx.writeFile(fileName)
-  
-  // Создаем ссылку для скачивания
+  const buffer = await workbook.xlsx.writeBuffer()
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = window.URL.createObjectURL(blob)
   const link = document.createElement('a')
-  link.href = fileName
-  link.download = fileName
+  link.href = url
+  link.download = `Табель_${year}_${month}.xlsx`
   link.click()
+  window.URL.revokeObjectURL(url)
 }
 
 // 🧾 Экспорт в PDF
