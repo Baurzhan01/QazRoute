@@ -20,7 +20,7 @@ export const repairService = {
   getRepairsByDepotAndDate: async (
     date: string,
     depotId: string
-  ): Promise<ApiResponse<GroupedRepairsByConvoy[]>> => {
+  ): Promise<ApiResponse<RepairDto[]>> => {
     const res = await apiClient.get(`/repair/${date}/all-by-depot`, {
       params: { depotId },
     });

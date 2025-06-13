@@ -18,14 +18,44 @@ export interface RepairDto {
   };
 }
 
+// DTO для RepairTableAll без enrich
+export interface FlatRepairRecord extends Omit<RepairDto, "bus" | "driver"> {
+  bus: {
+    id: string;
+    govNumber: string;
+    garageNumber: string;
+  };
+  driver: {
+    id: string;
+    fullName: string;
+    serviceNumber: string;
+  };
+}
+
+// вместо DisplayBus
+export interface MinimalBus {
+  id: string
+  govNumber: string
+  garageNumber: string
+}
+
+// вместо DisplayDriver
+export interface MinimalDriver {
+  id: string
+  fullName: string
+  serviceNumber: string
+}
+
+
+
 // Расширенная запись с полными объектами
 export interface RepairRecord extends Omit<RepairDto, "bus" | "driver"> {
-  bus: DisplayBus;
-  driver: DisplayDriver;
+  bus: MinimalBus;
+  driver: MinimalDriver;
 }
 
 export interface GroupedRepairsByConvoy {
   convoyId: string;
   convoyNumber: number;
-  repairs: RepairRecord[];
+  repairs: FlatRepairRecord[];
 }

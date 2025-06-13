@@ -101,6 +101,16 @@ export const releasePlanService = {
     return data
   },
 
+  updateReserveDescription: async (reserveId: string, date: string, description: string) => {
+    const body = {
+      reserveId,
+      date,
+      description
+    }
+  
+    return apiClient.put("/dispatches/update-description/reserve", body)
+  },  
+
   saveReserveAssignments: (date: string, assignments: { driverId: string | null; busId: string | null }[]) =>
     apiClient.post(`/dispatches/reserve/${date}/assignments`, assignments),
   

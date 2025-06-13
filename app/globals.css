@@ -179,3 +179,36 @@ body, table, th, td {
 .react-datepicker__navigation-icon::before {
   border-color: hsl(var(--muted-foreground));
 }
+/* 📷 Для экспорта PNG с чёткими шрифтами */
+.print-export {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
+  background-color: white !important;
+  color: black !important;
+  transform-origin: top left;
+  font-size: 16px; /* Повышает чёткость */
+  line-height: 1.5; /* Улучшает читаемость */
+}
+#print-export,
+#print-export * {
+  -webkit-font-smoothing: antialiased;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
+}
+#print-export table {
+  background-color: white !important;
+  border-collapse: collapse !important;
+}
+
+#print-export th,
+#print-export td {
+  border: 1px solid #ccc !important;
+  padding: 4px 8px !important;
+  font-size: 14px !important;
+}
+#print-export {
+  font-size: 18px;
+  line-height: 1.6;
+}

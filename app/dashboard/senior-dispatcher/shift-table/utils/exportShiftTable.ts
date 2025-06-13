@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx"
+import { Workbook, Column } from "exceljs"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import type { UserWorkShift } from "@/types/coordinator.types"
@@ -17,7 +17,7 @@ function getShiftMark(shiftType?: string): string {
 }
 
 // 📊 Экспорт в Excel
-export function exportToExcel(shifts: UserWorkShift[], monthData: MonthData) {
+export async function exportToExcel(shifts: UserWorkShift[], monthData: MonthData) {
   const { year, month, daysInMonth } = monthData
 
   const headers = [
@@ -37,13 +37,33 @@ export function exportToExcel(shifts: UserWorkShift[], monthData: MonthData) {
     return row
   })
 
-  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data])
-  const workbook = { 
-    Sheets: { "Табель": worksheet }, 
-    SheetNames: ["Табель"],
-    Props: {}
-  }
-  XLSX.writeFile(workbook, `Табель_${year}_${month}.xlsx`)
+  const workbook = new Workbook()
+  const worksheet = workbook.addWorksheet("Табель")
+  
+  // Добавляем заголовки
+  worksheet.addRow(headers)
+  
+  // Добавляем данные
+  data.forEach(row => worksheet.addRow(row))
+  
+  // Настраиваем стили
+  worksheet.getRow(1).font = { bold: true }
+  worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
+  
+  // Автоматическая ширина столбцов
+  worksheet.columns?.forEach((column: Column) => {
+    column.width = 15
+  })
+
+  // Сохраняем файл
+  const fileName = `Табель_${year}_${month}.xlsx`
+  await workbook.xlsx.writeFile(fileName)
+  
+  // Создаем ссылку для скачивания
+  const link = document.createElement('a')
+  link.href = fileName
+  link.download = fileName
+  link.click()
 }
 
 // 🧾 Экспорт в PDF

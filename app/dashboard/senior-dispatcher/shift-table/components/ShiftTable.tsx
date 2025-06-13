@@ -5,6 +5,7 @@ import { shiftTableService } from "@/service/shiftTableService"
 import { exportToExcel, exportToPdf } from "../utils/exportShiftTable"
 import { apiToShift } from "../utils/shiftTypeMapper"
 import { Loader2 } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
 
 import { ShiftTableHeader } from "./ShiftTableHeader"
 import { ShiftTableRow } from "./ShiftTableRow"
@@ -105,7 +106,18 @@ export const ShiftTable = () => {
     }
   }
 
-  const handleExportExcel = () => exportToExcel(shifts, monthData)
+  const handleExportExcel = async () => {
+    try {
+      await exportToExcel(shifts, monthData)
+    } catch (error) {
+      console.error('Ошибка при экспорте в Excel:', error)
+      toast({
+        title: "Ошибка",
+        description: "Не удалось экспортировать данные в Excel",
+        variant: "destructive"
+      })
+    }
+  }
   const handleExportPdf = () => exportToPdf(shifts, monthData)
   const handlePrint = () => window.print()
 

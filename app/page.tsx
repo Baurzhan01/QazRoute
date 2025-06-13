@@ -143,7 +143,7 @@ export default function Home() {
   )
 }
 
-function RoleCard({ title, description, icon }) {
+function RoleCard({ title, description, icon }: { title: string; description: string; icon: React.ReactNode }) {
   return (
     <Card className="group flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
       <CardHeader>
@@ -163,7 +163,7 @@ function RoleCard({ title, description, icon }) {
   )
 }
 
-function FeatureCard({ title, description }) {
+function FeatureCard({ title, description }: { title: string; description: string }) {
   return (
     <Card className="group transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
       <CardHeader>

@@ -132,6 +132,7 @@ export function useFinalDispatch(date: Date | null, dayType?: ValidDayType) {
       // 🟨 Нормализация резерва
       const rawReserves = reserveRes.isSuccess ? reserveRes.value ?? [] : []
       const reserveAssignments = rawReserves.map((r: any, index: number) => ({
+        id: r.id, // ← понадобится для InfoCell
         dispatchBusLineId: r.dispatchBusLineId,
         sequenceNumber: r.sequenceNumber ?? index + 1,
         garageNumber: r.garageNumber ?? "",
@@ -142,12 +143,13 @@ export function useFinalDispatch(date: Date | null, dayType?: ValidDayType) {
               fullName: r.driverFullName ?? "",
               serviceNumber: r.driverTabNumber ?? "",
             },
-        additionalInfo: r.additionalInfo ?? r.description ?? "",
+        additionalInfo: r.description ?? "", // ✅ Только description
         endTime: r.endTime ?? "",
         departureTime: r.departureTime ?? "",
         scheduleTime: r.scheduleTime ?? "",
+        isReplace: r.isReplace ?? false,
       }))
-
+      
       const finalDispatch: FinalDispatchData = {
         date: dateStr,
         routeGroups,

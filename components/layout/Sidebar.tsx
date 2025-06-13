@@ -1,45 +1,73 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { Home, Truck, AlertTriangle, ClipboardList, BarChart2, User } from "lucide-react";
+import { usePathname } from "next/navigation";
+import {
+  Home,
+  ClipboardList,
+  Wrench,
+  Clock,
+  AlertCircle,
+  Bell,
+  UserCircle,
+  Truck,
+  AlertTriangle,
+  BarChart2,
+  FileText,
+  Users,
+  Settings,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface NavItem {
+  title: string;
+  href: string;
+  icon: React.ReactNode;
+}
 
 function getRolePath(role: string) {
   return role.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
 }
 
-function getInitialDashboardPath() {
-  if (typeof window !== "undefined") {
-    const authData = localStorage.getItem("authData");
-    if (authData) {
-      const user = JSON.parse(authData);
-      return `/dashboard/${getRolePath(user.role)}`;
-    }
-  }
-  return "/dashboard";
-}
-
 export default function Sidebar() {
   const pathname = usePathname();
+  const [role, setRole] = useState("default");
   const [dashboardPath, setDashboardPath] = useState("/dashboard");
 
   useEffect(() => {
     const authData = localStorage.getItem("authData");
     if (authData) {
       const user = JSON.parse(authData);
+      const roleKey = user.role?.toLowerCase();
+      setRole(roleKey || "default");
       setDashboardPath(`/dashboard/${getRolePath(user.role)}`);
     }
   }, []);
 
-  const navItems = [
+  const isCTS = role === "cts" || role === "on-duty-mechanic";
+
+  const ctsNavItems: NavItem[] = [
+    { title: "Главная", href: "/dashboard/cts", icon: <Home className="h-5 w-5" /> },
+    { title: "Плановый ремонт", href: "/dashboard/cts/repairs/plan", icon: <ClipboardList className="h-5 w-5" /> },
+    { title: "Неплановый ремонт", href: "/dashboard/cts/unscheduled-repairs", icon: <Wrench className="h-5 w-5" /> },
+    { title: "Прочий ремонт", href: "/dashboard/cts/other-repairs", icon: <AlertCircle className="h-5 w-5" /> },
+    { title: "Длительный ремонт", href: "/dashboard/cts/long-repairs", icon: <Clock className="h-5 w-5" /> },
+    { title: "Сообщения", href: "/dashboard/cts/notifications", icon: <Bell className="h-5 w-5" /> },
+    { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
+  ];
+
+  const defaultNavItems: NavItem[] = [
     { title: "Панель управления", href: dashboardPath, icon: <Home className="h-5 w-5 text-sky-500" /> },
     { title: "Список автобусов", href: "/dashboard/fleet-manager/buses", icon: <Truck className="h-5 w-5 text-sky-500" /> },
     { title: "Сходы с линии", href: "/dashboard/breakdowns", icon: <AlertTriangle className="h-5 w-5 text-yellow-500" /> },
     { title: "Журнал ремонтов", href: "/dashboard/repairs", icon: <ClipboardList className="h-5 w-5 text-sky-500" /> },
-    { title: "Личный кабинет", href: "/dashboard/profile", icon: <User className="h-5 w-5 text-sky-500" /> },
+    { title: "Отчёты", href: "/dashboard/fleet-manager/reports", icon: <FileText className="h-5 w-5 text-sky-500" /> },
+    { title: "Настройки", href: `${dashboardPath}/settings`, icon: <Settings className="h-5 w-5 text-sky-500" /> },
+    { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5 text-sky-500" /> },
   ];
+
+  const navItems = isCTS ? ctsNavItems : defaultNavItems;
 
   return (
     <aside className="hidden md:flex w-64 flex-col bg-white border-r">
@@ -69,7 +97,7 @@ export default function Sidebar() {
       </nav>
 
       <div className="p-4 border-t text-xs text-gray-500">
-        © 2025 Автобусный парк №1
+        © {new Date().getFullYear()} Автобусный парк №1
       </div>
     </aside>
   );
