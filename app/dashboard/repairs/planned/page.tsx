@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
@@ -22,7 +22,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 
-export default function PlannedRepairPage() {
+function PlannedRepairContent() {
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const searchParams = useSearchParams()
   const dateParam = searchParams?.get("date")
@@ -137,5 +137,13 @@ export default function PlannedRepairPage() {
         onSaved={handleAssignSaved}
       />
     </div>
+  )
+}
+
+export default function PlannedRepairPage() {
+  return (
+    <Suspense fallback={<div>Загрузка...</div>}>
+      <PlannedRepairContent />
+    </Suspense>
   )
 }
