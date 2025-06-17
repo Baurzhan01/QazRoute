@@ -9,10 +9,10 @@ import { driverService } from "@/service/driverService"
 import { getAuthData } from "@/lib/auth-utils"
 import type { FinalDispatchData, ValidDayType } from "@/types/releasePlanTypes"
 
-export function useFinalDispatch(date: Date | null, dayType?: ValidDayType) {
+export function useFinalDispatch(date: Date | null, dayType?: ValidDayType, convoyIdOverride?: string) {
   const dateStr = useMemo(() => date?.toISOString().split("T")[0] ?? "", [date])
   const auth = getAuthData()
-  const convoyId = auth?.convoyId
+  const convoyId = convoyIdOverride ?? auth?.convoyId
 
   const routeStatusMap: Record<ValidDayType, string> = {
     workday: "Workday",

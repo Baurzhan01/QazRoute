@@ -49,6 +49,8 @@ export default function Sidebar() {
 
   const ctsNavItems: NavItem[] = [
     { title: "Главная", href: "/dashboard/cts", icon: <Home className="h-5 w-5" /> },
+     // 🟦 Добавляем Разнарядку
+    { title: "Разнарядка", href: "/dashboard/cts/release-plan", icon: <BarChart2 className="h-5 w-5" /> },
     { title: "Плановый ремонт", href: "/dashboard/cts/repairs/plan", icon: <ClipboardList className="h-5 w-5" /> },
     { title: "Неплановый ремонт", href: "/dashboard/cts/unscheduled-repairs", icon: <Wrench className="h-5 w-5" /> },
     { title: "Прочий ремонт", href: "/dashboard/cts/other-repairs", icon: <AlertCircle className="h-5 w-5" /> },

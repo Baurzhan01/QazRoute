@@ -43,6 +43,7 @@ interface FinalDispatchTableProps {
   }
   dayType: string
   readOnlyMode?: boolean
+  disableLinks?: boolean
 }
 
 function formatShortName(fullName?: string, serviceNumber?: string) {
@@ -166,6 +167,7 @@ export default function FinalDispatchTable({
   convoySummary,
   dayType,
   readOnlyMode = false,
+  disableLinks = false,
 }: FinalDispatchTableProps) {
   const {
     routeGroups = [],
@@ -245,14 +247,20 @@ export default function FinalDispatchTable({
       {/* Таблицы маршрутов */}
       {routeGroups.map((group) => (
         <div key={group.routeId} className="flex mt-6 rounded shadow border overflow-hidden">
-          <Link
-            href={`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${date}/route/${group.routeId}?from=final-dispatch`}
-            className="bg-sky-100 text-black flex flex-col items-center justify-center px-6 py-2 min-w-[110px] hover:bg-sky-200 transition"
-          >
-            <div className="text-5xl font-extrabold leading-none">{group.routeNumber}</div>
-            <div className="text-base font-semibold mt-1 tracking-wide uppercase text-gray-800">Маршрут</div>
-          </Link>
-
+         {disableLinks ? (
+            <div className="bg-sky-100 text-black flex flex-col items-center justify-center px-6 py-2 min-w-[110px] opacity-50 cursor-not-allowed">
+              <div className="text-5xl font-extrabold leading-none">{group.routeNumber}</div>
+              <div className="text-base font-semibold mt-1 tracking-wide uppercase text-gray-800">Маршрут</div>
+            </div>
+          ) : (
+            <Link
+              href={`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${date}/route/${group.routeId}?from=final-dispatch`}
+              className="bg-sky-100 text-black flex flex-col items-center justify-center px-6 py-2 min-w-[110px] hover:bg-sky-200 transition"
+            >
+              <div className="text-5xl font-extrabold leading-none">{group.routeNumber}</div>
+              <div className="text-base font-semibold mt-1 tracking-wide uppercase text-gray-800">Маршрут</div>
+            </Link>
+          )}
           <div className="flex-1">
             <table className="w-full border text-sm">
               <thead className="bg-sky-100 text-sky-900">
@@ -289,12 +297,18 @@ export default function FinalDispatchTable({
       {/* Резерв */}
       {reserveAssignments.length > 0 && (
         <div className="flex mt-6 rounded shadow border overflow-hidden">
-          <Link
-            href={`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${date}/reserve?from=final-dispatch`}
-            className="bg-yellow-400 text-black flex flex-col items-center justify-center px-6 py-2 min-w-[110px] hover:bg-yellow-300 transition"
-          >
-            <div className="text-4xl font-extrabold leading-none">РЕЗЕРВ</div>
-          </Link>
+         {disableLinks ? (
+            <div className="bg-yellow-200 text-black flex flex-col items-center justify-center px-6 py-2 min-w-[110px] opacity-50 cursor-not-allowed">
+              <div className="text-4xl font-extrabold leading-none">РЕЗЕРВ</div>
+            </div>
+          ) : (
+            <Link
+              href={`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${date}/reserve?from=final-dispatch`}
+              className="bg-yellow-400 text-black flex flex-col items-center justify-center px-6 py-2 min-w-[110px] hover:bg-yellow-300 transition"
+            >
+              <div className="text-4xl font-extrabold leading-none">РЕЗЕРВ</div>
+            </Link>
+          )}
           <div className="flex-1">
             <table className="w-full border text-sm">
               <thead className="bg-yellow-100 text-black">
@@ -320,12 +334,18 @@ export default function FinalDispatchTable({
 
         {orderAssignments.length > 0 && (
           <div className="flex mt-6 rounded shadow border overflow-hidden">
-            <Link
-              href={`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${date}/orders?from=final-dispatch`}
-              className="bg-emerald-300 text-black flex flex-col items-center justify-center px-6 py-2 min-w-[110px] hover:bg-emerald-400 transition"
-            >
-              <div className="text-4xl font-extrabold leading-none">ЗАКАЗ</div>
-            </Link>
+           {disableLinks ? (
+              <div className="bg-emerald-200 text-black flex flex-col items-center justify-center px-6 py-2 min-w-[110px] opacity-50 cursor-not-allowed">
+                <div className="text-4xl font-extrabold leading-none">ЗАКАЗ</div>
+              </div>
+            ) : (
+              <Link
+                href={`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${date}/orders?from=final-dispatch`}
+                className="bg-emerald-300 text-black flex flex-col items-center justify-center px-6 py-2 min-w-[110px] hover:bg-emerald-400 transition"
+              >
+                <div className="text-4xl font-extrabold leading-none">ЗАКАЗ</div>
+              </Link>
+            )}
             <div className="flex-1">
               <table className="w-full border text-sm">
                 <thead className="bg-emerald-100 text-black">
@@ -360,13 +380,18 @@ export default function FinalDispatchTable({
         <div className="grid gap-3 mt-3">
 
         {/* ← перемести сюда */}
-        <Link
-          href={`/dashboard/repairs/planned?date=${date}`}
-          className="inline-block text-blue-600 hover:underline text-base font-semibold"
-        >
-          🛠 Перейти к плановому ремонту →
-        </Link>
-
+        {!disableLinks ? (
+            <Link
+              href={`/dashboard/repairs/planned?date=${date}`}
+              className="inline-block text-blue-600 hover:underline text-base font-semibold"
+            >
+              🛠 Перейти к плановому ремонту →
+            </Link>
+          ) : (
+            <div className="text-base font-semibold text-gray-400 cursor-not-allowed">
+              🛠 Перейти к плановому ремонту →
+            </div>
+          )}
         {/* Ремонт */}
         <div className="bg-gray-50 border rounded-lg p-4 shadow-sm">
           <h4 className="font-bold text-sky-700 mb-3 flex items-center gap-2">
