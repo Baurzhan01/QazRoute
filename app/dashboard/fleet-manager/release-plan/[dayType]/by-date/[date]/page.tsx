@@ -10,6 +10,7 @@ import Link from "next/link"
 
 import RouteCard from "../../../components/RouteCard"
 import ReserveCard from "../../../components/ReserveCard"
+import OrderCard from "../../../components/OrderCard"
 import FinalDispatchDialog from "../../../components/FinalDispatchDialog"
 import { usePlanByDay } from "../../../hooks/usePlanByDay"
 import { useReserveAssignments } from "../../../hooks/useReserveAssignments"
@@ -95,6 +96,12 @@ export default function DayPlanPage() {
               dayType={dayType}
               delay={routes.length * 0.05}
             />
+            <OrderCard
+              date={dateString}
+              dayType={dayType}
+              delay={(routes.length + 1) * 0.05}
+            />
+
           </div>
 
           {/* Кнопка итоговой разнарядки */}

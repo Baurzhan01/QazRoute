@@ -2,6 +2,7 @@ import type { DisplayBus, DisplayDriver } from "./driver.types";
 
 // DTO от сервера (id-шные объекты)
 export interface RepairDto {
+  id: string;
   convoyId: string;
   convoyNumber: number;
   number: number;

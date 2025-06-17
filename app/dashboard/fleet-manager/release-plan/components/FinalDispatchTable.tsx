@@ -4,15 +4,36 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Wrench } from "lucide-react"
+import { useEffect } from "react"
+import { releasePlanService } from "@/service/releasePlanService"
+import { getAuthData } from "@/lib/auth-utils"
 
 import { InfoCell } from "./InfoCell"
 import type { FinalDispatchData } from "@/types/releasePlanTypes"
 import { formatDayOfWeek, getMonthName } from "../utils/dateUtils"
 
+interface ReserveAssignmentUI {
+  id: string
+  sequenceNumber: number
+  departureTime: string
+  scheduleTime: string
+  endTime: string
+  garageNumber: string
+  govNumber: string
+  busId: string | null
+  driver?: {
+    id: string
+    fullName: string
+    serviceNumber: string
+  }
+  additionalInfo: string
+}
+
 interface FinalDispatchTableProps {
   data: FinalDispatchData
   depotNumber?: number
   driversCount: number
+  convoyId?: string
   busesCount: number
   convoySummary?: {
     totalDrivers?: number
@@ -156,8 +177,51 @@ export default function FinalDispatchTable({
   } = data
 
   const displayDate = new Date(date)
+  const auth = getAuthData()
+  const convoyId = auth?.convoyId
   const [showDayOffBuses, setShowDayOffBuses] = useState(true)
   const [showDayOffDrivers, setShowDayOffDrivers] = useState(true)
+
+  const [orderAssignments, setOrderAssignments] = useState<ReserveAssignmentUI[]>([])
+
+  useEffect(() => {
+    const loadOrders = async () => {
+      if (!date || !convoyId) return
+      try {
+        const res = await releasePlanService.getReserveAssignmentsByDate(
+          displayDate.toISOString().split("T")[0],
+          convoyId,
+          "Order"
+        )
+        setOrderAssignments(
+          (res.value ?? []).map((r: any, index: number) => ({
+            id: r.id,
+            sequenceNumber: r.sequenceNumber ?? index + 1,
+            departureTime: r.departureTime ?? "—",
+            scheduleTime: r.scheduleTime ?? "—",
+            endTime: r.endTime ?? "—",
+            garageNumber: r.garageNumber ?? "—",
+            govNumber: r.govNumber ?? "—",
+            busId: r.busId ?? null,
+            driver: r.driverTabNumber
+              ? {
+                  id: r.driverId,
+                  fullName: r.driverFullName,
+                  serviceNumber: r.driverTabNumber,
+                }
+              : undefined,
+            additionalInfo: r.description ?? "",
+          }))
+        )
+      } catch (err) {
+        console.error("Ошибка загрузки заказов:", err)
+      }
+    }
+  
+    loadOrders()
+  }, [displayDate, convoyId])
+  
+
 
   return (
     <div className="text-[18px] leading-relaxed space-y-1 text-gray-900">
@@ -254,8 +318,55 @@ export default function FinalDispatchTable({
         </div>
       )}
 
+        {orderAssignments.length > 0 && (
+          <div className="flex mt-6 rounded shadow border overflow-hidden">
+            <Link
+              href={`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${date}/orders?from=final-dispatch`}
+              className="bg-emerald-300 text-black flex flex-col items-center justify-center px-6 py-2 min-w-[110px] hover:bg-emerald-400 transition"
+            >
+              <div className="text-4xl font-extrabold leading-none">ЗАКАЗ</div>
+            </Link>
+            <div className="flex-1">
+              <table className="w-full border text-sm">
+                <thead className="bg-emerald-100 text-black">
+                  <tr>
+                    <th className="border px-1 text-xl">№</th>
+                    <th className="border px-1 text-xl">Гар. номер</th>
+                    <th className="border px-1 text-xl">Гос. номер</th>
+                    <th className="border px-1 text-xl">ФИО</th>
+                    <th className="border px-1 text-xl">Таб. номер</th>
+                    <th className="border px-1 text-xl">Время выхода</th>
+                    <th className="border px-1 text-xl">Доп. информация</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orderAssignments.map((r, i) => (
+                    <ReserveRow
+                      key={i}
+                      r={r}
+                      i={i}
+                      readOnlyMode={readOnlyMode}
+                      displayDate={displayDate}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+
       {/* Блоки снизу */}
-      <div className="grid gap-3 mt-3">
+        <div className="grid gap-3 mt-3">
+
+        {/* ← перемести сюда */}
+        <Link
+          href={`/dashboard/repairs/planned?date=${date}`}
+          className="inline-block text-blue-600 hover:underline text-base font-semibold"
+        >
+          🛠 Перейти к плановому ремонту →
+        </Link>
+
         {/* Ремонт */}
         <div className="bg-gray-50 border rounded-lg p-4 shadow-sm">
           <h4 className="font-bold text-sky-700 mb-3 flex items-center gap-2">
@@ -267,7 +378,6 @@ export default function FinalDispatchTable({
             )) : <span className="text-gray-400">—</span>}
           </div>
         </div>
-
         {/* Выходной автобусы */}
         <div className="bg-gray-50 border rounded-lg p-4 shadow-sm">
           <h4 className="font-bold text-red-700 mb-2 flex items-center justify-between gap-2">

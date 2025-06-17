@@ -84,11 +84,15 @@ export const releasePlanService = {
   assignReserve: async (
     date: string,
     assignments: { driverId: string | null; busId: string | null; description: string | null }[],
-    convoyId: string
+    convoyId: string,
+    status?: string  // ← добавлено
   ): Promise<ApiResponse<boolean>> => {
     const response = await apiClient.post(
       `/dispatches/reserve/${date}/assignments/${convoyId}`,
-      assignments
+      assignments,
+      {
+        params: status ? { status } : undefined,  // ← условно добавляется статус
+      }
     )
     return response.data
   },
@@ -190,12 +194,16 @@ export const releasePlanService = {
 
   getReserveAssignmentsByDate: async (
     date: string,
-    convoyId: string
+    convoyId: string,
+    status?: string  // ← добавлено
   ): Promise<ApiResponse<ReserveAssignment[]>> => {
-    const { data } = await apiClient.get(
-      `/dispatches/reserve/${date}/all/${convoyId}`
+    const response = await apiClient.get(
+      `/dispatches/reserve/${date}/all/${convoyId}`,
+      {
+        params: status ? { status } : undefined,  // ← условно добавляется статус
+      }
     )
-    return data
+    return response.data
   },  
   
   getReserveReplacementsByDate: async (

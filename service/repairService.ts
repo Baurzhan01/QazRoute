@@ -37,19 +37,15 @@ export const repairService = {
   },
 
   updateRepair: async (
-    date: string,
-    convoyId: string,
+    repairId: string,
     data: RepairInputDto
   ): Promise<ApiResponse<boolean>> => {
-    const res = await apiClient.put(`/repair/${date}/assignment`, data, { params: { convoyId } });
+    const res = await apiClient.put(`/repair/${repairId}`, data);
     return res.data;
-  },
+  },  
 
-  deleteRepairs: async (
-    date: string,
-    data: RepairInputDto[]
-  ): Promise<ApiResponse<boolean>> => {
-    const res = await apiClient.delete(`/repair/${date}/assignments`, { data });
+  deleteRepairById: async (date: string, repairId: string): Promise<ApiResponse<boolean>> => {
+    const res = await apiClient.delete(`/repair/${date}/assignments/${repairId}`);
     return res.data;
-  },
+  },  
 };

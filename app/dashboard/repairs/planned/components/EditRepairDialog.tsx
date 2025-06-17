@@ -24,6 +24,7 @@ interface EditRepairDialogProps {
   buses: DisplayBus[]
   drivers: DisplayDriver[]
   onUpdated: () => void
+  repairId: string
 }
 
 export default function EditRepairDialog({
@@ -37,6 +38,7 @@ export default function EditRepairDialog({
   buses,
   drivers,
   onUpdated,
+  repairId,
 }: EditRepairDialogProps) {
   const [selectedBus, setSelectedBus] = useState<DisplayBus | null>(bus)
   const [selectedDriver, setSelectedDriver] = useState<DisplayDriver | null>(driver)
@@ -48,7 +50,7 @@ export default function EditRepairDialog({
   const debouncedDriverSearch = useDebounce(driverSearch, 300)
 
   const filteredBuses = buses.filter((b) =>
-    b.govNumber.toLowerCase().includes(debouncedBusSearch.toLowerCase())
+    `${b.garageNumber} ${b.govNumber}`.toLowerCase().includes(debouncedBusSearch.toLowerCase())
   )
 
   const filteredDrivers = drivers.filter((d) =>
@@ -61,7 +63,7 @@ export default function EditRepairDialog({
       return
     }
 
-    const res = await repairService.updateRepair(date, convoyId, {
+    const res = await repairService.updateRepair(repairId, {
       busId: selectedBus.id,
       driverId: selectedDriver.id,
       description: notes,
@@ -84,7 +86,7 @@ export default function EditRepairDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl">
+     <DialogContent className="!w-[55vw] !max-w-[1400px] !max-h-[95vh] min-h-[500px] px-6 py-8 overflow-y-auto rounded-2xl shadow-xl">
         <DialogHeader>
           <DialogTitle>Редактировать ремонт</DialogTitle>
         </DialogHeader>
@@ -98,10 +100,16 @@ export default function EditRepairDialog({
               placeholder="Поиск по номеру"
             />
             <SelectableList
-            items={filteredDrivers}
-            selected={selectedDriver}
-            onSelect={(driver) => setSelectedDriver(driver)}
-            labelRender={(driver) => `${driver.fullName} (${driver.serviceNumber})`}
+              items={filteredBuses}
+              selected={selectedBus}
+              onSelect={(bus) => setSelectedBus(bus)}
+              labelRender={(bus) => `${bus.garageNumber} (${bus.govNumber})`}
+              status={(bus) =>
+                bus.isAssigned
+                  ? { label: "НАЗНАЧЕН", color: "red" }
+                  : { label: "НЕ назначен", color: "green" }
+              }
+              disableItem={(bus) => !!bus.isAssigned}
             />
           </div>
 
@@ -113,10 +121,16 @@ export default function EditRepairDialog({
               placeholder="Поиск по ФИО"
             />
             <SelectableList
-            items={filteredDrivers}
-            selected={selectedDriver}
-            onSelect={(driver) => setSelectedDriver(driver)}
-            labelRender={(driver) => `${driver.fullName} (${driver.serviceNumber})`}
+              items={filteredDrivers}
+              selected={selectedDriver}
+              onSelect={(driver) => setSelectedDriver(driver)}
+              labelRender={(driver) => `${driver.fullName} (${driver.serviceNumber})`}
+              status={(driver) =>
+                driver.isAssigned
+                  ? { label: "НАЗНАЧЕН", color: "red" }
+                  : { label: "НЕ назначен", color: "green" }
+              }
+              disableItem={(driver) => !!driver.isAssigned}
             />
           </div>
         </div>

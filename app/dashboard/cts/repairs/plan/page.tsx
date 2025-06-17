@@ -15,7 +15,12 @@ import { toast } from "@/components/ui/use-toast"
 import RepairTableAll from "./components/RepairTableAll"
 import RepairTableSingle from "./components/RepairTableSingle"
 import EditRepairDialog from "./components/EditRepairDialog"
-import type { FlatRepairRecord, GroupedRepairsByConvoy } from "@/types/repair.types"
+import type { FlatRepairRecord } from "@/types/repair.types"
+
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Button } from "@/components/ui/button"
+import { CalendarIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface RepairStats {
   totalPlanned: number
@@ -73,13 +78,11 @@ export default function CTSPlanRepairPage() {
       }
 
       const grouped: Record<string, FlatRepairRecord[]> = {}
-
       for (const r of repairsRes.value) {
         if (!r?.convoyId || !r?.bus || !r?.driver) continue
         if (!grouped[r.convoyId]) grouped[r.convoyId] = []
         grouped[r.convoyId].push(r)
       }
-
       setRepairsByConvoyId(grouped)
     } catch (e) {
       handleError("Не удалось загрузить данные", e)
@@ -122,16 +125,33 @@ export default function CTSPlanRepairPage() {
 
       {loading && <p className="text-gray-500">Загрузка...</p>}
 
-      <Card className="p-2 w-fit">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={(d) => d && setDate(d)}
-          locale={ru}
-          fromDate={addDays(new Date(), -5)}
-          toDate={addDays(new Date(), 5)}
-        />
-      </Card>
+      <div className="max-w-[260px]">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full justify-start text-left font-normal",
+                !date && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {date ? format(date, "PPP", { locale: ru }) : "Выберите дату"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0">
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={(d) => d && setDate(d)}
+              locale={ru}
+              fromDate={addDays(new Date(), -5)}
+              toDate={addDays(new Date(), 5)}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
 
       <Tabs value={mode} onValueChange={setMode}>
         <TabsList className="flex flex-wrap">

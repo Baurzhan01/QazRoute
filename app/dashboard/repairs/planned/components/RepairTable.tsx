@@ -1,3 +1,4 @@
+// components/RepairTable.tsx
 "use client"
 
 import { useState } from "react"
@@ -28,13 +29,10 @@ export default function RepairTable({
   drivers,
   onReload,
   onDelete,
+  isLoading,
 }: RepairTableProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [selectedRepair, setSelectedRepair] = useState<{
-    bus: DisplayBus
-    driver: DisplayDriver
-    description: string
-  } | null>(null)
+  const [selectedRepair, setSelectedRepair] = useState<RepairRecord | null>(null)
 
   return (
     <div className="border rounded-md overflow-hidden">
@@ -49,7 +47,7 @@ export default function RepairTable({
         </thead>
         <tbody>
           {repairs.map((r, idx) => (
-            <tr key={idx} className="border-t hover:bg-gray-50">
+            <tr key={r.id} className="border-t hover:bg-gray-50">
               <td className="p-2 font-medium">{r.bus.govNumber} ({r.bus.garageNumber})</td>
               <td className="p-2">{r.driver.fullName} (№ {r.driver.serviceNumber})</td>
               <td className="p-2 text-gray-700">{r.description || "—"}</td>
@@ -60,11 +58,7 @@ export default function RepairTable({
                     size="icon"
                     title="Редактировать"
                     onClick={() => {
-                      setSelectedRepair({
-                        bus: r.bus,
-                        driver: r.driver,
-                        description: r.description,
-                      })
+                      setSelectedRepair(r)
                       setEditDialogOpen(true)
                     }}
                   >
@@ -96,6 +90,7 @@ export default function RepairTable({
           convoyId={convoyId}
           buses={buses}
           drivers={drivers}
+          repairId={selectedRepair.id}
           onUpdated={onReload}
         />
       )}
