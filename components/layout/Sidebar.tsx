@@ -52,12 +52,22 @@ export default function Sidebar() {
      // 🟦 Добавляем Разнарядку
     { title: "Разнарядка", href: "/dashboard/cts/release-plan", icon: <BarChart2 className="h-5 w-5" /> },
     { title: "Плановый ремонт", href: "/dashboard/cts/repairs/plan", icon: <ClipboardList className="h-5 w-5" /> },
-    { title: "Неплановый ремонт", href: "/dashboard/cts/unscheduled-repairs", icon: <Wrench className="h-5 w-5" /> },
+    { title: "Неплановый ремонт", href: "/dashboard/cts/repairs/unscheduled-repairs", icon: <Wrench className="h-5 w-5" /> },
     { title: "Прочий ремонт", href: "/dashboard/cts/other-repairs", icon: <AlertCircle className="h-5 w-5" /> },
     { title: "Длительный ремонт", href: "/dashboard/cts/long-repairs", icon: <Clock className="h-5 w-5" /> },
     { title: "Сообщения", href: "/dashboard/cts/notifications", icon: <Bell className="h-5 w-5" /> },
     { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
   ];
+
+  const dispatcherNavItems: NavItem[] = [
+    { title: "Главная", href: "/dashboard/dispatcher", icon: <Home className="h-5 w-5" /> },
+    { title: "План выпуска", href: "/dashboard/dispatcher/release-plan", icon: <ClipboardList className="h-5 w-5" /> },
+    { title: "Ведомость", href: "/dashboard/dispatcher/final-dispatch", icon: <FileText className="h-5 w-5" /> },
+    { title: "Сходы с слиний", href: "/dashboard/dispatcher/departures-drop", icon: <AlertTriangle className="h-5 w-5" /> },
+    { title: "Плановый ремонт", href: "/dashboard/dispatcher/maintenance-plan", icon: <Wrench className="h-5 w-5" /> },
+    { title: "Отчеты", href: "/dashboard/dispatcher/reports", icon: <BarChart2 className="h-5 w-5" /> },
+    { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
+  ];  
 
   const defaultNavItems: NavItem[] = [
     { title: "Панель управления", href: dashboardPath, icon: <Home className="h-5 w-5 text-sky-500" /> },
@@ -69,7 +79,13 @@ export default function Sidebar() {
     { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5 text-sky-500" /> },
   ];
 
-  const navItems = isCTS ? ctsNavItems : defaultNavItems;
+  const navItems =
+  role === "cts" || role === "on-duty-mechanic"
+    ? ctsNavItems
+    : role === "dispatcher"
+      ? dispatcherNavItems
+      : defaultNavItems;
+
 
   return (
     <aside className="hidden md:flex w-64 flex-col bg-white border-r">

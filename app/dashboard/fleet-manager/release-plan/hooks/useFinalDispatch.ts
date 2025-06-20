@@ -6,11 +6,12 @@ import { releasePlanService } from "@/service/releasePlanService"
 import { convoyService } from "@/service/convoyService"
 import { busService } from "@/service/busService"
 import { driverService } from "@/service/driverService"
+import { format } from "date-fns"
 import { getAuthData } from "@/lib/auth-utils"
 import type { FinalDispatchData, ValidDayType } from "@/types/releasePlanTypes"
 
 export function useFinalDispatch(date: Date | null, dayType?: ValidDayType, convoyIdOverride?: string) {
-  const dateStr = useMemo(() => date?.toISOString().split("T")[0] ?? "", [date])
+  const dateStr = useMemo(() => (date ? format(date, "yyyy-MM-dd") : ""), [date])
   const auth = getAuthData()
   const convoyId = convoyIdOverride ?? auth?.convoyId
 

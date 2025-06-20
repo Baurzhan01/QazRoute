@@ -2,11 +2,13 @@
 
 import { holidays } from "@/app/dashboard/fleet-manager/release-plan/data/holidays"
 import type { ValidDayType } from "@/types/releasePlanTypes"
+import { parseISO } from "date-fns"
 
 export function parseDate(dateString: string): Date {
-    const [year, month, day] = dateString.split("-").map(Number);
-    return new Date(Date.UTC(year, month - 1, day)); // 🟢 оставляем строго UTC
-  }
+  const [year, month, day] = dateString.split("-").map(Number)
+  return new Date(year, month - 1, day) // ✅ локальная дата
+}
+
   
   export function formatDate(date: Date): string {
     const year = date.getFullYear(); // 🔁 было getUTCFullYear()
@@ -61,8 +63,9 @@ export function parseDate(dateString: string): Date {
   }
 
   export function getDayTypeFromDate(dateStr: string): ValidDayType {
-    const date = parseDate(dateStr)
+    const date = parseDate(dateStr) // ✅ вместо parseISO
     const holidayDates = holidays.map(h => parseDate(h.date))
     return getDayType(date, holidayDates)
   }
+  
   

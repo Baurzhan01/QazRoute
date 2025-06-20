@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { getAuthData } from "@/lib/auth-utils"
 import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,8 @@ import FinalDispatchTable from "@/app/dashboard/fleet-manager/release-plan/compo
 import { convoyService } from "@/service/convoyService"
 import { format } from "date-fns"
 import { CalendarIcon } from "lucide-react"
+import { getDayTypeFromDate } from "@/app/dashboard/dispatcher/convoy/[id]/release-plan/utils/dateUtils"
+import type { ValidDayType } from "@/types/releasePlanTypes"
 
 export default function CtsReleasePlanPage() {
   const auth = getAuthData()
@@ -32,13 +34,19 @@ export default function CtsReleasePlanPage() {
     }
   }, [convoys])
 
+  const dayType: ValidDayType = useMemo(() => {
+    if (!selectedDate) return "workday"
+    const localDateStr = format(selectedDate, "yyyy-MM-dd") // ✅ локальная дата
+    return getDayTypeFromDate(localDateStr)
+  }, [selectedDate])
+    
   const {
     finalDispatch,
     convoySummary,
     driversCount,
     busesCount,
     loading,
-  } = useFinalDispatch(selectedDate, "workday", activeConvoyId ?? "")
+  } = useFinalDispatch(selectedDate, dayType, activeConvoyId ?? "")
 
   return (
     <div className="p-6 space-y-6">
@@ -61,6 +69,12 @@ export default function CtsReleasePlanPage() {
             />
           </PopoverContent>
         </Popover>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {dayType === "workday" && "Будний день"}
+          {dayType === "saturday" && "Суббота"}
+          {dayType === "sunday" && "Воскресенье"}
+          {dayType === "holiday" && "Праздничный день"}
+        </p>
       </div>
 
       <div className="flex-1">
@@ -81,16 +95,16 @@ export default function CtsReleasePlanPage() {
                     <p className="text-gray-500">Загрузка данных...</p>
                   ) : finalDispatch ? (
                     <FinalDispatchTable
-                    data={finalDispatch}
-                    depotNumber={convoy.number}
-                    convoyId={convoy.id}
-                    driversCount={driversCount}
-                    busesCount={busesCount}
-                    convoySummary={convoySummary}
-                    dayType="workday"
-                    readOnlyMode
-                    disableLinks={true}
-                  />                  
+                      data={finalDispatch}
+                      depotNumber={convoy.number}
+                      convoyId={convoy.id}
+                      driversCount={driversCount}
+                      busesCount={busesCount}
+                      convoySummary={convoySummary}
+                      dayType={dayType}
+                      readOnlyMode
+                      disableLinks={true}
+                    />
                   ) : (
                     <p className="text-gray-500">Нет данных</p>
                   )
