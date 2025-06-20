@@ -27,7 +27,7 @@ export function usePlanByDay(
         const convoyRoutes = res.value ?? []
 
         if (convoyRoutes.length > 0) {
-          await releasePlanService.createDispatchRoute(convoyId, dateStr)
+          await releasePlanService.createDispatchRoute(convoyId, dateStr, dayType)
         }
 
         setRoutes(convoyRoutes)

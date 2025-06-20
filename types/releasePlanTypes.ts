@@ -12,10 +12,44 @@ export interface DateDto {
   day: number
 }
 
+export interface OrderAssignment {
+  id: string
+  sequenceNumber: number
+  departureTime: string
+  scheduleTime: string
+  endTime: string
+  garageNumber: string
+  govNumber: string
+  busId: string | null
+  driver?: {
+    id: string
+    fullName: string
+    serviceNumber: string
+  }
+  additionalInfo: string
+}
+
+
 // Создание разнарядки
 export interface DispatchRouteCreateRequest {
   convoyId: string
   date: string
+}
+export interface ReserveAssignmentUI {
+  id: string
+  sequenceNumber: number
+  departureTime: string
+  scheduleTime: string
+  endTime: string
+  garageNumber: string
+  govNumber: string
+  busId: string | null
+  driver?: {
+    id: string
+    fullName: string
+    serviceNumber: string
+  }
+  additionalInfo: string
 }
 
 
@@ -199,6 +233,7 @@ export interface RouteAssignment {
 }
 
 export interface ReserveAssignment {
+  id: string;
   dispatchBusLineId: string;
   sequenceNumber: number
   garageNumber: string

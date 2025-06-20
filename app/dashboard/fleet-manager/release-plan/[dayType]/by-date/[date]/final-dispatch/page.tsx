@@ -66,6 +66,7 @@ export default function FinalDispatchPage() {
     convoySummary,
     driversCount,
     busesCount,
+    orderAssignments,
     convoyNumber,
     loading,
     error,
@@ -176,6 +177,7 @@ export default function FinalDispatchPage() {
           <FinalDispatchTable
             data={finalDispatch}
             depotNumber={convoyNumber}
+            orderAssignments={orderAssignments}
             driversCount={driversCount}
             busesCount={busesCount}
             convoySummary={convoySummary}

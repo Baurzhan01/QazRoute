@@ -48,10 +48,10 @@ export function InfoCell({
     try {
       if (type === "reserve") {
         await releasePlanService.updateReserveDescription(
-          assignmentId,
+          assignmentId, // ← теперь это reserveId
           formatDate(date),
           value.trim() || ""
-        );
+        );        
         console.log("Updating reserve:", {
           assignmentId,
           date: formatDate(date),

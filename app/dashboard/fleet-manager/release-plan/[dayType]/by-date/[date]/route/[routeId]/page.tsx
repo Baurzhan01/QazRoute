@@ -80,24 +80,6 @@ export default function RouteDetailsPage() {
     }
   }, [data?.departures]);  
 
-  // useEffect(() => {
-  //   const createIfMissing = async () => {
-  //     if (!data?.departures?.length && auth?.convoyId && routeId && dateString) {
-  //       try {
-  //         await releasePlanService.createDispatchRoute(auth.convoyId, routeId, dateString);
-  //         await refetch();
-  //       } catch (error: any) {
-  //         if (error?.message?.includes("Разнарядка уже есть")) {
-  //           await refetch();
-  //         } else {
-  //           toast({ title: "Ошибка создания разнарядки", variant: "destructive" });
-  //         }
-  //       }
-  //     }
-  //   };
-  //   createIfMissing();
-  // }, [data?.departures, auth?.convoyId, routeId, dateString, refetch]);
-
   const handleSaveAllAssignments = async () => {
     if (!data?.dispatchRouteId) {
       toast({ title: "Не найден ID разнарядки", variant: "destructive" });

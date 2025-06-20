@@ -30,9 +30,10 @@ const statusEnumMap: Record<DispatchBusLineStatus, string> = {
 export const releasePlanService = {
   createDispatchRoute: async (
     convoyId: string,
-    date: string
+    date: string,
+    status: string // ← новый параметр
   ): Promise<ApiResponse<string>> => {
-    const payload = { convoyId, date }
+    const payload = { convoyId, date, status }
     try {
       const { data } = await apiClient.post("/dispatches/route", payload)
       return data
@@ -40,7 +41,7 @@ export const releasePlanService = {
       console.error("❌ Ошибка при создании разнарядки:", error)
       throw new Error(error.response?.data?.error || "Не удалось создать разнарядку")
     }
-  },
+  },  
   
 
   replaceAssignment: async (

@@ -57,6 +57,21 @@ const config: Config = {
           gold: "#facc15",
           dark: "#0f172a",
         },
+        yellow: {
+          base: "bg-yellow-300",
+          hover: "hover:bg-yellow-400",
+          head: "bg-yellow-100",
+        },
+        emerald: {
+          base: "bg-emerald-300",
+          hover: "hover:bg-emerald-400",
+          head: "bg-emerald-100",
+        },
+        lime: {
+          base: "bg-lime-300",
+          hover: "hover:bg-lime-400",
+          head: "bg-lime-100",
+        },
       },
       boxShadow: {
         soft: "0 4px 20px rgba(0,0,0,0.08)",
