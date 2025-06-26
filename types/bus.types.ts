@@ -16,6 +16,14 @@ export interface Bus {
   additionalInfo: string;
   busStatus: BusStatus;
   convoyId: string;
+
+  // 🔽 Новые поля:
+  vinCode?: string;
+  brand?: string;
+  type?: string;
+  year?: number;
+  dataSheetNumber?: string;
+  mileage?: number; // ← Добавлено
 }
 
 // Для отображения автобусов в UI

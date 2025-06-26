@@ -165,8 +165,7 @@ export default function AssignUnplannedRepairModal({
     const selected = dispatchItems.find((i) => i.dispatchBusLineId === selectedItemId)
     if (!selected) return toast({ title: "Не выбран выход", variant: "destructive" })
     if (!reason.trim()) return toast({ title: "Укажите причину неисправности", variant: "destructive" })
-    if (isAlreadyInRepair(selected)) return toast({ title: "Уже добавлен в ремонт", variant: "destructive" })
-
+  
     const result = await routeExitRepairService.create({
       startDate: formattedDate,
       startTime: currentTime,
@@ -178,7 +177,7 @@ export default function AssignUnplannedRepairModal({
       mileage: 0,
       isLongRepair: false,
     })
-
+  
     if (result.isSuccess) {
       toast({ title: "Неплановый ремонт создан" })
       onClose()
@@ -187,6 +186,7 @@ export default function AssignUnplannedRepairModal({
       toast({ title: "Ошибка при создании", description: result.error || "", variant: "destructive" })
     }
   }
+  
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -237,11 +237,10 @@ export default function AssignUnplannedRepairModal({
                       return (
                         <div
                           key={`${item.dispatchBusLineId}-${index}`}
-                          onClick={() => !disabled && setSelectedItemId(item.dispatchBusLineId)}
+                          onClick={() => setSelectedItemId(item.dispatchBusLineId)}
                           className={cn(
                             "cursor-pointer px-4 py-3 flex justify-between items-center transition-colors duration-150",
-                            selectedItemId === item.dispatchBusLineId && !disabled && "bg-muted border-l-4 border-primary",
-                            disabled && "opacity-50 cursor-not-allowed"
+                            selectedItemId === item.dispatchBusLineId && "bg-muted border-l-4 border-primary",
                           )}
                         >
                           <div>
@@ -266,7 +265,11 @@ export default function AssignUnplannedRepairModal({
                           {selectedItemId === item.dispatchBusLineId && !disabled && (
                             <div className="text-green-600 text-xl font-bold">✅</div>
                           )}
-                          {disabled && <div className="text-red-500 text-sm">Уже добавлен</div>}
+                          {isAlreadyInRepair(item) && (
+                              <div className="text-orange-500 text-xs font-medium ml-4">
+                                ⚠ Повторный ремонт
+                              </div>
+                            )}
                         </div>
                       )
                     })}
