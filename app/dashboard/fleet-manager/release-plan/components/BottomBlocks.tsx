@@ -44,15 +44,29 @@ export default function BottomBlocks({
   const [showDayOffBuses, setShowDayOffBuses] = useState(true);
   const [showDayOffDrivers, setShowDayOffDrivers] = useState(true);
 
-  const renderList = (items: string[], show: boolean) => (
+  const renderList = (
+    items: (string | { garageNumber: string; govNumber: string })[],
+    show: boolean
+  ) => (
     show ? (
       <div className="flex flex-wrap gap-1">
-        {items.map((b, i) => (
-          <span key={i} className="px-2 py-0.5 bg-white rounded border text-sm shadow-sm font-semibold">{formatShortName(b)}</span>
-        ))}
+        {items.map((item, i) => {
+          const label = typeof item === "string"
+            ? item
+            : `${item.garageNumber} (${item.govNumber})`
+  
+          return (
+            <span
+              key={i}
+              className="px-2 py-0.5 bg-white rounded border text-sm shadow-sm font-semibold"
+            >
+              {label}
+            </span>
+          )
+        })}
       </div>
     ) : <div className="text-sm text-gray-400">Скрыто</div>
-  );
+  )
 
   const StatusBlock = ({
     title,
