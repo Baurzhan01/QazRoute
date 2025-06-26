@@ -73,7 +73,7 @@ export function useFinalDispatch(
     enabled: !!dateStr && !!convoyId,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchInterval: 15000,
+    refetchInterval: false,
     queryFn: async () => {
       if (!convoyId || !dateStr) throw new Error("convoyId или дата отсутствуют")
 

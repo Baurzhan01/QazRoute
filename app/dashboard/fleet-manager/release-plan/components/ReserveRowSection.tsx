@@ -17,7 +17,6 @@ interface Props {
   linkPath: string
 }
 
-// 💡 Надёжная карта цветов
 const colorMap = {
   yellow: {
     base: "bg-yellow-300",
@@ -37,7 +36,7 @@ const colorMap = {
     side: "bg-lime-200",
     head: "bg-lime-100",
   },
-}
+} as const
 
 const ReserveRowSection = memo(function ReserveRowSection({
   title,
@@ -68,7 +67,7 @@ const ReserveRowSection = memo(function ReserveRowSection({
           <div className="text-4xl font-extrabold leading-none">{title}</div>
         </Link>
       )}
-      <div className="flex-1">
+      <div className="flex-1 overflow-x-auto">
         <table className="w-full border text-sm">
           <thead className={`${styles.head} text-black`}>
             <tr>
@@ -84,7 +83,7 @@ const ReserveRowSection = memo(function ReserveRowSection({
           <tbody>
             {list.map((r, i) => (
               <ReserveRow
-                key={i}
+                key={r.id || i}
                 r={r}
                 i={i}
                 readOnlyMode={readOnlyMode}

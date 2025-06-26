@@ -2,12 +2,12 @@
 
 import apiClient from "@/app/api/apiClient"
 import type { ApiResponse } from "@/types/api.types"
-import type { RouteExitRepairDto } from "@/types/routeExitRepair.types"
+import type { CreateRouteExitRepairDto, RouteExitRepairDto } from "@/types/routeExitRepair.types"
 
 
 export const routeExitRepairService = {
   // 📥 Создание новой записи
-  create: async (data: RouteExitRepairDto): Promise<ApiResponse<boolean>> => {
+  create: async (data: CreateRouteExitRepairDto): Promise<ApiResponse<boolean>> => {
     const res = await apiClient.post("/route-exits-repair", data)
     return res.data
   },
@@ -22,16 +22,21 @@ export const routeExitRepairService = {
     depotId: string,
     startDate: string,
     endDate: string
-  ): Promise<ApiResponse<number>> => {
+  ): Promise<ApiResponse<{ total: number; byConvoy: Record<string, number> }>> => {
     try {
       const res = await apiClient.get(`/route-exits-repair/stats/by-date`, {
         params: { depotId, startDate, endDate },
-      });
-      return res.data;
+      })
+      return res.data
     } catch (error) {
-      return { isSuccess: false, error: "Не удалось получить статистику", statusCode: 500, value: null };
+      return {
+        isSuccess: false,
+        error: "Не удалось получить статистику",
+        statusCode: 500,
+        value: null,
+      }
     }
-  },
+  },  
 
   // ✏️ Обновление по ID
   update: async (id: string, data: RouteExitRepairDto): Promise<ApiResponse<boolean>> => {
@@ -45,13 +50,23 @@ export const routeExitRepairService = {
     return res.data
   },
 
-  // 📅 Получение всех за дату
-  getByDate: async (date: string): Promise<ApiResponse<RouteExitRepairDto[]>> => {
+  getByDate: async (
+    date: string,
+    depotId: string
+  ): Promise<ApiResponse<RouteExitRepairDto[]>> => {
     const res = await apiClient.get(`/route-exits-repair/by-date`, {
-      params: { date },
+      params: { date, depotId },
     })
     return res.data
-  },
+  },  
+
+  finishRepair: async (
+    id: string,
+    data: { andDate: string; andTime: string; mileage: number; isExist: boolean }
+  ): Promise<ApiResponse<string>> => {
+    const res = await apiClient.put(`/route-exits-repair/finish-repair/${id}`, data)
+    return res.data
+  },  
 
   // 📅+🛠 Получение за дату и колонну
   getByDateAndConvoy: async (

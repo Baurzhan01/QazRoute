@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { releasePlanService } from "@/service/releasePlanService";
 import { formatDate } from "../utils/dateUtils";
@@ -29,53 +29,52 @@ export function InfoCell({
   textClassName = "text-red-600 font-semibold text-sm",
   readOnly = false,
 }: InfoCellProps) {
-  const [value, setValue] = useState(initialValue ?? "");
+  const [value, setValue] = useState(initialValue);
   const [editing, setEditing] = useState(false);
   const [textColor, setTextColor] = useState("#000000");
   const [showColorMenu, setShowColorMenu] = useState(false);
   const [anchorPoint, setAnchorPoint] = useState({ x: 0, y: 0 });
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!assignmentId || assignmentId === "not-assigned") {
-      toast({
-        title: "Ошибка",
-        description: "Невозможно сохранить: не указан ID назначения.",
-        variant: "destructive",
-      });
+      toast({ title: "Ошибка", description: "Не указан ID назначения.", variant: "destructive" });
       return;
     }
 
     try {
+      const formattedDate = formatDate(date);
+      const trimmed = value.trim();
+
       if (type === "reserve") {
-        await releasePlanService.updateReserveDescription(
-          assignmentId, // ← теперь это reserveId
-          formatDate(date),
-          value.trim() || ""
-        );        
-        console.log("Updating reserve:", {
-          assignmentId,
-          date: formatDate(date),
-          value: value.trim()
-        });
+        await releasePlanService.updateReserveDescription(assignmentId, formattedDate, trimmed);
       } else {
-        await releasePlanService.updateBusLineDescription(
-          assignmentId,
-          formatDate(date),
-          value.trim() || ""
-        );
+        await releasePlanService.updateBusLineDescription(assignmentId, formattedDate, trimmed);
       }
 
       toast({ title: "Сохранено", description: "Доп. информация обновлена" });
     } catch {
       toast({ title: "Ошибка", description: "Не удалось сохранить" });
     }
-  };
+  }, [assignmentId, date, type, value]);
 
   const getIcon = () => {
     if (value.includes("❌")) return <XCircle className="w-4 h-4 text-red-600 inline-block mr-1" />;
     if (value.includes("🔄")) return <RefreshCcw className="w-4 h-4 text-blue-600 inline-block mr-1" />;
     if (value.includes("🔁")) return <AlertTriangle className="w-4 h-4 text-yellow-600 inline-block mr-1" />;
     return null;
+  };
+
+  const handleBlur = () => {
+    setEditing(false);
+    if (value.trim() !== initialValue.trim()) {
+      void handleSave();
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setAnchorPoint({ x: e.clientX, y: e.clientY });
+    setShowColorMenu(true);
   };
 
   if (readOnly && !editing) {
@@ -92,25 +91,13 @@ export function InfoCell({
   }
 
   return (
-    <div
-      className="relative"
-      onContextMenu={(e) => {
-        e.preventDefault();
-        setAnchorPoint({ x: e.clientX, y: e.clientY });
-        setShowColorMenu(true);
-      }}
-    >
+    <div className="relative" onContextMenu={handleContextMenu}>
       <input
         className={`w-full text-xs px-1 py-1 border rounded outline-none resize-none ${textClassName}`}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         autoFocus
-        onBlur={() => {
-          setEditing(false)
-          if (value.trim() !== initialValue?.trim()) {
-            setTimeout(() => handleSave(), 0)
-          }
-        }}
+        onBlur={handleBlur}
       />
       {showColorMenu && (
         <div

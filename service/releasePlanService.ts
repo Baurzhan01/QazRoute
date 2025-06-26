@@ -14,7 +14,8 @@ import type {
   BusLineAssignmentRequest,
   DayPlan,
   FinalDispatchData,
-  ReserveReplacementCandidate
+  ReserveReplacementCandidate,
+  AssignUnplannedDispatchResponse
 } from "@/types/releasePlanTypes"
 
 

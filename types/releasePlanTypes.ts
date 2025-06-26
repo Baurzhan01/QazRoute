@@ -50,6 +50,8 @@ export interface ReserveAssignmentUI {
     serviceNumber: string
   }
   additionalInfo: string
+  status: "Reserved" | "Order"
+  isReplace: boolean
 }
 
 
@@ -154,6 +156,67 @@ export interface DayPlan {
   reserves: ReserveDriver[]
 }
 
+export interface AssignReserveItem {
+  id: string
+  driverId: string
+  driverFullName: string
+  driverTabNumber: string
+  garageNumber: string
+  govNumber: string
+  isReplace: boolean
+  description: string | null
+}
+
+export interface AssignUnplannedDispatchResponse {
+  date: string
+  reserves: AssignReserveItem[]
+  routes: {
+    routeId: string
+    routeNumber: string
+  }[]
+  busLines: {
+    busLineId: string
+    dispatchBusLineId: string
+    busLineNumber: string
+    routeId: string
+    routeNumber: string
+    endTime: string
+    exitTime: string
+    firstDriver?: {
+      id: string
+      fullName: string
+      serviceNumber: string
+    } | null
+    bus?: {
+      id: string
+      garageNumber: string
+      govNumber: string
+    } | null
+  }[]
+}
+
+export interface FinalDispatchForRepair {
+  date: string;
+  routes: {
+    routeId: string;
+    routeNumber: string;
+    busLines: {
+      dispatchBusLineId: string;
+      bus?: {
+        id: string; // ← 🔧 добавь это
+        govNumber: string;
+        garageNumber: string;
+      };
+      firstDriver?: {
+        id: string; // ← 🔧 добавь это
+        fullName: string;
+      };
+    }[];
+  }[];
+  reserves: any[];
+}
+
+
 // 🏁 Итоговая разнарядка
 export interface FinalDispatchData {
   date: string
@@ -168,12 +231,12 @@ export interface FinalDispatchData {
     Intern?: string[]
     total?: number
   }
-
   // 🆕 Добавленные поля для замены (optional — чтобы не ломать другие места)
   buses?: DisplayBus[]
   drivers?: DisplayDriver[]
   reserve?: ReserveReplacementCandidate[]
 }
+
 export interface ReserveReplacementCandidate {
   id: string
   busId: string

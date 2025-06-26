@@ -1,27 +1,36 @@
-"use client"
+// Оптимизированный BottomBlocks.tsx
+"use client";
 
-import { Wrench } from "lucide-react"
-import Link from "next/link"
-import { useState } from "react"
-import type { DriverStatusCount } from "@/types/driver.types"
+import { Wrench } from "lucide-react";
+import Link from "next/link";
+import { useState, useCallback } from "react";
+import type { DriverStatusCount } from "@/types/driver.types";
 
 function formatShortName(fullName?: string): string {
-  if (!fullName) return "—"
-  const [last, first = "", middle = ""] = fullName.split(" ")
-  const initials = `${first.charAt(0)}.${middle.charAt(0)}.`.toUpperCase()
-  return `${last} ${initials}`
+  if (!fullName) return "—";
+  const [last, first = "", middle = ""] = fullName.split(" ");
+  const initials = `${first.charAt(0)}.${middle.charAt(0)}.`.toUpperCase();
+  return `${last} ${initials}`;
 }
 
 interface BottomBlocksProps {
-  repairBuses: string[]
-  dayOffBuses: string[]
-  driverStatuses: DriverStatusCount
+  repairBuses: string[];
+  dayOffBuses: string[];
+  driverStatuses: {
+    DayOff?: string[];
+    OnVacation?: string[];
+    OnSickLeave?: string[];
+    Intern?: string[];
+    Fired?: string[];
+    OnWork?: string[];
+    total?: number;
+  };  
   convoySummary?: {
-    driverOnWork?: number
-    busOnWork?: number
-  }
-  date: string
-  disableLinks?: boolean
+    driverOnWork?: number;
+    busOnWork?: number;
+  };
+  date: string;
+  disableLinks?: boolean;
 }
 
 export default function BottomBlocks({
@@ -30,10 +39,20 @@ export default function BottomBlocks({
   driverStatuses,
   convoySummary,
   date,
-  disableLinks = false
+  disableLinks = false,
 }: BottomBlocksProps) {
-  const [showDayOffBuses, setShowDayOffBuses] = useState(true)
-  const [showDayOffDrivers, setShowDayOffDrivers] = useState(true)
+  const [showDayOffBuses, setShowDayOffBuses] = useState(true);
+  const [showDayOffDrivers, setShowDayOffDrivers] = useState(true);
+
+  const renderList = (items: string[], show: boolean) => (
+    show ? (
+      <div className="flex flex-wrap gap-1">
+        {items.map((b, i) => (
+          <span key={i} className="px-2 py-0.5 bg-white rounded border text-sm shadow-sm font-semibold">{formatShortName(b)}</span>
+        ))}
+      </div>
+    ) : <div className="text-sm text-gray-400">Скрыто</div>
+  );
 
   const StatusBlock = ({
     title,
@@ -43,25 +62,19 @@ export default function BottomBlocks({
     colorClass,
     statusKey
   }: {
-    title: string
-    list: string[] | number | undefined
-    show: boolean
-    toggleShow: () => void
-    colorClass: string
-    statusKey?: string
+    title: string;
+    list: string[] | number | undefined;
+    show: boolean;
+    toggleShow: () => void;
+    colorClass: string;
+    statusKey?: string;
   }) => {
-    const url = statusKey
-      ? `/dashboard/fleet-manager/drivers?status=${statusKey}&date=${date}`
-      : undefined
+    const url = statusKey ? `/dashboard/fleet-manager/drivers?status=${statusKey}&date=${date}` : undefined;
 
     return (
       <div
-        className={`bg-gray-50 border rounded-lg p-3 shadow-sm ${
-          url ? "hover:bg-gray-100 cursor-pointer" : ""
-        }`}
-        onClick={() => {
-          if (url) window.location.href = url
-        }}
+        className={`bg-gray-50 border rounded-lg p-3 shadow-sm ${url ? "hover:bg-gray-100 cursor-pointer" : ""}`}
+        onClick={() => url && (window.location.href = url)}
       >
         <h4 className={`font-bold mb-2 flex items-center justify-between ${colorClass}`}>
           <span className="flex items-center gap-2">
@@ -70,8 +83,8 @@ export default function BottomBlocks({
           {Array.isArray(list) && list.length > 0 && !statusKey && (
             <button
               onClick={(e) => {
-                e.stopPropagation()
-                toggleShow()
+                e.stopPropagation();
+                toggleShow();
               }}
               className="text-sm text-blue-600 hover:underline"
             >
@@ -81,29 +94,24 @@ export default function BottomBlocks({
         </h4>
 
         {Array.isArray(list) && show && list.length > 0 ? (
-          <table className="w-full border text-sm text-gray-900">
-            <tbody>
-              <tr className="flex flex-wrap gap-2">
-                {list.map((fullName: string, i: number) => (
-                  <td key={i} className="border px-2 py-0.5 bg-white shadow-sm font-semibold">
-                    {formatShortName(fullName)}
-                  </td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
+          <ul className="flex flex-wrap gap-2">
+            {list.map((name, i) => (
+              <li key={i} className="border rounded px-2 py-0.5 bg-white text-sm font-medium shadow-sm">
+                {formatShortName(name)}
+              </li>
+            ))}
+          </ul>
         ) : typeof list === "number" ? (
           <div className="text-gray-800 font-bold text-lg">{list}</div>
         ) : (
           !statusKey && <div className="text-sm text-gray-400">Скрыто</div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   return (
     <div className="grid gap-3 mt-3">
-
       {!disableLinks ? (
         <Link
           href={`/dashboard/repairs/planned?date=${date}`}
@@ -121,11 +129,7 @@ export default function BottomBlocks({
         <h4 className="font-bold text-sky-700 mb-3 flex items-center gap-2">
           <Wrench className="h-5 w-5" /> Ремонт
         </h4>
-        <div className="flex flex-wrap gap-2">
-          {repairBuses.length > 0 ? repairBuses.map((b, i) => (
-            <span key={i} className="px-2 py-0.5 bg-white rounded border text-sm shadow-sm font-semibold">{b}</span>
-          )) : <span className="text-gray-400">—</span>}
-        </div>
+        {renderList(repairBuses, true)}
       </div>
 
       <div className="bg-gray-50 border rounded-lg p-4 shadow-sm">
@@ -143,13 +147,7 @@ export default function BottomBlocks({
             </button>
           )}
         </h4>
-        {showDayOffBuses && (
-          <div className="flex flex-wrap gap-1">
-            {dayOffBuses.map((b, i) => (
-              <span key={i} className="px-2 py-0.5 bg-white rounded border text-sm shadow-sm font-semibold">{b}</span>
-            ))}
-          </div>
-        )}
+        {renderList(dayOffBuses, showDayOffBuses)}
       </div>
 
       <div className="bg-gray-50 border rounded-lg p-4 shadow-sm">
@@ -194,5 +192,5 @@ export default function BottomBlocks({
         statusKey="Intern"
       />
     </div>
-  )
+  );
 }
