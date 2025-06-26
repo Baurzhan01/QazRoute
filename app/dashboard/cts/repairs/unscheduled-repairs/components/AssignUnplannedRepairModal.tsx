@@ -171,7 +171,8 @@ export default function AssignUnplannedRepairModal({
       startTime: currentTime,
       andDate: null,
       andTime: null,
-      dispatchBusLineId: selectedItemId,
+      dispatchBusLineId: selected?.isReserve ? null : selectedItemId,
+      reserveId: selected?.isReserve ? selectedItemId : null,
       isExist: true,
       text: reason,
       mileage: 0,
@@ -186,6 +187,7 @@ export default function AssignUnplannedRepairModal({
       toast({ title: "Ошибка при создании", description: result.error || "", variant: "destructive" })
     }
   }
+  
   
 
   return (

@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import FinishUnplannedRepairModal from "./FinishUnplannedRepairModal"
+import { routeExitRepairService } from "@/service/routeExitRepairService"
+import { toast } from "@/components/ui/use-toast"
 
 interface UnscheduledRepairTableProps {
   repairs: any[]
@@ -72,7 +74,7 @@ export default function UnscheduledRepairTable({
               <td className="p-2 border text-center">{r.andDate || "-"}</td>
               <td className="p-2 border text-center">{r.exitTime || "-"}</td>
               <td className="p-2 border text-center">{r.mileage || "—"}</td>
-              <td className="p-2 border text-center">
+              <td className="p-2 border text-center space-y-1 flex flex-col items-center">
                 {!r.andTime && (
                   <Button
                     size="sm"
@@ -82,6 +84,23 @@ export default function UnscheduledRepairTable({
                     Завершить
                   </Button>
                 )}
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={async () => {
+                    if (confirm("Удалить запись о ремонте?")) {
+                      const res = await routeExitRepairService.delete(r.id)
+                      if (res.isSuccess) {
+                        toast({ title: "Запись удалена" })
+                        onRefresh?.()
+                      } else {
+                        toast({ title: "Ошибка при удалении", variant: "destructive" })
+                      }
+                    }
+                  }}
+                >
+                  Удалить
+                </Button>
               </td>
             </tr>
           ))}
