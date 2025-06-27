@@ -85,7 +85,7 @@ export default function FinalDispatchTable({
           <div className="font-bold text-lg tracking-wide">
             План выпуска · Колонна №{depotNumber ?? "—"}
           </div>
-          <div className="text-sm text-gray-600">
+          <div className="text-xl font-bold text-gray-900 tracking-wide">
             на {displayDate.toLocaleDateString("ru-RU")}
           </div>
         </div>

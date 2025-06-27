@@ -31,13 +31,11 @@ export interface DisplayBus {
   id: string
   govNumber: string
   garageNumber: string
-  busStatus: string
+  status?: string   // ← добавь это
   isAssigned?: boolean
   assignedRoute?: string
-  assignedDeparture?: number
-  isBusy?: boolean // ← обязательно
+  stateNumber?: string // ← см. ниже
 }
-
 
 // Автобус с назначенными водителями
 export interface BusWithDrivers extends Bus {

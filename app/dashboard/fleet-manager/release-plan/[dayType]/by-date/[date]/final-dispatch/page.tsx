@@ -1,65 +1,51 @@
+// FinalDispatchPage.tsx — оптимизированная версия с ленивой отрисовкой и popover-редактором
+
 "use client"
 
-import { useEffect, useState } from "react"
+import dynamic from "next/dynamic"
+import { Suspense, lazy, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import FinalDispatchExport from "./components/FinalDispatchExport"
-import FinalDispatchTable from "../../../../components/FinalDispatchTable"
-import { useFinalDispatch } from "../../../../hooks/useFinalDispatch"
-import { formatDateLabel, formatDayOfWeek, parseDate } from "../../../../utils/dateUtils"
-import type { ValidDayType } from "@/types/releasePlanTypes"
-import { telegramService } from "@/service/telegramService"
 import { toast } from "@/components/ui/use-toast"
 import { getAuthData } from "@/lib/auth-utils"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog"
-import * as htmlToImage from "html-to-image"
+import { formatDateLabel, formatDayOfWeek, parseDate } from "../../../../utils/dateUtils"
+import { telegramService } from "@/service/telegramService"
+import { useFinalDispatch } from "../../../../hooks/useFinalDispatch"
+import FinalDispatchExport from "./components/FinalDispatchExport"
+import SkeletonBlock from "../../../../components/SkeletonBlock"
+import { mapToReserveAssignmentUI } from "../../../../utils/releasePlanUtils"
 
-function normalizeDayType(value?: string): ValidDayType | undefined {
-  const map: Record<string, ValidDayType> = {
+const LazyFinalDispatchTable = dynamic(() => import("../../../../components/FinalDispatchTable"), {
+  ssr: false,
+  loading: () => <SkeletonBlock height={500} />,
+})
+const LazyReserveSection = lazy(() => import("../../../../components/ReserveRowSection"))
+const LazyBottomBlocks = lazy(() => import("../../../../components/BottomBlocks"))
+
+function normalizeDayType(value?: string) {
+  const map = {
     workday: "workday",
     workdays: "workday",
     saturday: "saturday",
     sunday: "sunday",
     holiday: "holiday",
-  }
-  return value ? map[value.toLowerCase()] : undefined
+  } as const
+  return value ? map[value.toLowerCase() as keyof typeof map] : undefined
 }
 
 export default function FinalDispatchPage() {
   const params = useParams()
   const router = useRouter()
-
   const dateParam = params?.date as string | undefined
-  const rawDayType = params?.dayType as string | undefined
-  const dayType = normalizeDayType(rawDayType)
-  const [modalMessage, setModalMessage] = useState<string | null>(null)
+  const dayType = normalizeDayType(params?.dayType as string)
+
   const [hydrated, setHydrated] = useState(false)
   const [displayDate, setDisplayDate] = useState<Date | null>(null)
-  const { refetch } = useFinalDispatch(displayDate, dayType)
-  const authData = getAuthData()
-  const convoyId = authData?.convoyId
+  const [modalMessage, setModalMessage] = useState<string | null>(null)
   const [readOnlyExportMode, setReadOnlyExportMode] = useState(false)
   const [isSending, setIsSending] = useState(false)
-
-  useEffect(() => {
-    if (dateParam) {
-      const parsed = parseDate(dateParam)
-      setDisplayDate(parsed)
-    }
-    setHydrated(true)
-  }, [dateParam])
-
-  useEffect(() => {
-    if (hydrated && displayDate && dayType) {
-      refetch()
-    }
-  }, [hydrated, displayDate, dayType, refetch])
+  const authData = getAuthData()
+  const convoyId = authData?.convoyId
 
   const {
     finalDispatch,
@@ -70,18 +56,26 @@ export default function FinalDispatchPage() {
     convoyNumber,
     loading,
     error,
+    refetch,
   } = useFinalDispatch(displayDate, dayType)
 
-  const depotName = convoyNumber ? `Автоколонна №${convoyNumber}` : "—"
+  useEffect(() => {
+    if (dateParam) setDisplayDate(parseDate(dateParam))
+    setHydrated(true)
+  }, [dateParam])
+
+  useEffect(() => {
+    if (hydrated && displayDate && dayType) refetch()
+  }, [hydrated, displayDate, dayType, refetch])
 
   const handleSaveAsImage = async () => {
     const node = document.getElementById("final-dispatch-capture")
     if (!node) return
-
     setReadOnlyExportMode(true)
-    await new Promise((r) => setTimeout(r, 100)) // ждём ререндеринг
+    await new Promise((r) => setTimeout(r, 100))
 
     try {
+      const htmlToImage = await import("html-to-image")
       const dataUrl = await htmlToImage.toPng(node, {
         cacheBust: true,
         width: node.scrollWidth * 2,
@@ -92,18 +86,12 @@ export default function FinalDispatchPage() {
           background: "white",
         },
       })
-
       const link = document.createElement("a")
       link.href = dataUrl
       link.download = `План_выпуска_${dateParam}.png`
       link.click()
     } catch (err) {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось сохранить изображение",
-        variant: "destructive",
-      })
-      console.error(err)
+      toast({ title: "Ошибка", description: "Не удалось сохранить изображение", variant: "destructive" })
     } finally {
       setReadOnlyExportMode(false)
     }
@@ -113,9 +101,17 @@ export default function FinalDispatchPage() {
     router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateParam}`)
   }
 
-  if (!hydrated || !displayDate) {
-    return <div className="p-6 text-gray-500">⏳ Загрузка страницы...</div>
-  }
+  if (!hydrated || !displayDate) return <div className="p-6 text-gray-500">⏳ Загрузка страницы...</div>
+
+  const depotName = convoyNumber ? `Автоколонна №${convoyNumber}` : "—"
+
+  const mappedReserves = finalDispatch?.reserveAssignments.map((r, i) =>
+    mapToReserveAssignmentUI(r, i, "Reserved")
+  )
+
+  const mappedOrders = orderAssignments.map((r, i) =>
+    mapToReserveAssignmentUI(r, i, "Order")
+  )
 
   return (
     <div className="flex flex-col gap-6">
@@ -128,7 +124,6 @@ export default function FinalDispatchPage() {
             {formatDayOfWeek(displayDate)}, {formatDateLabel(displayDate)}
           </p>
         </div>
-
         <div className="flex gap-3">
           <Button
             variant="default"
@@ -151,11 +146,7 @@ export default function FinalDispatchPage() {
           >
             {isSending ? "📨 Отправка..." : "📩 Разослать водителям"}
           </Button>
-
-          <Button variant="outline" onClick={handleSaveAsImage}>
-            📷 Файл на печать
-          </Button>
-
+          <Button variant="outline" onClick={handleSaveAsImage}>📷 Файл на печать</Button>
           {finalDispatch && (
             <FinalDispatchExport
               date={displayDate}
@@ -163,41 +154,28 @@ export default function FinalDispatchPage() {
               depotName={depotName}
             />
           )}
-
-          <Button variant="secondary" onClick={handleGoBack}>
-            ← Назад к маршрутам
-          </Button>
+          <Button variant="secondary" onClick={handleGoBack}>← Назад к маршрутам</Button>
         </div>
       </div>
 
       <div id="final-dispatch-capture" className="bg-white p-6 shadow rounded-lg print-export">
-        {loading && <p className="text-gray-500">Загрузка данных...</p>}
+        {loading && <SkeletonBlock height={300} />}
         {error && <p className="text-red-500">Ошибка: {error}</p>}
         {!loading && !error && finalDispatch && (
-          <FinalDispatchTable
-            data={finalDispatch}
-            depotNumber={convoyNumber}
-            orderAssignments={orderAssignments}
-            driversCount={driversCount}
-            busesCount={busesCount}
-            convoySummary={convoySummary}
-            dayType={dayType ?? "workday"}
-            readOnlyMode={readOnlyExportMode}
-          />
+          <Suspense fallback={<SkeletonBlock height={400} />}>
+            <LazyFinalDispatchTable
+              data={finalDispatch}
+              depotNumber={convoyNumber}
+              orderAssignments={orderAssignments}
+              driversCount={driversCount}
+              busesCount={busesCount}
+              convoySummary={convoySummary}
+              dayType={dayType ?? "workday"}
+              readOnlyMode={readOnlyExportMode}
+            />
+          </Suspense>
         )}
       </div>
-
-      <Dialog open={!!modalMessage} onOpenChange={() => setModalMessage(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>📨 Telegram-рассылка</DialogTitle>
-          </DialogHeader>
-          <div className="text-base">{modalMessage}</div>
-          <DialogFooter>
-            <Button onClick={() => setModalMessage(null)}>ОК</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

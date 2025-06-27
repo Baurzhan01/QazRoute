@@ -1,5 +1,3 @@
-// app/dashboard/repairs/unplanned/page.tsx
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -24,7 +22,7 @@ export default function UnplannedRepairsPage() {
     const date = format(selectedDate, "yyyy-MM-dd")
     const res = await routeExitRepairService.getByDate(date, depotId)
     if (res.isSuccess && res.value) {
-        const list = res.value.filter(r => r.convoy?.id === convoyId)
+      const list = res.value.filter(r => r.convoy?.id === convoyId && r.repairType === "Unscheduled")
       setRepairs(list)
     } else {
       setRepairs([])
@@ -43,9 +41,9 @@ export default function UnplannedRepairsPage() {
       "Гаражный №": r.bus?.garageNumber ?? "–",
       "Маршрут": r.route?.number ?? "–",
       "Причина": r.text ?? "–",
-      "Начало": r.startTime ?? "–",
-      "Окончание": r.andTime ?? "–",
-      "Дата окончания": r.andDate ?? "–",
+      "Начало ремонта": r.startRepairTime ?? "–",
+      "Окончание ремонта": r.endRepairTime ?? "–",
+      "Дата завершения": r.endRepairDate ?? "–",
       "Пробег": r.mileage ?? 0,
     }))
     downloadAsExcel(rows, `Неплановые_ремонты_${format(selectedDate, "yyyy-MM-dd")}`)

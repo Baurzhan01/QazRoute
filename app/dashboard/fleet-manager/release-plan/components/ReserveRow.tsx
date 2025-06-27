@@ -1,22 +1,23 @@
-"use client";
+// components/ReserveRow.tsx
+"use client"
 
-import { memo } from "react";
-import InfoCell from "./InfoCell";
-import type { ReserveAssignmentUI } from "@/types/releasePlanTypes";
+import { memo } from "react"
+import PopoverEditor from "./PopoverEditor"
+import type { ReserveAssignmentUI } from "@/types/releasePlanTypes"
 
 interface ReserveRowProps {
-  r: ReserveAssignmentUI;
-  i: number;
-  readOnlyMode?: boolean;
-  displayDate: Date;
+  r: ReserveAssignmentUI
+  i: number
+  readOnlyMode?: boolean
+  displayDate: Date
 }
 
 const formatShortName = (fullName?: string): string => {
-  if (!fullName) return "—";
-  const [last, first = "", middle = ""] = fullName.split(" ");
-  const initials = `${first?.charAt(0)}.${middle?.charAt(0)}.`.toUpperCase();
-  return `${last} ${initials}`;
-};
+  if (!fullName) return "—"
+  const [last, first = "", middle = ""] = fullName.split(" ")
+  const initials = `${first?.charAt(0)}.${middle?.charAt(0)}.`.toUpperCase()
+  return `${last} ${initials}`
+}
 
 const ReserveRow = memo(function ReserveRow({ r, i, readOnlyMode, displayDate }: ReserveRowProps) {
   return (
@@ -28,19 +29,18 @@ const ReserveRow = memo(function ReserveRow({ r, i, readOnlyMode, displayDate }:
       <td className="border px-1 text-center">{r.driver?.serviceNumber || "—"}</td>
       <td className="border px-1 text-center">{r.departureTime || "—"}</td>
       <td className="border px-1">
-        <InfoCell
+        <PopoverEditor
           initialValue={r.additionalInfo ?? ""}
           assignmentId={r.id}
           date={displayDate}
           type="reserve"
           busId={r.busId ?? null}
           driverId={r.driver?.id ?? null}
-          textClassName="text-red-600 font-semibold text-sm"
           readOnly={readOnlyMode}
         />
       </td>
     </tr>
-  );
-});
+  )
+})
 
-export default ReserveRow;
+export default ReserveRow
