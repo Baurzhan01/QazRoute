@@ -20,6 +20,7 @@ import { getAuthData } from "@/lib/auth-utils"
 import { convoyService } from "@/service/convoyService"
 import { releasePlanService } from "@/service/releasePlanService"
 import { routeExitRepairService } from "@/service/routeExitRepairService"
+import { busService } from "@/service/busService"
 import type { FinalDispatchForRepair, ReserveAssignmentUI } from "@/types/releasePlanTypes"
 import type { RouteExitRepairDto } from "@/types/routeExitRepair.types"
 
@@ -53,6 +54,8 @@ export default function AssignUnplannedRepairModal({
   const [repairs, setRepairs] = useState<RouteExitRepairDto[]>([])
   const [selectedItemId, setSelectedItemId] = useState("")
   const [reason, setReason] = useState("")
+  const [mileage, setMileage] = useState("")
+  const [isMileageEdited, setIsMileageEdited] = useState(false)
   const [search, setSearch] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -66,6 +69,8 @@ export default function AssignUnplannedRepairModal({
     if (!open) return
     setConvoyId("")
     setReason("")
+    setMileage("")
+    setIsMileageEdited(false)
     setSelectedItemId("")
     setSearch("")
     setDispatchItems([])
@@ -90,7 +95,7 @@ export default function AssignUnplannedRepairModal({
 
       if (dispatchRes.isSuccess && dispatchRes.value) {
         const dispatch = dispatchRes.value as unknown as FinalDispatchForRepair
-        const busLineItems: DisplayAssignment[] = dispatch.routes?.flatMap((route) =>
+        const busLineItems = dispatch.routes?.flatMap((route) =>
           route.busLines?.map((line) => ({
             dispatchBusLineId: line.dispatchBusLineId,
             busId: line.bus?.id,
@@ -101,7 +106,7 @@ export default function AssignUnplannedRepairModal({
           })) ?? []
         ) ?? []
 
-        const reserveItems: DisplayAssignment[] = dispatch.reserves?.map((r: ReserveAssignmentUI) => ({
+        const reserveItems = dispatch.reserves?.map((r: ReserveAssignmentUI) => ({
           dispatchBusLineId: r.id,
           busId: r.busId ?? undefined,
           driverId: r.driver?.id ?? undefined,
@@ -137,6 +142,23 @@ export default function AssignUnplannedRepairModal({
     fetchAll()
   }, [convoyId, formattedDate])
 
+  useEffect(() => {
+    const fetchBusMileage = async () => {
+      const selected = dispatchItems.find((i) => i.dispatchBusLineId === selectedItemId)
+      if (!selected?.busId || isMileageEdited) return
+
+      const res = await busService.getById(selected.busId)
+      if (res.isSuccess) {
+        const busMileage = res.value?.mileage
+        setMileage(busMileage != null ? String(busMileage) : "0")
+      } else {
+        setMileage("0")
+      }
+    }
+
+    fetchBusMileage()
+  }, [selectedItemId, dispatchItems, isMileageEdited])
+
   const isAlreadyInRepair = (item: DisplayAssignment): boolean => {
     return repairs.some(
       (r) =>
@@ -165,20 +187,21 @@ export default function AssignUnplannedRepairModal({
     const selected = dispatchItems.find((i) => i.dispatchBusLineId === selectedItemId)
     if (!selected) return toast({ title: "Не выбран выход", variant: "destructive" })
     if (!reason.trim()) return toast({ title: "Укажите причину неисправности", variant: "destructive" })
-  
+    if (!mileage) return toast({ title: "Укажите пробег", variant: "destructive" })
+
     const result = await routeExitRepairService.create({
       startDate: formattedDate,
       startTime: currentTime,
       andDate: null,
       andTime: null,
-      dispatchBusLineId: selected?.isReserve ? null : selectedItemId,
-      reserveId: selected?.isReserve ? selectedItemId : null,
+      dispatchBusLineId: selected.isReserve ? null : selectedItemId,
+      reserveId: selected.isReserve ? selectedItemId : null,
       isExist: true,
       text: reason,
-      mileage: 0,
+      mileage: parseInt(mileage, 10),
       isLongRepair: false,
     })
-  
+
     if (result.isSuccess) {
       toast({ title: "Неплановый ремонт создан" })
       onClose()
@@ -187,8 +210,6 @@ export default function AssignUnplannedRepairModal({
       toast({ title: "Ошибка при создании", description: result.error || "", variant: "destructive" })
     }
   }
-  
-  
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -239,7 +260,10 @@ export default function AssignUnplannedRepairModal({
                       return (
                         <div
                           key={`${item.dispatchBusLineId}-${index}`}
-                          onClick={() => setSelectedItemId(item.dispatchBusLineId)}
+                          onClick={() => {
+                            setSelectedItemId(item.dispatchBusLineId)
+                            setIsMileageEdited(false)
+                          }}
                           className={cn(
                             "cursor-pointer px-4 py-3 flex justify-between items-center transition-colors duration-150",
                             selectedItemId === item.dispatchBusLineId && "bg-muted border-l-4 border-primary",
@@ -250,7 +274,7 @@ export default function AssignUnplannedRepairModal({
                               🚌 Водитель: {item.driver?.fullName ?? "–"}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              🛣 {item.routeNumber?.startsWith("С ") ? (
+                              🚣 {item.routeNumber?.startsWith("С ") ? (
                                 <span className={cn(
                                   item.routeNumber === "С резерва" ? "text-red-500" : "text-blue-500"
                                 )}>
@@ -261,17 +285,17 @@ export default function AssignUnplannedRepairModal({
                               )}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              🚐 Автобус: {item.bus?.govNumber ?? "–"} / {item.bus?.garageNumber ?? "–"}
+                              🚘 Автобус: {item.bus?.govNumber ?? "–"} / {item.bus?.garageNumber ?? "–"}
                             </p>
                           </div>
                           {selectedItemId === item.dispatchBusLineId && !disabled && (
                             <div className="text-green-600 text-xl font-bold">✅</div>
                           )}
                           {isAlreadyInRepair(item) && (
-                              <div className="text-orange-500 text-xs font-medium ml-4">
-                                ⚠ Повторный ремонт
-                              </div>
-                            )}
+                            <div className="text-orange-500 text-xs font-medium ml-4">
+                              ⚠ Повторный ремонт
+                            </div>
+                          )}
                         </div>
                       )
                     })}
@@ -291,6 +315,19 @@ export default function AssignUnplannedRepairModal({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Например: Проблема с тормозами"
+            />
+          </div>
+
+          <div>
+            <Label>Пробег (в км)</Label>
+            <Input
+              type="number"
+              value={mileage}
+              onChange={(e) => {
+                setMileage(e.target.value)
+                setIsMileageEdited(true)
+              }}
+              placeholder="Например: 123456"
             />
           </div>
         </div>

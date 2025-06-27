@@ -12,43 +12,51 @@ export interface CreateRouteExitRepairDto {
   isLongRepair: boolean
 }
   
-  
-  export interface RouteExitRepairDto {
+export type RouteExitRepairStatus = "Unscheduled" | "Other" | "LongTerm"
+
+export interface RouteExitRepairDto {
+  id: string
+  andTime: string | null // ← добавить эту строку
+  startDate: string
+  startTime: string
+  startRepairTime : string | null
+  endRepairDate: string | null
+  endRepairTime: string | null
+  text: string
+  mileage: number | null
+  isExist: boolean
+  dispatchBusLineId: string | null
+  reserveId: string | null
+  repairType: RouteExitRepairStatus
+
+  // новые поля:
+  bus?: {
     id: string
-    startDate: string
-    startTime: string
-    andDate: string | null
-    andTime: string | null
-    dispatchBusLineId: string
-    isExist: boolean
-    text: string
-    mileage: number
-    isLongRepair: boolean
-  
-    route: {
-      id: string
-      number: string
-    }
-  
-    bus: {
-      id: string
-      garageNumber: string
-      govNumber: string
-    }
-  
-    driver: {
-      id: string
-      fullName: string
-      serviceNumber: string
-    }
-  
-    convoy: {
-      id: string
-      number: number
-      chief: any // можно заменить на тип или null
-      mechanic: any // можно заменить на тип или null
-    }
+    govNumber: string
+    garageNumber: string
   }
+  driver?: {
+    id: string
+    fullName: string
+    serviceNumber: string
+  }
+  route?: {
+    id: string
+    number: string
+  }
+  convoy?: {
+    id: string
+    number: number
+  }
+  busLine?: {
+    id: string
+    number: string
+    exitTime: string
+    endTime: string
+    shiftChangeTime?: string | null
+  }
+}
+
   
   
   

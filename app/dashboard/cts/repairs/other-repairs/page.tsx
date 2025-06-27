@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
 import { Button } from "@/components/ui/button"
@@ -12,23 +12,13 @@ import { cn } from "@/lib/utils"
 import { getAuthData } from "@/lib/auth-utils"
 import { toast } from "@/components/ui/use-toast"
 import { routeExitRepairService } from "@/service/routeExitRepairService"
-import { convoyService } from "@/service/convoyService"
-import UnscheduledRepairTable from "./components/UnscheduledRepairTable"
+import OtherRepairTable from "./components/OtherRepairTable"
+import type { RouteExitRepairDto } from "@/types/routeExitRepair.types"
 
-type ConvoyRepairStat = {
-  planned: number
-  unplanned: number
-  long: number
-  other: number
-}
-
-export default function UnscheduledRepairsPage() {
+export default function OtherRepairsPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
-  const [repairs, setRepairs] = useState<any[]>([])
-  const [totalCount, setTotalCount] = useState<number>(0)
-  const [convoyStats, setConvoyStats] = useState<Record<string, ConvoyRepairStat>>({})
-  const [convoyNames, setConvoyNames] = useState<Record<string, string>>({})
-  const [showAddModal, setShowAddModal] = useState(false)
+  const [repairs, setRepairs] = useState<RouteExitRepairDto[]>([])
+  const [loading, setLoading] = useState(false)
 
   const auth = getAuthData()
   const depotId = auth?.busDepotId
@@ -36,40 +26,22 @@ export default function UnscheduledRepairsPage() {
 
   const fetchRepairs = async () => {
     if (!depotId) return
+    setLoading(true)
     const res = await routeExitRepairService.getByDate(formattedDate, depotId)
+    setLoading(false)
+
     if (res.isSuccess && res.value) {
-      setRepairs(res.value)
+      const filtered = res.value.filter(r => r.repairType === "Other")
+      setRepairs(filtered)
     } else {
-      toast({ title: "Ошибка загрузки ремонтов", variant: "destructive" })
+      toast({ title: "Ошибка при загрузке прочих ремонтов", variant: "destructive" })
       setRepairs([])
     }
   }
-  
 
-  const fetchConvoyNames = useCallback(async () => {
-    if (!depotId) return
-    const res = await convoyService.getByDepotId(depotId)
-    if (res.isSuccess && res.value) {
-      const map: Record<string, string> = {}
-      res.value.forEach((c) => {
-        map[c.id] = `Автоколонна №${c.number}`
-      })
-      setConvoyNames(map)
-    }
-  }, [depotId])
-
-  const reloadAll = () => {
+  useEffect(() => {
     fetchRepairs()
-    // fetchStats()
-  }
-
-  useEffect(() => {
-    reloadAll()
   }, [formattedDate])
-
-  useEffect(() => {
-    fetchConvoyNames()
-  }, [fetchConvoyNames])
 
   return (
     <div className="p-6 space-y-6">
@@ -109,16 +81,14 @@ export default function UnscheduledRepairsPage() {
       </div>
 
       <Card>
-        <CardHeader className="flex justify-between items-start">
-          <div>
-            <CardTitle>Неплановые ремонты</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              Всего за {format(selectedDate, "dd.MM.yyyy")}: {repairs.length}
-            </p>
-          </div>
+        <CardHeader>
+          <CardTitle>Прочий ремонт</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Всего за {format(selectedDate, "dd.MM.yyyy")}: {repairs.length}
+          </p>
         </CardHeader>
         <CardContent>
-          <UnscheduledRepairTable repairs={repairs} onRefresh={reloadAll} />
+          <OtherRepairTable repairs={repairs} onRefresh={fetchRepairs} />
         </CardContent>
       </Card>
     </div>

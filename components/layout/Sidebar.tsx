@@ -1,3 +1,4 @@
+// components/layout/Sidebar.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -45,18 +46,21 @@ export default function Sidebar() {
     }
   }, []);
 
-  const isCTS = role === "cts" || role === "on-duty-mechanic";
-
   const ctsNavItems: NavItem[] = [
     { title: "Главная", href: "/dashboard/cts", icon: <Home className="h-5 w-5" /> },
-     // 🟦 Добавляем Разнарядку
     { title: "Разнарядка", href: "/dashboard/cts/release-plan", icon: <BarChart2 className="h-5 w-5" /> },
     { title: "Плановый ремонт", href: "/dashboard/cts/repairs/plan", icon: <ClipboardList className="h-5 w-5" /> },
     { title: "Неплановый ремонт", href: "/dashboard/cts/repairs/unscheduled-repairs", icon: <Wrench className="h-5 w-5" /> },
-    { title: "Прочий ремонт", href: "/dashboard/cts/other-repairs", icon: <AlertCircle className="h-5 w-5" /> },
+    { title: "Прочий ремонт", href: "/dashboard/cts/repairs/other-repairs", icon: <AlertCircle className="h-5 w-5" /> },
     { title: "Длительный ремонт", href: "/dashboard/cts/long-repairs", icon: <Clock className="h-5 w-5" /> },
     { title: "Сообщения", href: "/dashboard/cts/notifications", icon: <Bell className="h-5 w-5" /> },
     { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
+  ];
+
+  const mccNavItems: NavItem[] = [
+    { title: "Главная", href: "/dashboard/mcc", icon: <Home className="h-5 w-5" /> },
+    { title: "Журнал ремонтов", href: "/dashboard/mcc/unscheduled-repairs", icon: <Wrench className="h-5 w-5" /> },
+    { title: "Личный кабинет", href: "/dashboard/mcc/profile", icon: <UserCircle className="h-5 w-5" /> },
   ];
 
   const dispatcherNavItems: NavItem[] = [
@@ -67,7 +71,7 @@ export default function Sidebar() {
     { title: "Плановый ремонт", href: "/dashboard/dispatcher/maintenance-plan", icon: <Wrench className="h-5 w-5" /> },
     { title: "Отчеты", href: "/dashboard/dispatcher/reports", icon: <BarChart2 className="h-5 w-5" /> },
     { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
-  ];  
+  ];
 
   const defaultNavItems: NavItem[] = [
     { title: "Панель управления", href: dashboardPath, icon: <Home className="h-5 w-5 text-sky-500" /> },
@@ -80,12 +84,10 @@ export default function Sidebar() {
   ];
 
   const navItems =
-  role === "cts" || role === "on-duty-mechanic"
-    ? ctsNavItems
-    : role === "dispatcher"
-      ? dispatcherNavItems
-      : defaultNavItems;
-
+    role === "mcc" ? mccNavItems :
+    role === "cts" || role === "on-duty-mechanic" ? ctsNavItems :
+    role === "dispatcher" ? dispatcherNavItems :
+    defaultNavItems;
 
   return (
     <aside className="hidden md:flex w-64 flex-col bg-white border-r">

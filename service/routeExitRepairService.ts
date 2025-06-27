@@ -2,7 +2,7 @@
 
 import apiClient from "@/app/api/apiClient"
 import type { ApiResponse } from "@/types/api.types"
-import type { CreateRouteExitRepairDto, RouteExitRepairDto } from "@/types/routeExitRepair.types"
+import type { CreateRouteExitRepairDto, RouteExitRepairDto, RouteExitRepairStatus } from "@/types/routeExitRepair.types"
 
 
 export const routeExitRepairService = {
@@ -78,4 +78,22 @@ export const routeExitRepairService = {
     })
     return res.data
   },
+
+  updateStatus: async (repairId: string, status: RouteExitRepairStatus): Promise<ApiResponse<null>> => {
+    const res = await apiClient.put(`/route-exits-repair/status`, null, {
+      params: { repairId, status }
+    })
+    return res.data
+  },
+  
+  setStartTime: async (repairId: string, startTime: string): Promise<ApiResponse<null>> => {
+    const res = await apiClient.put(`/route-exits-repair/repair/start-time`, { repairId, startTime })
+    return res.data
+  },
+  
+  setEndTime: async (repairId: string, endDate: string, endTime: string): Promise<ApiResponse<null>> => {
+    const res = await apiClient.put(`/route-exits-repair/repair/end-time`, { repairId, endDate, endTime })
+    return res.data
+  },
+  
 }

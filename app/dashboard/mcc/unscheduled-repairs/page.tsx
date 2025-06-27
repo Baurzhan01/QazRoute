@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
 import { Button } from "@/components/ui/button"
@@ -14,65 +14,43 @@ import { toast } from "@/components/ui/use-toast"
 import { routeExitRepairService } from "@/service/routeExitRepairService"
 import { convoyService } from "@/service/convoyService"
 import UnscheduledRepairTable from "./components/UnscheduledRepairTable"
-
-type ConvoyRepairStat = {
-  planned: number
-  unplanned: number
-  long: number
-  other: number
-}
+import AssignUnplannedRepairModal from "./components/AssignUnplannedRepairModal"
 
 export default function UnscheduledRepairsPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [repairs, setRepairs] = useState<any[]>([])
-  const [totalCount, setTotalCount] = useState<number>(0)
-  const [convoyStats, setConvoyStats] = useState<Record<string, ConvoyRepairStat>>({})
-  const [convoyNames, setConvoyNames] = useState<Record<string, string>>({})
   const [showAddModal, setShowAddModal] = useState(false)
 
   const auth = getAuthData()
   const depotId = auth?.busDepotId
-  const formattedDate = useMemo(() => format(selectedDate, "yyyy-MM-dd"), [selectedDate])
 
-  const fetchRepairs = async () => {
-    if (!depotId) return
+  const formattedDate = useMemo(
+    () => format(selectedDate, "yyyy-MM-dd"),
+    [selectedDate]
+  )
+
+  const fetchRepairs = useCallback(async () => {
+    if (!depotId) {
+      toast({ title: "Нет ID автобусного парка", variant: "destructive" })
+      return
+    }
+
     const res = await routeExitRepairService.getByDate(formattedDate, depotId)
     if (res.isSuccess && res.value) {
       setRepairs(res.value)
     } else {
-      toast({ title: "Ошибка загрузки ремонтов", variant: "destructive" })
+      toast({ title: "Ошибка загрузки ремонтов", description: res.error, variant: "destructive" })
       setRepairs([])
     }
-  }
-  
+  }, [formattedDate, depotId])
 
-  const fetchConvoyNames = useCallback(async () => {
-    if (!depotId) return
-    const res = await convoyService.getByDepotId(depotId)
-    if (res.isSuccess && res.value) {
-      const map: Record<string, string> = {}
-      res.value.forEach((c) => {
-        map[c.id] = `Автоколонна №${c.number}`
-      })
-      setConvoyNames(map)
-    }
-  }, [depotId])
-
-  const reloadAll = () => {
+  useEffect(() => {
     fetchRepairs()
-    // fetchStats()
-  }
-
-  useEffect(() => {
-    reloadAll()
-  }, [formattedDate])
-
-  useEffect(() => {
-    fetchConvoyNames()
-  }, [fetchConvoyNames])
+  }, [fetchRepairs])
 
   return (
     <div className="p-6 space-y-6">
+      {/* Выбор даты */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -108,19 +86,34 @@ export default function UnscheduledRepairsPage() {
         </Card>
       </div>
 
+      {/* Таблица ремонтов */}
       <Card>
-        <CardHeader className="flex justify-between items-start">
+        <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <CardTitle>Неплановые ремонты</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
               Всего за {format(selectedDate, "dd.MM.yyyy")}: {repairs.length}
             </p>
           </div>
+          <Button onClick={() => setShowAddModal(true)}>+ Добавить запись</Button>
         </CardHeader>
         <CardContent>
-          <UnscheduledRepairTable repairs={repairs} onRefresh={reloadAll} />
+          <UnscheduledRepairTable repairs={repairs} onRefresh={fetchRepairs} />
         </CardContent>
       </Card>
+
+      {/* Модальное окно */}
+      {showAddModal && (
+        <AssignUnplannedRepairModal
+          open={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          date={selectedDate}
+          onSuccess={() => {
+            setShowAddModal(false)
+            fetchRepairs()
+          }}
+        />
+      )}
     </div>
   )
 }
