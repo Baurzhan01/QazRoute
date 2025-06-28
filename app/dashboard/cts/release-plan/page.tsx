@@ -46,6 +46,7 @@ export default function CtsReleasePlanPage() {
     driversCount,
     busesCount,
     loading,
+    orderAssignments,
   } = useFinalDispatch(selectedDate, dayType, activeConvoyId ?? "")
 
   return (
@@ -104,6 +105,7 @@ export default function CtsReleasePlanPage() {
                       dayType={dayType}
                       readOnlyMode
                       disableLinks={true}
+                      orderAssignments={orderAssignments}
                     />
                   ) : (
                     <p className="text-gray-500">Нет данных</p>
