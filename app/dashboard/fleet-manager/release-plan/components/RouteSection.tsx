@@ -55,7 +55,7 @@ export default function RouteSection({
               <th className="border px-1 text-xl">ФИО</th>
               <th className="border px-1 text-xl">Таб. номер</th>
               <th className="border px-1 text-xl">Время выхода</th>
-              <th className="border px-2 text-xl w-[380px]">Доп. информация</th>
+              <th className="border px-2 text-xl w-[800px]">Доп. информация</th>
               {hasSecondShift && (
                 <>
                   <th className="border px-1 text-xl">Пересменка</th>
