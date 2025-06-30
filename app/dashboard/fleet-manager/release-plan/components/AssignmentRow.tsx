@@ -2,9 +2,10 @@
 
 import { memo } from "react"
 import PopoverEditor from "./PopoverEditor"
+import type { RouteAssignment } from "@/types/releasePlanTypes"
 
 interface AssignmentRowProps {
-  a: any
+  a: RouteAssignment
   i: number
   readOnlyMode?: boolean
   displayDate: Date
@@ -29,7 +30,7 @@ const AssignmentRow = memo(function AssignmentRow({ a, i, readOnlyMode, displayD
       <td className="border px-1">{a.stateNumber}</td>
       <td className="border px-1">{primaryDriverName}</td>
       <td className="border px-1 text-center">{a.driver?.serviceNumber ?? "—"}</td>
-      <td className="border px-1 text-center">{a.departureTime}</td>
+      <td className="border px-1 text-center">{a.departureTime || "—"}</td>
       <td className="border px-1">
         <PopoverEditor
           initialValue={a.additionalInfo ?? ""}
@@ -41,16 +42,16 @@ const AssignmentRow = memo(function AssignmentRow({ a, i, readOnlyMode, displayD
           readOnly={readOnlyMode}
         />
       </td>
-      {a.shift2Driver ? (
+
+      {a.shift2Driver && (
         <>
           <td className="border px-1">{a.shift2AdditionalInfo ?? "—"}</td>
           <td className="border px-1">{shift2DriverName}</td>
           <td className="border px-1 text-center">{a.shift2Driver?.serviceNumber ?? "—"}</td>
         </>
-      ) : (
-        <td colSpan={3} className="border px-1 text-center">—</td>
       )}
-      <td className="border px-1">{a.endTime}</td>
+
+      <td className="border px-1 text-center">{a.endTime?.trim() || "—"}</td>
     </tr>
   )
 })
