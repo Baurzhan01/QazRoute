@@ -87,16 +87,12 @@ export const routeExitRepairService = {
   },
   
   setStartTime: async (repairId: string, startTime: string): Promise<ApiResponse<null>> => {
-    const res = await apiClient.put(`/route-exits-repair/repair/start-time`, {
-      dto: { repairId, startTime }
-    })
+    const res = await apiClient.put(`/route-exits-repair/repair/start-time`, { repairId, startTime })
     return res.data
   },
   
   setEndTime: async (repairId: string, endDate: string, endTime: string): Promise<ApiResponse<null>> => {
-    const res = await apiClient.put(`/route-exits-repair/repair/end-time`, {
-      dto: { repairId, endDate, endTime }
-    })
+    const res = await apiClient.put(`/route-exits-repair/repair/end-time`, { repairId, endDate, endTime })
     return res.data
   },
   
