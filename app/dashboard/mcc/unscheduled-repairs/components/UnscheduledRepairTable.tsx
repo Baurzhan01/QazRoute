@@ -79,7 +79,7 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
             <tr key={r.id} className={`border ${r.andTime ? "bg-green-100" : ""}`}>
               <td className="p-2 border text-center">{idx + 1}</td>
               <td className="p-2 border text-center">{r.startDate || "-"}</td>
-              <td className="p-2 border text-center">{r.startTime || "-"}</td>
+              <td className="p-2 border text-center">{r.startTime ? r.startTime.slice(0, 5) : "-"}</td>
               <td className="p-2 border text-center">{r.convoy?.number ? `№${r.convoy.number}` : "-"}</td>
               <td className="p-2 border text-center">
                 {r.route?.number ? `${r.route.number}${r.busLine?.number ? ` / ${r.busLine.number}` : ""}` : "-"}
@@ -91,10 +91,10 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
                 {r.bus?.govNumber && r.bus?.garageNumber ? `${r.bus.govNumber} (${r.bus.garageNumber})` : "-"}
               </td>
               <td className="p-2 border text-red-600 font-medium">{r.text}</td>
-              <td className="p-2 border text-center">{r.startRepairTime || "–"}</td>
-              <td className="p-2 border text-center">{r.endRepairTime || "–"}</td>
+              <td className="p-2 border text-center">{r.startRepairTime ? r.startRepairTime.slice(0, 5) : "–"}</td>
+              <td className="p-2 border text-center">{r.endRepairTime ? r.endRepairTime.slice(0, 5) : "–"}</td>
               <td className="p-2 border text-center">{r.endRepairDate || "–"}</td>
-              <td className="p-2 border text-center">{r.andTime || "–"}</td>
+              <td className="p-2 border text-center">{r.andTime ? r.andTime.slice(0, 5) : "–"}</td>
               <td className="p-2 border text-center">{r.mileage ?? "—"}</td>
               <td className="p-2 border text-center">
                 <DropdownMenu>

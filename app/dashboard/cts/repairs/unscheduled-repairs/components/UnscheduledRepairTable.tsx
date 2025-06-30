@@ -31,7 +31,7 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
 
   const handleStartRepair = async (repairId: string) => {
     const now = new Date()
-    const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`
+    const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`
     setLoadingId(repairId)
     const res = await routeExitRepairService.setStartTime(repairId, time)
     setLoadingId(null)
@@ -41,7 +41,7 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
   const handleFinishRepair = async (repairId: string) => {
     const now = new Date()
     const date = format(now, "yyyy-MM-dd")
-    const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`
+    const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`
     setLoadingId(repairId)
     const res = await routeExitRepairService.setEndTime(repairId, date, time)
     setLoadingId(null)
@@ -88,7 +88,7 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
           >
               <td className="p-2 border text-center">{idx + 1}</td>
               <td className="p-2 border text-center">{r.startDate || "-"}</td>
-              <td className="p-2 border text-center">{r.startTime || "-"}</td>
+              <td className="p-2 border text-center">{r.startTime ? r.startTime.slice(0, 5) : "-"}</td>
               <td className="p-2 border text-center">
                 {r.convoy?.number ? `№${r.convoy.number}` : "-"}
                 {(r.repairType === "Other" || r.repairType === "LongTerm") && (
@@ -109,10 +109,12 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
                 {r.bus?.govNumber && r.bus?.garageNumber ? `${r.bus.govNumber} (${r.bus.garageNumber})` : "-"}
               </td>
               <td className="p-2 border text-red-600 font-medium">{r.text}</td>
-              <td className="p-2 border text-center">{r.startRepairTime || "–"}</td>
-              <td className="p-2 border text-center">{r.endRepairTime || "–"}</td>
+              <td className="p-2 border text-center">
+                {r.startRepairTime ? r.startRepairTime.slice(0, 5) : "–"}
+              </td>
+              <td className="p-2 border text-center">{r.endRepairTime ? r.endRepairTime.slice(0, 5) : "–"}</td>
               <td className="p-2 border text-center">{r.endRepairDate || "–"}</td>
-              <td className="p-2 border text-center">{r.andTime || "–"}</td>
+              <td className="p-2 border text-center">{r.andTime ? r.andTime.slice(0, 5) : "–"}</td>
               <td className="p-2 border text-center">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
