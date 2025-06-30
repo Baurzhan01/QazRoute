@@ -125,19 +125,25 @@ export default function FinalDispatchPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button
+        <Button
             variant="default"
             onClick={async () => {
               if (!displayDate || !convoyId) return
               setIsSending(true)
               try {
-                const responseText = await telegramService.sendDispatchToDrivers(
+                const response = await telegramService.sendDispatchToDrivers(
                   displayDate.toISOString().split("T")[0],
                   convoyId
                 )
-                setModalMessage(responseText)
+
+                // Просто показываем как есть:
+                toast({ title: "Готово!", description: response })
               } catch (error: any) {
-                setModalMessage(error.message || "Ошибка при отправке Telegram-сообщений")
+                toast({
+                  title: "Ошибка",
+                  description: error.message || "Ошибка при отправке Telegram-сообщений",
+                  variant: "destructive",
+                })
               } finally {
                 setIsSending(false)
               }

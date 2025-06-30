@@ -52,8 +52,8 @@ export default function Sidebar() {
     { title: "Плановый ремонт", href: "/dashboard/cts/repairs/plan", icon: <ClipboardList className="h-5 w-5" /> },
     { title: "Неплановый ремонт", href: "/dashboard/cts/repairs/unscheduled-repairs", icon: <Wrench className="h-5 w-5" /> },
     { title: "Прочий ремонт", href: "/dashboard/cts/repairs/other-repairs", icon: <AlertCircle className="h-5 w-5" /> },
-    { title: "Длительный ремонт", href: "/dashboard/cts/long-repairs", icon: <Clock className="h-5 w-5" /> },
-    { title: "Сообщения", href: "/dashboard/cts/notifications", icon: <Bell className="h-5 w-5" /> },
+    { title: "Длительный ремонт", href: "/dashboard/cts/repairs/long-repairs", icon: <Clock className="h-5 w-5" /> },
+    { title: "Отчёт", href: "/dashboard/cts/report", icon: <FileText className="h-5 w-5" /> },
     { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
   ];
 
