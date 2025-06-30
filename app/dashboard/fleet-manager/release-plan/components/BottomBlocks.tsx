@@ -1,39 +1,38 @@
-// Оптимизированный BottomBlocks.tsx
-"use client";
+"use client"
 
-import { Wrench } from "lucide-react";
-import Link from "next/link";
-import { useState, useCallback } from "react";
-import type { DriverStatusCount } from "@/types/driver.types";
+import { memo, useState, useCallback, useMemo } from "react"
+import { Wrench } from "lucide-react"
+import Link from "next/link"
+import type { DriverStatusCount } from "@/types/driver.types"
 
 function formatShortName(fullName?: string): string {
-  if (!fullName) return "—";
-  const [last, first = "", middle = ""] = fullName.split(" ");
-  const initials = `${first.charAt(0)}.${middle.charAt(0)}.`.toUpperCase();
-  return `${last} ${initials}`;
+  if (!fullName) return "—"
+  const [last, first = "", middle = ""] = fullName.split(" ")
+  const initials = `${first.charAt(0)}.${middle.charAt(0)}.`.toUpperCase()
+  return `${last} ${initials}`
 }
 
 interface BottomBlocksProps {
-  repairBuses: string[];
-  dayOffBuses: string[];
+  repairBuses: string[]
+  dayOffBuses: string[]
   driverStatuses: {
-    DayOff?: string[];
-    OnVacation?: string[];
-    OnSickLeave?: string[];
-    Intern?: string[];
-    Fired?: string[];
-    OnWork?: string[];
-    total?: number;
-  };  
+    DayOff?: string[]
+    OnVacation?: string[]
+    OnSickLeave?: string[]
+    Intern?: string[]
+    Fired?: string[]
+    OnWork?: string[]
+    total?: number
+  }
   convoySummary?: {
-    driverOnWork?: number;
-    busOnWork?: number;
-  };
-  date: string;
-  disableLinks?: boolean;
+    driverOnWork?: number
+    busOnWork?: number
+  }
+  date: string
+  disableLinks?: boolean
 }
 
-export default function BottomBlocks({
+const BottomBlocks = memo(function BottomBlocks({
   repairBuses,
   dayOffBuses,
   driverStatuses,
@@ -41,49 +40,53 @@ export default function BottomBlocks({
   date,
   disableLinks = false,
 }: BottomBlocksProps) {
-  const [showDayOffBuses, setShowDayOffBuses] = useState(true);
-  const [showDayOffDrivers, setShowDayOffDrivers] = useState(true);
+  const [showDayOffBuses, setShowDayOffBuses] = useState(true)
+  const [showDayOffDrivers, setShowDayOffDrivers] = useState(true)
 
-  const renderList = (
-    items: (string | { garageNumber: string; govNumber: string })[],
-    show: boolean
-  ) => (
-    show ? (
-      <div className="flex flex-wrap gap-1">
-        {items.map((item, i) => {
-          const label = typeof item === "string"
-            ? item
-            : `${item.garageNumber} (${item.govNumber})`
-  
-          return (
-            <span
-              key={i}
-              className="px-2 py-0.5 bg-white rounded border text-sm shadow-sm font-semibold"
-            >
-              {label}
-            </span>
-          )
-        })}
-      </div>
-    ) : <div className="text-sm text-gray-400">Скрыто</div>
+  const handleToggleDrivers = useCallback(() => setShowDayOffDrivers((prev) => !prev), [])
+  const handleToggleBuses = useCallback(() => setShowDayOffBuses((prev) => !prev), [])
+
+  const renderList = useCallback(
+    (items: (string | { garageNumber: string; govNumber: string })[], show: boolean) => {
+      if (!show) return <div className="text-sm text-gray-400">Скрыто</div>
+      return (
+        <div className="flex flex-wrap gap-1">
+          {items.map((item, i) => {
+            const label =
+              typeof item === "string" ? item : `${item.garageNumber} (${item.govNumber})`
+            return (
+              <span
+                key={typeof item === "string" ? item + i : `${item.garageNumber}-${item.govNumber}`}
+                className="px-2 py-0.5 bg-white rounded border text-sm shadow-sm font-semibold"
+              >
+                {label}
+              </span>
+            )
+          })}
+        </div>
+      )
+    },
+    []
   )
 
-  const StatusBlock = ({
+  const StatusBlock = memo(function StatusBlock({
     title,
     list,
     show,
     toggleShow,
     colorClass,
-    statusKey
+    statusKey,
   }: {
-    title: string;
-    list: string[] | number | undefined;
-    show: boolean;
-    toggleShow: () => void;
-    colorClass: string;
-    statusKey?: string;
-  }) => {
-    const url = statusKey ? `/dashboard/fleet-manager/drivers?status=${statusKey}&date=${date}` : undefined;
+    title: string
+    list: string[] | number | undefined
+    show: boolean
+    toggleShow: () => void
+    colorClass: string
+    statusKey?: string
+  }) {
+    const url = statusKey
+      ? `/dashboard/fleet-manager/drivers?status=${statusKey}&date=${date}`
+      : undefined
 
     return (
       <div
@@ -92,13 +95,16 @@ export default function BottomBlocks({
       >
         <h4 className={`font-bold mb-2 flex items-center justify-between ${colorClass}`}>
           <span className="flex items-center gap-2">
-            {title} <span className="text-sm text-gray-500">({Array.isArray(list) ? list.length : list ?? 0})</span>
+            {title}{" "}
+            <span className="text-sm text-gray-500">
+              ({Array.isArray(list) ? list.length : list ?? 0})
+            </span>
           </span>
           {Array.isArray(list) && list.length > 0 && !statusKey && (
             <button
               onClick={(e) => {
-                e.stopPropagation();
-                toggleShow();
+                e.stopPropagation()
+                toggleShow()
               }}
               className="text-sm text-blue-600 hover:underline"
             >
@@ -110,7 +116,7 @@ export default function BottomBlocks({
         {Array.isArray(list) && show && list.length > 0 ? (
           <ul className="flex flex-wrap gap-2">
             {list.map((name, i) => (
-              <li key={i} className="border rounded px-2 py-0.5 bg-white text-sm font-medium shadow-sm">
+              <li key={name + i} className="border rounded px-2 py-0.5 bg-white text-sm font-medium shadow-sm">
                 {formatShortName(name)}
               </li>
             ))}
@@ -121,8 +127,8 @@ export default function BottomBlocks({
           !statusKey && <div className="text-sm text-gray-400">Скрыто</div>
         )}
       </div>
-    );
-  };
+    )
+  })
 
   return (
     <div className="grid gap-3 mt-3">
@@ -154,7 +160,7 @@ export default function BottomBlocks({
           </span>
           {dayOffBuses.length > 0 && (
             <button
-              onClick={() => setShowDayOffBuses(!showDayOffBuses)}
+              onClick={handleToggleBuses}
               className="text-sm text-blue-600 hover:underline"
             >
               {showDayOffBuses ? "Скрыть" : "Показать"}
@@ -178,7 +184,7 @@ export default function BottomBlocks({
         title="👤 Водители на выходном"
         list={driverStatuses?.DayOff}
         show={showDayOffDrivers}
-        toggleShow={() => setShowDayOffDrivers(!showDayOffDrivers)}
+        toggleShow={handleToggleDrivers}
         colorClass="text-red-700"
       />
       <StatusBlock
@@ -206,5 +212,7 @@ export default function BottomBlocks({
         statusKey="Intern"
       />
     </div>
-  );
-}
+  )
+})
+
+export default BottomBlocks

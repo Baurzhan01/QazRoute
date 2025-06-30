@@ -1,7 +1,6 @@
-// components/AssignmentRow.tsx
 "use client"
 
-import { memo, useMemo } from "react"
+import { memo } from "react"
 import PopoverEditor from "./PopoverEditor"
 
 interface AssignmentRowProps {
@@ -20,15 +19,8 @@ function formatShortName(fullName?: string, serviceNumber?: string): string {
 }
 
 const AssignmentRow = memo(function AssignmentRow({ a, i, readOnlyMode, displayDate }: AssignmentRowProps) {
-  const primaryDriverName = useMemo(
-    () => formatShortName(a.driver?.fullName),
-    [a.driver?.fullName]
-  )
-
-  const shift2DriverName = useMemo(
-    () => formatShortName(a.shift2Driver?.fullName, a.shift2Driver?.serviceNumber),
-    [a.shift2Driver?.fullName, a.shift2Driver?.serviceNumber]
-  )
+  const primaryDriverName = formatShortName(a.driver?.fullName)
+  const shift2DriverName = formatShortName(a.shift2Driver?.fullName, a.shift2Driver?.serviceNumber)
 
   return (
     <tr className="even:bg-gray-50 font-medium text-xl">
@@ -49,12 +41,14 @@ const AssignmentRow = memo(function AssignmentRow({ a, i, readOnlyMode, displayD
           readOnly={readOnlyMode}
         />
       </td>
-      {a.shift2Driver && (
+      {a.shift2Driver ? (
         <>
           <td className="border px-1">{a.shift2AdditionalInfo ?? "—"}</td>
           <td className="border px-1">{shift2DriverName}</td>
           <td className="border px-1 text-center">{a.shift2Driver?.serviceNumber ?? "—"}</td>
         </>
+      ) : (
+        <td colSpan={3} className="border px-1 text-center">—</td>
       )}
       <td className="border px-1">{a.endTime}</td>
     </tr>

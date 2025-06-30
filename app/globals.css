@@ -212,3 +212,11 @@ body, table, th, td {
   font-size: 18px;
   line-height: 1.6;
 }
+.print-clean {
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: white !important;
+  overflow: visible !important;
+}

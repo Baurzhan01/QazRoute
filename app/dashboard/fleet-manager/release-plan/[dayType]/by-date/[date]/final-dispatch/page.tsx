@@ -1,9 +1,6 @@
-// FinalDispatchPage.tsx — оптимизированная версия с ленивой отрисовкой и popover-редактором
-
 "use client"
 
-import dynamic from "next/dynamic"
-import { Suspense, lazy, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
@@ -13,14 +10,7 @@ import { telegramService } from "@/service/telegramService"
 import { useFinalDispatch } from "../../../../hooks/useFinalDispatch"
 import FinalDispatchExport from "./components/FinalDispatchExport"
 import SkeletonBlock from "../../../../components/SkeletonBlock"
-import { mapToReserveAssignmentUI } from "../../../../utils/releasePlanUtils"
-
-const LazyFinalDispatchTable = dynamic(() => import("../../../../components/FinalDispatchTable"), {
-  ssr: false,
-  loading: () => <SkeletonBlock height={500} />,
-})
-const LazyReserveSection = lazy(() => import("../../../../components/ReserveRowSection"))
-const LazyBottomBlocks = lazy(() => import("../../../../components/BottomBlocks"))
+import FinalDispatchTable from "../../../../components/FinalDispatchTable"
 
 function normalizeDayType(value?: string) {
   const map = {
@@ -41,9 +31,9 @@ export default function FinalDispatchPage() {
 
   const [hydrated, setHydrated] = useState(false)
   const [displayDate, setDisplayDate] = useState<Date | null>(null)
-  const [modalMessage, setModalMessage] = useState<string | null>(null)
   const [readOnlyExportMode, setReadOnlyExportMode] = useState(false)
   const [isSending, setIsSending] = useState(false)
+
   const authData = getAuthData()
   const convoyId = authData?.convoyId
 
@@ -68,31 +58,54 @@ export default function FinalDispatchPage() {
     if (hydrated && displayDate && dayType) refetch()
   }, [hydrated, displayDate, dayType, refetch])
 
+  async function waitForDomToBeStable(targetNode: HTMLElement, timeout = 3000): Promise<void> {
+    return new Promise((resolve) => {
+      const observer = new MutationObserver(() => {
+        clearTimeout(timer)
+        observer.disconnect()
+        resolve()
+      })
+      observer.observe(targetNode, { childList: true, subtree: true, attributes: true })
+      const timer = setTimeout(() => {
+        observer.disconnect()
+        resolve()
+      }, timeout)
+    })
+  }
+
   const handleSaveAsImage = async () => {
     const node = document.getElementById("final-dispatch-capture")
     if (!node) return
+
     setReadOnlyExportMode(true)
+    node.classList.add("print-clean")
+
     await new Promise((r) => setTimeout(r, 100))
+    await waitForDomToBeStable(node)
 
     try {
       const htmlToImage = await import("html-to-image")
       const dataUrl = await htmlToImage.toPng(node, {
         cacheBust: true,
-        width: node.scrollWidth * 2,
-        height: node.scrollHeight * 2,
+        width: node.scrollWidth,
+        height: node.scrollHeight,
         style: {
-          transform: "scale(2)",
-          transformOrigin: "top left",
-          background: "white",
+          backgroundColor: "transparent",
         },
       })
+
       const link = document.createElement("a")
       link.href = dataUrl
       link.download = `План_выпуска_${dateParam}.png`
       link.click()
     } catch (err) {
-      toast({ title: "Ошибка", description: "Не удалось сохранить изображение", variant: "destructive" })
+      toast({
+        title: "Ошибка",
+        description: "Не удалось сохранить изображение",
+        variant: "destructive",
+      })
     } finally {
+      node.classList.remove("print-clean")
       setReadOnlyExportMode(false)
     }
   }
@@ -101,17 +114,11 @@ export default function FinalDispatchPage() {
     router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateParam}`)
   }
 
-  if (!hydrated || !displayDate) return <div className="p-6 text-gray-500">⏳ Загрузка страницы...</div>
+  if (!hydrated || !displayDate) {
+    return <div className="p-6 text-gray-500">⏳ Загрузка данных на {dateParam}...</div>
+  }
 
   const depotName = convoyNumber ? `Автоколонна №${convoyNumber}` : "—"
-
-  const mappedReserves = finalDispatch?.reserveAssignments.map((r, i) =>
-    mapToReserveAssignmentUI(r, i, "Reserved")
-  )
-
-  const mappedOrders = orderAssignments.map((r, i) =>
-    mapToReserveAssignmentUI(r, i, "Order")
-  )
 
   return (
     <div className="flex flex-col gap-6">
@@ -125,7 +132,7 @@ export default function FinalDispatchPage() {
           </p>
         </div>
         <div className="flex gap-3">
-        <Button
+          <Button
             variant="default"
             onClick={async () => {
               if (!displayDate || !convoyId) return
@@ -135,8 +142,6 @@ export default function FinalDispatchPage() {
                   displayDate.toISOString().split("T")[0],
                   convoyId
                 )
-
-                // Просто показываем как есть:
                 toast({ title: "Готово!", description: response })
               } catch (error: any) {
                 toast({
@@ -164,22 +169,20 @@ export default function FinalDispatchPage() {
         </div>
       </div>
 
-      <div id="final-dispatch-capture" className="bg-white p-6 shadow rounded-lg print-export">
-        {loading && <SkeletonBlock height={300} />}
+      <div id="final-dispatch-capture" className="print-export">
+        {loading && <SkeletonBlock height={800} />}
         {error && <p className="text-red-500">Ошибка: {error}</p>}
         {!loading && !error && finalDispatch && (
-          <Suspense fallback={<SkeletonBlock height={400} />}>
-            <LazyFinalDispatchTable
-              data={finalDispatch}
-              depotNumber={convoyNumber}
-              orderAssignments={orderAssignments}
-              driversCount={driversCount}
-              busesCount={busesCount}
-              convoySummary={convoySummary}
-              dayType={dayType ?? "workday"}
-              readOnlyMode={readOnlyExportMode}
-            />
-          </Suspense>
+          <FinalDispatchTable
+            data={finalDispatch}
+            depotNumber={convoyNumber}
+            orderAssignments={orderAssignments}
+            driversCount={driversCount}
+            busesCount={busesCount}
+            convoySummary={convoySummary}
+            dayType={dayType ?? "workday"}
+            readOnlyMode={readOnlyExportMode}
+          />
         )}
       </div>
     </div>

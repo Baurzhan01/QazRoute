@@ -1,4 +1,3 @@
-// components/PopoverEditor.tsx
 "use client"
 
 import { useState } from "react"
@@ -24,12 +23,10 @@ export default function PopoverEditor({
   assignmentId,
   date,
   type,
-  busId = null,
-  driverId = null,
   readOnly = false,
 }: PopoverEditorProps) {
   const [open, setOpen] = useState(false)
-  const [value, setValue] = useState(initialValue || "")
+  const [value, setValue] = useState(() => initialValue || "")
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
@@ -50,11 +47,15 @@ export default function PopoverEditor({
     }
   }
 
+  if (readOnly) {
+    return <div className="text-xs text-gray-700 px-1 py-0.5">{value || "—"}</div>
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" className="text-xs text-red-600 hover:underline px-1 py-0.5">
-          {value ? value : "—"}
+          {value || "—"}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-3 space-y-3">
@@ -63,11 +64,10 @@ export default function PopoverEditor({
           onChange={(e) => setValue(e.target.value)}
           placeholder="Введите дополнительную информацию"
           className="text-sm"
-          disabled={readOnly}
         />
         <div className="flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Отмена</Button>
-          <Button variant="default" size="sm" onClick={handleSave} disabled={saving || readOnly}>
+          <Button variant="default" size="sm" onClick={handleSave} disabled={saving}>
             {saving ? "Сохранение..." : "Сохранить"}
           </Button>
         </div>
