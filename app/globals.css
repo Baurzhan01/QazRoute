@@ -5,12 +5,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
 
-/* Основной шрифт */
+/* 🌐 Базовый шрифт */
 body, table, th, td {
   font-family: 'Inter', 'Roboto', sans-serif;
 }
 
-/* 🌟 Переменные светлой темы */
+/* 🌞 Светлая тема */
 :root {
   --background: 0 0% 100%;
   --foreground: 0 0% 3.9%;
@@ -32,25 +32,9 @@ body, table, th, td {
   --input: 0 0% 89.8%;
   --ring: 0 0% 3.9%;
   --radius: 0.5rem;
-
-  /* Графики и сайдбар */
-  --chart-1: 12 76% 61%;
-  --chart-2: 173 58% 39%;
-  --chart-3: 197 37% 24%;
-  --chart-4: 43 74% 66%;
-  --chart-5: 27 87% 67%;
-
-  --sidebar-background: 0 0% 98%;
-  --sidebar-foreground: 240 5.3% 26.1%;
-  --sidebar-primary: 240 5.9% 10%;
-  --sidebar-primary-foreground: 0 0% 98%;
-  --sidebar-accent: 240 4.8% 95.9%;
-  --sidebar-accent-foreground: 240 5.9% 10%;
-  --sidebar-border: 220 13% 91%;
-  --sidebar-ring: 217.2 91.2% 59.8%;
 }
 
-/* 🌑 Темная тема */
+/* 🌚 Тёмная тема */
 .dark {
   --background: 0 0% 3.9%;
   --foreground: 0 0% 98%;
@@ -71,24 +55,9 @@ body, table, th, td {
   --border: 0 0% 14.9%;
   --input: 0 0% 14.9%;
   --ring: 0 0% 83.1%;
-
-  --chart-1: 220 70% 50%;
-  --chart-2: 160 60% 45%;
-  --chart-3: 30 80% 55%;
-  --chart-4: 280 65% 60%;
-  --chart-5: 340 75% 55%;
-
-  --sidebar-background: 240 5.9% 10%;
-  --sidebar-foreground: 240 4.8% 95.9%;
-  --sidebar-primary: 224.3 76.3% 48%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 3.7% 15.9%;
-  --sidebar-accent-foreground: 240 4.8% 95.9%;
-  --sidebar-border: 240 3.7% 15.9%;
-  --sidebar-ring: 217.2 91.2% 59.8%;
 }
 
-/* 🎨 Базовые Tailwind-стили */
+/* 🧱 Tailwind reset */
 @layer base {
   * {
     border-color: hsl(var(--border));
@@ -98,7 +67,7 @@ body, table, th, td {
   }
 }
 
-/* ✨ Дополнительные утилиты и анимации */
+/* 🛠️ Полезные утилиты */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
@@ -113,16 +82,18 @@ body, table, th, td {
   }
 
   @keyframes slide-in {
-    0% {
+    from {
       transform: translateX(-100%);
       opacity: 0;
     }
-    100% {
+    to {
       transform: translateX(0);
       opacity: 1;
     }
   }
 }
+
+/* 🖨️ Скрываем неважное при печати и экспорте */
 @media print {
   button, .no-print, nav, header, .shadow-sm {
     display: none !important;
@@ -139,8 +110,7 @@ body, table, th, td {
   }
 }
 
-
-/* 📅 Стилизация react-datepicker */
+/* 📅 React-datepicker */
 .react-datepicker {
   font-family: 'Inter', sans-serif;
   border-radius: 0.75rem;
@@ -148,12 +118,10 @@ body, table, th, td {
   box-shadow: 0 10px 15px rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
-
 .react-datepicker__header {
   background-color: hsl(var(--muted));
   border-bottom: none;
 }
-
 .react-datepicker__current-month,
 .react-datepicker__year-dropdown,
 .react-datepicker__month-dropdown {
@@ -161,65 +129,98 @@ body, table, th, td {
   font-size: 1rem;
   color: hsl(var(--foreground));
 }
-
 .react-datepicker__day-name,
 .react-datepicker__day {
   color: hsl(var(--muted-foreground));
   font-size: 0.875rem;
   line-height: 2rem;
 }
-
 .react-datepicker__day--selected,
 .react-datepicker__day--keyboard-selected {
   background-color: hsl(var(--primary)) !important;
   color: hsl(var(--primary-foreground)) !important;
   border-radius: 0.375rem;
 }
-
 .react-datepicker__navigation-icon::before {
   border-color: hsl(var(--muted-foreground));
 }
-/* 📷 Для экспорта PNG с чёткими шрифтами */
+
+/* 📷 Для экспорта PNG */
 .print-export {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: geometricPrecision;
-  background-color: white !important;
+  background: white !important;
   color: black !important;
+  font-size: 26px;
+  line-height: 1.5;
   transform-origin: top left;
-  font-size: 16px; /* Повышает чёткость */
-  line-height: 1.5; /* Улучшает читаемость */
-}
-#print-export,
-#print-export * {
-  -webkit-font-smoothing: antialiased;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: geometricPrecision;
-}
-#print-export table {
-  background-color: white !important;
-  border-collapse: collapse !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
 }
 
-#print-export th,
-#print-export td {
-  border: 1px solid #ccc !important;
-  padding: 4px 8px !important;
-  font-size: 14px !important;
+.print-export table {
+  width: 100% !important;
+  table-layout: auto !important;
+  border-collapse: collapse !important;
+  margin: 0 auto !important;
+  border: 1px solid #444 !important; /* внешняя граница */
 }
-#print-export {
-  font-size: 18px;
-  line-height: 1.6;
+
+.print-export th {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  padding: 0px 4px !important;
+  background-color: #e6f2ff !important;
+  color: #003366 !important;
+  border: 1px solid #444 !important;
+  text-align: center !important;
+  white-space: nowrap;
+  line-height: 1.2 !important; /* плотнее строки */
 }
-.print-clean * {
-  box-shadow: none !important;
-  background-image: none !important;
-  background-color: white !important;
+
+.print-export td {
+  font-size: 26px !important;
+  font-weight: 500 !important;
+  padding: 0px 4px !important;
   color: black !important;
-  opacity: 1 !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  border: 1px solid #444 !important;
+  height: auto !important;
+  line-height: 1.2 !important;
+  vertical-align: middle !important;
+  background-color: white !important;
 }
-.print-clean * {
-  transition: none !important;
-  filter: none !important;
+.print-export td,
+.print-export th {
+  border: 1px solid #444 !important;
+  box-sizing: border-box !important;
+  background-clip: padding-box !important; /* не "размывает" фон */
 }
+
+/* 📏 Стандартизированная высота ячеек */
+.print-export td {
+  min-height: 28px !important;
+  height: 28px !important;
+}
+
+/* 🧷 Уплотнённая, но встроенная в таблицу .route-label */
+.print-export .route-label {
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  padding: 4px !important;
+  margin: 0 !important;
+  background-color: #dceeff !important;
+  color: #003366 !important;
+  border: 1px solid #444 !important;
+  line-height: 1.2 !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+}
+
+

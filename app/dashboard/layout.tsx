@@ -1,13 +1,14 @@
-import { ReactNode } from "react";
-import DashboardLayout from "@/components/layout/DashboardLayout";
-import type { Metadata } from "next";
-import { headers } from "next/headers";
+import { ReactNode } from "react"
+import DashboardLayout from "@/components/layout/DashboardLayout"
+import type { Metadata } from "next"
+import { headers } from "next/headers"
+import { Toaster } from "@/components/ui/toaster" // ✅ добавили
 
 export async function generateMetadata(): Promise<Metadata> {
-  const allHeaders = await headers(); // <-- добавили await!
-  const pathname = allHeaders.get("x-next-pathname") || "/";
-  const segments = pathname.split("/");
-  const role = segments.length > 2 ? segments[2] : "dashboard";
+  const allHeaders = await headers()
+  const pathname = allHeaders.get("x-next-pathname") || "/"
+  const segments = pathname.split("/")
+  const role = segments.length > 2 ? segments[2] : "dashboard"
 
   const titles: Record<string, string> = {
     "fleet-manager": "Менеджер автопарка",
@@ -19,9 +20,9 @@ export async function generateMetadata(): Promise<Metadata> {
     "payroll": "Бухгалтерия",
     "admin": "Администратор",
     "dashboard": "Панель управления",
-  };
+  }
 
-  const roleTitle = titles[role] || "Панель управления";
+  const roleTitle = titles[role] || "Панель управления"
 
   return {
     title: `${roleTitle} | QazRoute`,
@@ -29,13 +30,16 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: "/favicon.ico",
     },
-  };
+  }
 }
 
 export default function DashboardRootLayout({ children }: { children: ReactNode }) {
   return (
-    <DashboardLayout>
-      {children}
-    </DashboardLayout>
-  );
+    <>
+      <DashboardLayout>
+        {children}
+      </DashboardLayout>
+      <Toaster /> {/* ✅ вставили глобальный рендерер уведомлений */}
+    </>
+  )
 }

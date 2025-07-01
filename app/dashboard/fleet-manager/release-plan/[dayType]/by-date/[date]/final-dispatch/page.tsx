@@ -11,6 +11,13 @@ import { useFinalDispatch } from "../../../../hooks/useFinalDispatch"
 import FinalDispatchExport from "./components/FinalDispatchExport"
 import SkeletonBlock from "../../../../components/SkeletonBlock"
 import FinalDispatchTable from "../../../../components/FinalDispatchTable"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 
 function normalizeDayType(value?: string) {
   const map = {
@@ -33,6 +40,7 @@ export default function FinalDispatchPage() {
   const [displayDate, setDisplayDate] = useState<Date | null>(null)
   const [readOnlyExportMode, setReadOnlyExportMode] = useState(false)
   const [isSending, setIsSending] = useState(false)
+  const [modalMessage, setModalMessage] = useState<string | null>(null)
 
   const authData = getAuthData()
   const convoyId = authData?.convoyId
@@ -58,42 +66,23 @@ export default function FinalDispatchPage() {
     if (hydrated && displayDate && dayType) refetch()
   }, [hydrated, displayDate, dayType, refetch])
 
-  async function waitForDomToBeStable(targetNode: HTMLElement, timeout = 3000): Promise<void> {
-    return new Promise((resolve) => {
-      const observer = new MutationObserver(() => {
-        clearTimeout(timer)
-        observer.disconnect()
-        resolve()
-      })
-      observer.observe(targetNode, { childList: true, subtree: true, attributes: true })
-      const timer = setTimeout(() => {
-        observer.disconnect()
-        resolve()
-      }, timeout)
-    })
-  }
-
   const handleSaveAsImage = async () => {
-    const node = document.getElementById("final-dispatch-capture")
+    const node = document.getElementById("final-dispatch-table-only")
     if (!node) return
-
+  
     setReadOnlyExportMode(true)
     node.classList.add("print-clean")
-
-    await new Promise((r) => setTimeout(r, 100))
-    await waitForDomToBeStable(node)
-
+  
+    await new Promise((r) => setTimeout(r, 300))
+  
     try {
       const htmlToImage = await import("html-to-image")
       const dataUrl = await htmlToImage.toPng(node, {
         cacheBust: true,
-        width: node.scrollWidth,
-        height: node.scrollHeight,
-        style: {
-          backgroundColor: "white", // ✅ заменили transparent
-        },
-      })      
-
+        backgroundColor: "white",
+        pixelRatio: 2, // 👈 ключ к решению без transform
+      })
+  
       const link = document.createElement("a")
       link.href = dataUrl
       link.download = `План_выпуска_${dateParam}.png`
@@ -108,10 +97,31 @@ export default function FinalDispatchPage() {
       node.classList.remove("print-clean")
       setReadOnlyExportMode(false)
     }
-  }
-
+  }  
   const handleGoBack = () => {
     router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateParam}`)
+  }
+
+  const handleSendTelegram = async () => {
+    if (!displayDate || !convoyId) return
+    setIsSending(true)
+
+    try {
+      const response = await telegramService.sendDispatchToDrivers(
+        displayDate.toISOString().split("T")[0],
+        convoyId
+      )
+      const message = typeof response === "string" ? response : "Сообщения отправлены успешно"
+      setModalMessage(message)
+    } catch (error: any) {
+      toast({
+        title: "Ошибка",
+        description: error?.message || "Ошибка при отправке Telegram-сообщений",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSending(false)
+    }
   }
 
   if (!hydrated || !displayDate) {
@@ -132,38 +142,12 @@ export default function FinalDispatchPage() {
           </p>
         </div>
         <div className="flex gap-3">
-        <Button
-          variant="default"
-          onClick={async () => {
-            if (!displayDate || !convoyId) return
-            setIsSending(true)
-
-            try {
-              // 🔧 response уже строка
-              const response: string = await telegramService.sendDispatchToDrivers(
-                displayDate.toISOString().split("T")[0],
-                convoyId
-              )
-
-              toast({
-                title: "Готово!",
-                description: response || "Уведомления успешно отправлены.",
-              })
-            } catch (error: any) {
-              toast({
-                title: "Ошибка",
-                description: error.message || "Ошибка при отправке Telegram-сообщений",
-                variant: "destructive",
-              })
-            } finally {
-              setIsSending(false)
-            }
-          }}
-          disabled={isSending}
-        >
-          {isSending ? "📨 Отправка..." : "📩 Разослать водителям"}
-        </Button>
-          <Button variant="outline" onClick={handleSaveAsImage}>📷 Файл на печать</Button>
+          <Button variant="default" onClick={handleSendTelegram} disabled={isSending}>
+            {isSending ? "📨 Отправка..." : "📩 Разослать водителям"}
+          </Button>
+          <Button variant="outline" onClick={handleSaveAsImage}>
+            📷 Файл на печать
+          </Button>
           {finalDispatch && (
             <FinalDispatchExport
               date={displayDate}
@@ -171,26 +155,43 @@ export default function FinalDispatchPage() {
               depotName={depotName}
             />
           )}
-          <Button variant="secondary" onClick={handleGoBack}>← Назад к маршрутам</Button>
+          <Button variant="secondary" onClick={handleGoBack}>
+            ← Назад к маршрутам
+          </Button>
         </div>
       </div>
 
+      {/* Обёртка только для таблицы */}
       <div id="final-dispatch-capture" className="print-export">
         {loading && <SkeletonBlock height={800} />}
         {error && <p className="text-red-500">Ошибка: {error}</p>}
         {!loading && !error && finalDispatch && (
-          <FinalDispatchTable
-            data={finalDispatch}
-            depotNumber={convoyNumber}
-            orderAssignments={orderAssignments}
-            driversCount={driversCount}
-            busesCount={busesCount}
-            convoySummary={convoySummary}
-            dayType={dayType ?? "workday"}
-            readOnlyMode={readOnlyExportMode}
-          />
+          <div id="final-dispatch-table-only">
+            <FinalDispatchTable
+              data={finalDispatch}
+              depotNumber={convoyNumber}
+              orderAssignments={orderAssignments}
+              driversCount={driversCount}
+              busesCount={busesCount}
+              convoySummary={convoySummary}
+              dayType={dayType ?? "workday"}
+              readOnlyMode={readOnlyExportMode}
+            />
+          </div>
         )}
       </div>
+
+      <Dialog open={!!modalMessage} onOpenChange={() => setModalMessage(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>📨 Telegram-рассылка</DialogTitle>
+          </DialogHeader>
+          <div className="text-base">{modalMessage}</div>
+          <DialogFooter>
+            <Button onClick={() => setModalMessage(null)}>ОК</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
