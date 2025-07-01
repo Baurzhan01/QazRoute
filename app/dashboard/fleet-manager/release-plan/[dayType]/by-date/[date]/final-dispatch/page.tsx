@@ -90,9 +90,9 @@ export default function FinalDispatchPage() {
         width: node.scrollWidth,
         height: node.scrollHeight,
         style: {
-          backgroundColor: "transparent",
+          backgroundColor: "white", // ✅ заменили transparent
         },
-      })
+      })      
 
       const link = document.createElement("a")
       link.href = dataUrl
@@ -132,31 +132,37 @@ export default function FinalDispatchPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button
-            variant="default"
-            onClick={async () => {
-              if (!displayDate || !convoyId) return
-              setIsSending(true)
-              try {
-                const response = await telegramService.sendDispatchToDrivers(
-                  displayDate.toISOString().split("T")[0],
-                  convoyId
-                )
-                toast({ title: "Готово!", description: response })
-              } catch (error: any) {
-                toast({
-                  title: "Ошибка",
-                  description: error.message || "Ошибка при отправке Telegram-сообщений",
-                  variant: "destructive",
-                })
-              } finally {
-                setIsSending(false)
-              }
-            }}
-            disabled={isSending}
-          >
-            {isSending ? "📨 Отправка..." : "📩 Разослать водителям"}
-          </Button>
+        <Button
+          variant="default"
+          onClick={async () => {
+            if (!displayDate || !convoyId) return
+            setIsSending(true)
+
+            try {
+              // 🔧 response уже строка
+              const response: string = await telegramService.sendDispatchToDrivers(
+                displayDate.toISOString().split("T")[0],
+                convoyId
+              )
+
+              toast({
+                title: "Готово!",
+                description: response || "Уведомления успешно отправлены.",
+              })
+            } catch (error: any) {
+              toast({
+                title: "Ошибка",
+                description: error.message || "Ошибка при отправке Telegram-сообщений",
+                variant: "destructive",
+              })
+            } finally {
+              setIsSending(false)
+            }
+          }}
+          disabled={isSending}
+        >
+          {isSending ? "📨 Отправка..." : "📩 Разослать водителям"}
+        </Button>
           <Button variant="outline" onClick={handleSaveAsImage}>📷 Файл на печать</Button>
           {finalDispatch && (
             <FinalDispatchExport
