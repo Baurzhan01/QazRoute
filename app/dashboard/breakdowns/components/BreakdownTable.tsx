@@ -1,6 +1,7 @@
 "use client"
 
 import type { RouteExitRepairDto } from "@/types/routeExitRepair.types"
+import { cn } from "@/lib/utils"
 
 interface BreakdownTableProps {
   repairs: RouteExitRepairDto[]
@@ -13,6 +14,15 @@ function shortenName(fullName: string): string {
 }
 
 export default function BreakdownTable({ repairs }: BreakdownTableProps) {
+  // Подсчёт количества появлений автобусов (по id)
+  const busIdMap = repairs.reduce<Record<string, RouteExitRepairDto[]>>((acc, r) => {
+    const busId = r.bus?.id
+    if (!busId) return acc
+    if (!acc[busId]) acc[busId] = []
+    acc[busId].push(r)
+    return acc
+  }, {})
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border">
@@ -30,23 +40,49 @@ export default function BreakdownTable({ repairs }: BreakdownTableProps) {
           </tr>
         </thead>
         <tbody>
-          {repairs.map((r, idx) => (
-            <tr key={r.id} className="border">
-              <td className="p-2 border text-center">{idx + 1}</td>
-              <td className="p-2 border text-center">{r.startDate ?? "–"}</td>
-              <td className="p-2 border text-center">{r.route?.number ?? "–"}</td>
-              <td className="p-2 border">
-                {r.driver ? `${shortenName(r.driver.fullName)} (${r.driver.serviceNumber})` : "–"}
-              </td>
-              <td className="p-2 border text-center">
-                {r.bus ? `${r.bus.govNumber} (${r.bus.garageNumber})` : "–"}
-              </td>
-              <td className="p-2 border text-red-600 font-medium">{r.text || "–"}</td>
-              <td className="p-2 border text-center">{r.startRepairTime || "–"}</td>
-              <td className="p-2 border text-center">{r.endRepairTime || "–"}</td>
-              <td className="p-2 border text-center">{r.endRepairDate || "–"}</td>
-            </tr>
-          ))}
+          {repairs.map((r, idx) => {
+            const busId = r.bus?.id
+            const isRepeat = busId && busIdMap[busId]?.length > 1
+            const isLastRepeat = busId && busIdMap[busId].at(-1)?.id === r.id
+            const isLongTerm = r.repairType === "LongTerm"
+
+            // Заливка строки по логике
+            const rowClass = cn(
+              "border",
+              r.endRepairTime && "bg-green-100",
+              isLongTerm && "bg-red-100",
+              isRepeat && isLastRepeat && "bg-yellow-100"
+            )
+
+            // Формируем текст причины с метками
+            let reason = r.text || "–"
+            if (isLongTerm) reason += " • Длительный ремонт"
+            if (isRepeat && isLastRepeat) reason += " • Повторный заезд"
+
+            return (
+              <tr key={r.id} className={rowClass}>
+                <td className="p-2 border text-center">{idx + 1}</td>
+                <td className="p-2 border text-center">{r.startDate || "–"}</td>
+                <td className="p-2 border text-center">{r.route?.number ?? "–"}</td>
+                <td className="p-2 border">
+                  {r.driver
+                    ? `${shortenName(r.driver.fullName)} (${r.driver.serviceNumber})`
+                    : "–"}
+                </td>
+                <td className="p-2 border text-center">
+                  {r.bus ? `${r.bus.govNumber} (${r.bus.garageNumber})` : "–"}
+                </td>
+                <td className="p-2 border text-red-600 font-medium">{reason}</td>
+                <td className="p-2 border text-center">
+                  {r.startRepairTime ? r.startRepairTime.slice(0, 5) : "–"}
+                </td>
+                <td className="p-2 border text-center">
+                  {r.endRepairTime ? r.endRepairTime.slice(0, 5) : "–"}
+                </td>
+                <td className="p-2 border text-center">{r.endRepairDate || "–"}</td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
 

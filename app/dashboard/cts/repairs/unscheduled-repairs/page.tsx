@@ -25,7 +25,6 @@ type ConvoyRepairStat = {
 export default function UnscheduledRepairsPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [repairs, setRepairs] = useState<any[]>([])
-  const [totalCount, setTotalCount] = useState<number>(0)
   const [convoyStats, setConvoyStats] = useState<Record<string, ConvoyRepairStat>>({})
   const [convoyNames, setConvoyNames] = useState<Record<string, string>>({})
   const [showAddModal, setShowAddModal] = useState(false)
@@ -38,13 +37,12 @@ export default function UnscheduledRepairsPage() {
     if (!depotId) return
     const res = await routeExitRepairService.getByDate(formattedDate, depotId)
     if (res.isSuccess && res.value) {
-      setRepairs(res.value)
+      setRepairs(res.value.filter(r => r.repairType === "Unscheduled"))
     } else {
       toast({ title: "Ошибка загрузки ремонтов", variant: "destructive" })
       setRepairs([])
     }
   }
-  
 
   const fetchConvoyNames = useCallback(async () => {
     if (!depotId) return
@@ -58,14 +56,15 @@ export default function UnscheduledRepairsPage() {
     }
   }, [depotId])
 
-  const reloadAll = () => {
-    fetchRepairs()
-    // fetchStats()
-  }
-
   useEffect(() => {
-    reloadAll()
-  }, [formattedDate])
+    fetchRepairs()
+
+    const interval = setInterval(() => {
+      fetchRepairs()
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [formattedDate, depotId])
 
   useEffect(() => {
     fetchConvoyNames()
@@ -118,7 +117,7 @@ export default function UnscheduledRepairsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <UnscheduledRepairTable repairs={repairs} onRefresh={reloadAll} />
+          <UnscheduledRepairTable repairs={repairs} onRefresh={fetchRepairs} />
         </CardContent>
       </Card>
     </div>

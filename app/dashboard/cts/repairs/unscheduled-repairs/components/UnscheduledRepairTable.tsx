@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { format } from "date-fns"
 import { toast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
@@ -10,9 +10,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Timer, CheckCircle } from "lucide-react"
+import { MoreHorizontal, Timer, CheckCircle, Download } from "lucide-react"
 import { routeExitRepairService } from "@/service/routeExitRepairService"
 import { cn } from "@/lib/utils"
+import { exportUnscheduledRepairs } from "../utils/exportUnscheduledRepairs"
 import type { RouteExitRepairDto, RouteExitRepairStatus } from "@/types/routeExitRepair.types"
 
 interface UnscheduledRepairTableProps {
@@ -29,9 +30,16 @@ function shortenName(fullName: string): string {
 export default function UnscheduledRepairTable({ repairs, onRefresh }: UnscheduledRepairTableProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
+  // Автообновление
+  useEffect(() => {
+    if (!onRefresh) return
+    const interval = setInterval(() => onRefresh(), 5000)
+    return () => clearInterval(interval)
+  }, [onRefresh])
+
   const handleStartRepair = async (repairId: string) => {
     const now = new Date()
-    const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`
+    const time = now.toTimeString().slice(0, 8)
     setLoadingId(repairId)
     const res = await routeExitRepairService.setStartTime(repairId, time)
     setLoadingId(null)
@@ -41,7 +49,7 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
   const handleFinishRepair = async (repairId: string) => {
     const now = new Date()
     const date = format(now, "yyyy-MM-dd")
-    const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`
+    const time = now.toTimeString().slice(0, 8)
     setLoadingId(repairId)
     const res = await routeExitRepairService.setEndTime(repairId, date, time)
     setLoadingId(null)
@@ -55,8 +63,27 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
     res.isSuccess ? onRefresh?.() : toast({ title: "Ошибка", description: res.error || "Не удалось изменить статус" })
   }
 
+  // Группировка записей по bus.id
+  const groupedByBus = repairs.reduce<Record<string, RouteExitRepairDto[]>>((acc, r) => {
+    const busId = r.bus?.id
+    if (!busId) return acc
+    if (!acc[busId]) acc[busId] = []
+    acc[busId].push(r)
+    return acc
+  }, {})
+
   return (
     <div className="overflow-x-auto">
+      <div className="flex justify-end my-4">
+        <Button
+          variant="outline"
+          onClick={() => exportUnscheduledRepairs(repairs, format(new Date(), "yyyy-MM-dd"))}
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Экспорт в Excel
+        </Button>
+      </div>
+
       <table className="w-full text-sm border">
         <thead>
           <tr className="bg-gray-100">
@@ -68,95 +95,96 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
             <th className="p-2 border">ФИО водителя</th>
             <th className="p-2 border">Гос. № (Гаражный №)</th>
             <th className="p-2 border">Причина</th>
-            <th className="p-2 border">Время начала ремонта</th>
-            <th className="p-2 border">Время окончания ремонта</th>
+            <th className="p-2 border">Начало ремонта</th>
+            <th className="p-2 border">Окончание ремонта</th>
             <th className="p-2 border">Дата окончания</th>
             <th className="p-2 border">Время выезда</th>
+            <th className="p-2 border">Пробег</th>
             <th className="p-2 border">Действия</th>
           </tr>
         </thead>
         <tbody>
-          {repairs.map((r, idx) => (
-            <tr
-            key={r.id}
-            className={cn(
-              "border",
-              r.andTime ? "bg-green-100" : "",
-              r.repairType === "LongTerm" ? "bg-yellow-100" : "",
-              r.repairType === "Other" ? "bg-gray-100" : ""
-            )}
-          >
-              <td className="p-2 border text-center">{idx + 1}</td>
-              <td className="p-2 border text-center">{r.startDate || "-"}</td>
-              <td className="p-2 border text-center">{r.startTime ? r.startTime.slice(0, 5) : "-"}</td>
-              <td className="p-2 border text-center">
-                {r.convoy?.number ? `№${r.convoy.number}` : "-"}
-                {(r.repairType === "Other" || r.repairType === "LongTerm") && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {r.repairType === "Other"
-                      ? "Переведено в прочий ремонт"
-                      : "Переведено в длительный ремонт"}
-                  </div>
-                )}
-              </td>
-              <td className="p-2 border text-center">
-                {r.route?.number ? `${r.route.number}${r.busLine?.number ? ` / ${r.busLine.number}` : ""}` : "-"}
-              </td>
-              <td className="p-2 border">
-                {r.driver?.fullName ? `${shortenName(r.driver.fullName)} (${r.driver.serviceNumber})` : "-"}
-              </td>
-              <td className="p-2 border text-center">
-                {r.bus?.govNumber && r.bus?.garageNumber ? `${r.bus.govNumber} (${r.bus.garageNumber})` : "-"}
-              </td>
-              <td className="p-2 border text-red-600 font-medium">{r.text}</td>
-              <td className="p-2 border text-center">
-                {r.startRepairTime ? r.startRepairTime.slice(0, 5) : "–"}
-              </td>
-              <td className="p-2 border text-center">{r.endRepairTime ? r.endRepairTime.slice(0, 5) : "–"}</td>
-              <td className="p-2 border text-center">{r.endRepairDate || "–"}</td>
-              <td className="p-2 border text-center">{r.andTime ? r.andTime.slice(0, 5) : "–"}</td>
-              <td className="p-2 border text-center">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => handleStartRepair(r.id)}
-                      disabled={loadingId === r.id}
-                    >
-                      <Timer className="w-4 h-4 mr-2 text-sky-600" />
-                      Начать ремонт
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleFinishRepair(r.id)}
-                      disabled={loadingId === r.id}
-                    >
-                      <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
-                      Завершить ремонт
-                    </DropdownMenuItem>
+          {repairs.map((r, idx) => {
+            const busId = r.bus?.id
+            const isLong = r.repairType === "LongTerm"
+            const isRepeat = !!busId && groupedByBus[busId]?.length > 1
+            const isLastRepeat = !!busId && groupedByBus[busId]?.at(-1)?.id === r.id
 
-                    {r.repairType !== "Unscheduled" ? (
-                      <DropdownMenuItem onClick={() => handleChangeStatus(r.id, "Unscheduled")}>
-                        Вернуть в неплановый
+            return (
+              <tr
+                key={r.id}
+                className={cn(
+                  "border",
+                  r.andTime && "bg-green-100",
+                  isRepeat && isLastRepeat && "bg-yellow-100",
+                  isLong && "bg-red-100"
+                )}
+              >
+                <td className="p-2 border text-center">{idx + 1}</td>
+                <td className="p-2 border text-center">{r.startDate || "-"}</td>
+                <td className="p-2 border text-center">{r.startTime?.slice(0, 5) || "-"}</td>
+                <td className="p-2 border text-center">{r.convoy?.number ? `№${r.convoy.number}` : "-"}</td>
+                <td className="p-2 border text-center">
+                  {r.route?.number ? `${r.route.number}${r.busLine?.number ? ` / ${r.busLine.number}` : ""}` : "-"}
+                </td>
+                <td className="p-2 border">
+                  {r.driver?.fullName ? `${shortenName(r.driver.fullName)} (${r.driver.serviceNumber})` : "-"}
+                </td>
+                <td className="p-2 border text-center">
+                  {r.bus?.govNumber && r.bus?.garageNumber ? `${r.bus.govNumber} (${r.bus.garageNumber})` : "-"}
+                </td>
+                <td className="p-2 border text-red-600 font-medium">
+                  {r.text}
+                  {isRepeat && isLastRepeat && <span className="text-xs text-yellow-700"> • Повторный заезд</span>}
+                  {isLong && <span className="text-xs text-red-700"> • Длительный ремонт</span>}
+                </td>
+                <td className="p-2 border text-center">{r.startRepairTime?.slice(0, 5) || "–"}</td>
+                <td className="p-2 border text-center">{r.endRepairTime?.slice(0, 5) || "–"}</td>
+                <td className="p-2 border text-center">{r.endRepairDate || "–"}</td>
+                <td className="p-2 border text-center">{r.andTime?.slice(0, 5) || "–"}</td>
+                <td className="p-2 border text-center">{r.mileage ?? "–"}</td>
+                <td className="p-2 border text-center">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleStartRepair(r.id)}
+                        disabled={loadingId === r.id}
+                      >
+                        <Timer className="w-4 h-4 mr-2 text-sky-600" />
+                        Начать ремонт
                       </DropdownMenuItem>
-                    ) : (
-                      <>
-                        <DropdownMenuItem onClick={() => handleChangeStatus(r.id, "Other")}>
-                          Перевести в прочий ремонт
+                      <DropdownMenuItem
+                        onClick={() => handleFinishRepair(r.id)}
+                        disabled={loadingId === r.id}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                        Завершить ремонт
+                      </DropdownMenuItem>
+                      {r.repairType !== "Unscheduled" ? (
+                        <DropdownMenuItem onClick={() => handleChangeStatus(r.id, "Unscheduled")}>
+                          Вернуть в неплановый
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleChangeStatus(r.id, "LongTerm")}>
-                          Перевести в длительный ремонт
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </td>
-            </tr>
-          ))}
+                      ) : (
+                        <>
+                          <DropdownMenuItem onClick={() => handleChangeStatus(r.id, "Other")}>
+                            Перевести в прочий ремонт
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleChangeStatus(r.id, "LongTerm")}>
+                            Перевести в длительный ремонт
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

@@ -4,6 +4,8 @@ import { useState } from "react"
 import { format } from "date-fns"
 import { toast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
+import { Download } from "lucide-react"
+import { exportLongRepairsToExcel } from "./utils/exportLongRepairs"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -57,6 +59,12 @@ export default function LongRepairTable({ repairs, onRefresh }: LongRepairTableP
 
   return (
     <div className="overflow-x-auto">
+      <div className="flex justify-end my-4">
+        <Button variant="outline" onClick={() => exportLongRepairsToExcel(repairs)}>
+          <Download className="w-4 h-4 mr-2" />
+          Экспорт в Excel
+        </Button>
+      </div>
       <table className="w-full text-sm border">
         <thead>
           <tr className="bg-gray-100">

@@ -43,10 +43,14 @@ export default function ConvoyUnplannedRepairTable({ repairs }: Props) {
                 {r.bus ? `${r.bus.govNumber} (${r.bus.garageNumber})` : "–"}
               </td>
               <td className="p-2 border text-red-600 font-medium">{r.text || "–"}</td>
-              <td className="p-2 border text-center">{r.startRepairTime || "–"}</td>
-              <td className="p-2 border text-center">{r.endRepairTime || "–"}</td>
+              <td className="p-2 border text-center">
+                {r.startRepairTime ? r.startRepairTime.slice(0, 5) : "–"}
+              </td>
+              <td className="p-2 border text-center">
+                {r.endRepairTime ? r.endRepairTime.slice(0, 5) : "–"}
+              </td>
               <td className="p-2 border text-center">{r.endRepairDate || "–"}</td>
-              <td className="p-2 border text-center">{r.mileage ?? "–"}</td>
+              <td className="p-2 border text-center">{r.mileage != null ? r.mileage : "–"}</td>
             </tr>
           ))}
         </tbody>

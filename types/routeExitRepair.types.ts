@@ -10,6 +10,7 @@ export interface CreateRouteExitRepairDto {
   text: string
   mileage: number
   isLongRepair: boolean
+  repairType: RouteExitRepairStatus
 }
   
 export type RouteExitRepairStatus = "Unscheduled" | "Other" | "LongTerm"

@@ -1,29 +1,61 @@
-// app/dashboard/cts/repairs/other-repairs/components/OtherRepairTable.tsx
-
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { format } from "date-fns"
 import { toast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
+import { exportOtherRepairsToExcel } from "../utils/exportOtherRepairs"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, CheckCircle } from "lucide-react"
+import { MoreHorizontal, CheckCircle, Download } from "lucide-react"
 import { routeExitRepairService } from "@/service/routeExitRepairService"
 import { cn } from "@/lib/utils"
 import type { RouteExitRepairDto } from "@/types/routeExitRepair.types"
+import { getAuthData } from "@/lib/auth-utils"
 
 interface OtherRepairTableProps {
-  repairs: RouteExitRepairDto[]
-  onRefresh?: () => void
+  from: Date
+  to: Date
 }
 
-export default function OtherRepairTable({ repairs, onRefresh }: OtherRepairTableProps) {
+export default function OtherRepairTable({ from, to }: OtherRepairTableProps) {
+  const [repairs, setRepairs] = useState<RouteExitRepairDto[]>([])
   const [loadingId, setLoadingId] = useState<string | null>(null)
+
+  const auth = getAuthData()
+  const depotId = auth?.busDepotId ?? ""
+
+  const fetchRepairs = async () => {
+    if (!depotId) return
+    const startDate = format(from, "yyyy-MM-dd")
+    const endDate = format(to, "yyyy-MM-dd")
+
+    const statsRes = await routeExitRepairService.getStatsByDate(depotId, startDate, endDate)
+    if (!statsRes.isSuccess) {
+      toast({ title: "Ошибка", description: "Не удалось загрузить статистику", variant: "destructive" })
+      return
+    }
+
+    const res = await routeExitRepairService.getByDate(startDate, depotId)
+    if (res.isSuccess && res.value) {
+      const filtered = res.value.filter(r => r.repairType === "Other")
+      setRepairs(filtered)
+    } else {
+      setRepairs([])
+    }
+  }
+
+  useEffect(() => {
+    fetchRepairs()
+    const interval = setInterval(() => {
+      fetchRepairs()
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [from, to, depotId])
 
   const handleFinishRepair = async (repairId: string) => {
     const now = new Date()
@@ -34,13 +66,17 @@ export default function OtherRepairTable({ repairs, onRefresh }: OtherRepairTabl
     const res = await routeExitRepairService.setEndTime(repairId, date, time)
     setLoadingId(null)
 
-    if (res.isSuccess) onRefresh?.()
+    if (res.isSuccess) fetchRepairs()
     else toast({ title: "Ошибка", description: res.error || "Не удалось завершить ремонт" })
   }
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm border">
+      <Button variant="outline" onClick={() => exportOtherRepairsToExcel(repairs)}>
+        <Download className="w-4 h-4 mr-2" />
+        Экспорт в Excel
+      </Button>
+      <table className="w-full text-sm border mt-2">
         <thead>
           <tr className="bg-gray-100">
             <th className="p-2 border">№</th>

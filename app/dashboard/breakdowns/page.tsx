@@ -1,7 +1,6 @@
-// app/dashboard/breakdowns/page.tsx
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { format } from "date-fns"
 import { getAuthData } from "@/lib/auth-utils"
 import { routeExitRepairService } from "@/service/routeExitRepairService"
@@ -18,7 +17,7 @@ export default function BreakdownsPage() {
   const [from, setFrom] = useState<Date>(new Date())
   const [to, setTo] = useState<Date>(new Date())
 
-  const fetchAllRepairs = async () => {
+  const fetchAllRepairs = useCallback(async () => {
     if (!depotId) return
 
     const dateList: string[] = []
@@ -37,11 +36,17 @@ export default function BreakdownsPage() {
     }
 
     setRepairs(all)
-  }
+  }, [depotId, convoyId, from, to])
 
   useEffect(() => {
     fetchAllRepairs()
-  }, [from, to])
+
+    const interval = setInterval(() => {
+      fetchAllRepairs()
+    }, 10000) // каждые 10 секунд
+
+    return () => clearInterval(interval)
+  }, [fetchAllRepairs])
 
   return (
     <div className="space-y-4 p-4">

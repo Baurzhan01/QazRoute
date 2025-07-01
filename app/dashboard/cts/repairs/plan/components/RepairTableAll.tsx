@@ -5,6 +5,8 @@ import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { GroupedRepairsByConvoy, RepairRecord } from "@/types/repair.types";
 import EditRepairDialog from "./EditRepairDialog";
+import { Download } from "lucide-react"
+import { exportAllRepairs } from "../utils/exportAllRepairs"
 
 interface RepairTableAllProps {
   data: GroupedRepairsByConvoy[];
@@ -34,6 +36,11 @@ export default function RepairTableAll({
 
   return (
     <div className="space-y-8">
+        <div className="flex justify-end mb-4">
+        <Button onClick={() => exportAllRepairs(data, date)}>
+          Экспорт в Excel
+        </Button>
+       </div>
       {data.length === 0 ? (
         <p className="text-gray-500">Нет данных по ремонтам</p>
       ) : (
