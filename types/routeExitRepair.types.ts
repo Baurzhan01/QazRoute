@@ -35,6 +35,9 @@ export interface RouteExitRepairDto {
     id: string
     govNumber: string
     garageNumber: string
+    brand?: string
+    vinCode?: string
+    dataSheetNumber?: string
   }
   driver?: {
     id: string

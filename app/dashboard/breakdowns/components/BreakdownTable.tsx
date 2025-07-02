@@ -14,14 +14,18 @@ function shortenName(fullName: string): string {
 }
 
 export default function BreakdownTable({ repairs }: BreakdownTableProps) {
-  // Подсчёт количества появлений автобусов (по id)
-  const busIdMap = repairs.reduce<Record<string, RouteExitRepairDto[]>>((acc, r) => {
+  // Правильное определение повторных заездов
+  const seenBusIds = new Set<string>()
+  const repeatEntryIds = new Set<string>()
+
+  repairs.forEach((r) => {
     const busId = r.bus?.id
-    if (!busId) return acc
-    if (!acc[busId]) acc[busId] = []
-    acc[busId].push(r)
-    return acc
-  }, {})
+    if (!busId) return
+    if (seenBusIds.has(busId)) {
+      repeatEntryIds.add(r.id)
+    }
+    seenBusIds.add(busId)
+  })
 
   return (
     <div className="overflow-x-auto">
@@ -41,9 +45,7 @@ export default function BreakdownTable({ repairs }: BreakdownTableProps) {
         </thead>
         <tbody>
           {repairs.map((r, idx) => {
-            const busId = r.bus?.id
-            const isRepeat = busId && busIdMap[busId]?.length > 1
-            const isLastRepeat = busId && busIdMap[busId].at(-1)?.id === r.id
+            const isRepeat = repeatEntryIds.has(r.id)
             const isLongTerm = r.repairType === "LongTerm"
 
             // Заливка строки по логике
@@ -51,13 +53,13 @@ export default function BreakdownTable({ repairs }: BreakdownTableProps) {
               "border",
               r.endRepairTime && "bg-green-100",
               isLongTerm && "bg-red-100",
-              isRepeat && isLastRepeat && "bg-yellow-100"
+              isRepeat && "bg-yellow-100"
             )
 
-            // Формируем текст причины с метками
-            let reason = r.text || "–"
-            if (isLongTerm) reason += " • Длительный ремонт"
-            if (isRepeat && isLastRepeat) reason += " • Повторный заезд"
+            const reasonLabels = []
+            if (isLongTerm) reasonLabels.push("• Длительный ремонт")
+            if (isRepeat) reasonLabels.push("• Повторный заезд")
+            const reason = `${r.text || "–"} ${reasonLabels.join(" ")}`.trim()
 
             return (
               <tr key={r.id} className={rowClass}>
@@ -70,7 +72,9 @@ export default function BreakdownTable({ repairs }: BreakdownTableProps) {
                     : "–"}
                 </td>
                 <td className="p-2 border text-center">
-                  {r.bus ? `${r.bus.govNumber} (${r.bus.garageNumber})` : "–"}
+                  {r.bus?.govNumber && r.bus?.garageNumber
+                    ? `${r.bus.govNumber} (${r.bus.garageNumber})`
+                    : "–"}
                 </td>
                 <td className="p-2 border text-red-600 font-medium">{reason}</td>
                 <td className="p-2 border text-center">

@@ -1,7 +1,6 @@
-// UnscheduledRepairTable.tsx
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { format } from "date-fns"
 import { toast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
@@ -11,10 +10,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Trash2, Check } from "lucide-react"
+import { MoreHorizontal, Trash2, Check, Pencil } from "lucide-react"
 import { routeExitRepairService } from "@/service/routeExitRepairService"
 import { cn } from "@/lib/utils"
 import type { RouteExitRepairDto } from "@/types/routeExitRepair.types"
+import EditRepairModal from "./EditRepairModal" // 👈 убедись, что путь корректный
 
 interface UnscheduledRepairTableProps {
   repairs: RouteExitRepairDto[]
@@ -29,6 +29,7 @@ function shortenName(fullName: string): string {
 
 export default function UnscheduledRepairTable({ repairs, onRefresh }: UnscheduledRepairTableProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [editRepair, setEditRepair] = useState<RouteExitRepairDto | null>(null)
 
   useEffect(() => {
     if (!onRefresh) return
@@ -64,33 +65,24 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
     else toast({ title: "Ошибка при удалении", description: result.error || "", variant: "destructive" })
   }
 
-  // Логика повторных заездов: только последняя запись подсвечивается
+  // Правильное определение повторных заездов
+  const seenBusIds = new Set<string>()
   const repeatEntries = new Set<string>()
-  const groupedByBus: Record<string, RouteExitRepairDto[]> = {}
 
   repairs.forEach((r) => {
     const busId = r.bus?.id
     if (!busId) return
-    if (!groupedByBus[busId]) groupedByBus[busId] = []
-    groupedByBus[busId].push(r)
-  })
-
-  Object.values(groupedByBus).forEach((entries) => {
-    if (entries.length <= 1) return
-    const sorted = entries.sort((a, b) => {
-      const aDate = `${a.startDate}T${a.startTime ?? "00:00"}`
-      const bDate = `${b.startDate}T${b.startTime ?? "00:00"}`
-      return new Date(aDate).getTime() - new Date(bDate).getTime()
-    })
-    const last = sorted[sorted.length - 1]
-    if (last?.id) repeatEntries.add(last.id)
+    if (seenBusIds.has(busId)) {
+      repeatEntries.add(r.id)
+    }
+    seenBusIds.add(busId)
   })
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border">
-        <thead>
-          <tr className="bg-gray-100">
+        <thead className="bg-gray-100 sticky top-0 z-10">
+          <tr>
             <th className="p-2 border">№</th>
             <th className="p-2 border">Дата</th>
             <th className="p-2 border">Время заезда</th>
@@ -161,6 +153,10 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
                           Выезд на линию
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuItem onClick={() => setEditRepair(r)}>
+                        <Pencil className="w-4 h-4 mr-2 text-blue-600" />
+                        Редактировать
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleDelete(r.id)}>
                         <Trash2 className="w-4 h-4 mr-2 text-red-600" />
                         Удалить
@@ -173,6 +169,14 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
           })}
         </tbody>
       </table>
+
+      {editRepair && (
+        <EditRepairModal
+          repair={editRepair}
+          onClose={() => setEditRepair(null)}
+          onSave={onRefresh}
+        />
+      )}
     </div>
   )
 }

@@ -68,6 +68,40 @@ export const routeExitRepairService = {
     return res.data
   },  
 
+  getBusRepairStats: async (busId: string, startDate: string, endDate: string): Promise<ApiResponse<RouteExitRepairDto[]>> => {
+    const res = await apiClient.get("/route-exits-repair/bus-history-with-stats", {
+      params: { busId, startDate, endDate }
+    });
+    return res.data;
+  },
+
+  filter: async (params: {
+    startDate: string
+    endDate: string
+    depotId: string
+    convoyId?: string
+    repairTypes: string[]
+  }) => {
+    try {
+      const response = await apiClient.get<RouteExitRepairDto[]>("/route-exits-repair/filter", {
+        params: {
+          StartDate: params.startDate,
+          EndDate: params.endDate,
+          DepotId: params.depotId,
+          ...(params.convoyId && { ConvoyId: params.convoyId }),
+          RepairTypes: params.repairTypes.join(","),
+        },
+      })
+      return { isSuccess: true, value: response.data }
+    } catch (error: any) {
+      return {
+        isSuccess: false,
+        error: error?.response?.data?.message || "Ошибка при получении данных",
+        value: null,
+      }
+    }
+  },
+
   // 📅+🛠 Получение за дату и колонну
   getByDateAndConvoy: async (
     date: string,

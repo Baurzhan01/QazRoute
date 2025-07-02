@@ -1,132 +1,98 @@
-"use client"
+"use client";
 
-import { useEffect, useMemo, useState } from "react"
-import { format } from "date-fns"
-import { ru } from "date-fns/locale"
-import { utils, writeFile } from "xlsx"
-import { getAuthData } from "@/lib/auth-utils"
-import { routeExitRepairService } from "@/service/routeExitRepairService"
-import { toast } from "@/components/ui/use-toast"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
-import { CalendarIcon, FileDown } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { FileText, CalendarDays, Wrench, BarChart2, ClipboardList } from "lucide-react";
 
-export default function CtsReportPage() {
-  const [date, setDate] = useState<Date>(new Date())
-  const [loading, setLoading] = useState(false)
-  const [reportData, setReportData] = useState<any[]>([])
-
-  const auth = getAuthData()
-  const depotId = auth?.busDepotId
-  const formattedDate = useMemo(() => format(date, "yyyy-MM-dd"), [date])
-
-  const loadReport = async () => {
-    if (!depotId) return
-    setLoading(true)
-    const res = await routeExitRepairService.getByDate(formattedDate, depotId)
-    if (res.isSuccess && res.value) {
-      setReportData(res.value)
-    } else {
-      toast({ title: "Ошибка", description: "Не удалось загрузить отчёт", variant: "destructive" })
-    }
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    loadReport()
-  }, [formattedDate])
-
-  const exportToExcel = () => {
-    if (!reportData.length) return
-
-    const worksheetData = reportData.map((r) => ({
-      "Дата": r.startDate ?? "—",
-      "Колонна": r.convoy?.number ? `№${r.convoy.number}` : "—",
-      "Маршрут": r.route?.number ?? "—",
-      "Выход": r.busLine?.number ?? "—",
-      "Водитель": r.driver?.fullName ?? "—",
-      "Автобус": r.bus?.garageNumber ?? "—",
-      "Причина": r.text ?? "—",
-      "Тип": r.repairType ?? "—",
-      "Статус": r.status ?? "—",
-    }))
-
-    const worksheet = utils.json_to_sheet(worksheetData)
-    const workbook = utils.book_new()
-    utils.book_append_sheet(workbook, worksheet, "Отчёт")
-
-    writeFile(workbook, `repair-report_${formattedDate}.xlsx`)
-  }
+export default function RepairReportsPage() {
+  const router = useRouter();
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Отчёт по ремонтам за день</h1>
+    <div className="container mx-auto py-10 space-y-6">
+      <h1 className="text-3xl font-bold text-sky-700 mb-6">Отчеты по ремонтам</h1>
 
-      <div className="flex flex-wrap gap-6 items-end">
-        <div>
-          <label className="block text-sm font-medium mb-1">Дата:</label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-48 text-left", !date && "text-muted-foreground")}>
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "PPP", { locale: ru }) : "Выберите дату"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} locale={ru} />
-            </PopoverContent>
-          </Popover>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Все ремонты */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="bg-gradient-to-r from-emerald-500 to-green-600 text-white">
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" /> Все ремонты
+            </CardTitle>
+            <CardDescription>За выбранный день или месяц</CardDescription>
+          </CardHeader>
+          <CardContent className="py-4 text-sm text-gray-600">
+            Просмотр автобусов, находящихся в текущем или длительном ремонте. Отчет включает VIN-коды, марку, гос. номер и техпаспорт.
+          </CardContent>
+          <CardFooter>
+            <Button onClick={() => router.push("/dashboard/cts/report/all")}>Открыть</Button>
+          </CardFooter>
+        </Card>
 
-        <Button onClick={loadReport} disabled={loading}>Обновить</Button>
-        <Button variant="secondary" onClick={exportToExcel}>
-          <FileDown className="h-4 w-4 mr-2" />
-          Экспорт
-        </Button>
-      </div>
+        {/* Неплановые ремонты */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="bg-gradient-to-r from-red-500 to-pink-600 text-white">
+            <CardTitle className="flex items-center gap-2">
+              <Wrench className="h-5 w-5" /> Неплановые ремонты
+            </CardTitle>
+            <CardDescription>За день, месяц и по колоннам</CardDescription>
+          </CardHeader>
+          <CardContent className="py-4 text-sm text-gray-600">
+            Фиксация всех случаев непланового ремонта. Доступна фильтрация по дате и автоколонне.
+          </CardContent>
+          <CardFooter>
+            <Button onClick={() => router.push("/dashboard/repair-report/unscheduled")}>Открыть</Button>
+          </CardFooter>
+        </Card>
 
-      <div className="mt-6 overflow-auto">
-        <table className="w-full border text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border px-2 py-1">Дата</th>
-              <th className="border px-2 py-1">Колонна</th>
-              <th className="border px-2 py-1">Маршрут</th>
-              <th className="border px-2 py-1">Выход</th>
-              <th className="border px-2 py-1">Водитель</th>
-              <th className="border px-2 py-1">Автобус</th>
-              <th className="border px-2 py-1">Причина</th>
-              <th className="border px-2 py-1">Тип</th>
-              <th className="border px-2 py-1">Статус</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reportData.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="text-center py-4 text-gray-500">
-                  Нет данных за выбранную дату
-                </td>
-              </tr>
-            ) : (
-              reportData.map((r, i) => (
-                <tr key={r.id || i}>
-                  <td className="border px-2 py-1 text-center">{r.startDate ?? "—"}</td>
-                  <td className="border px-2 py-1 text-center">{r.convoy?.number ? `№${r.convoy.number}` : "—"}</td>
-                  <td className="border px-2 py-1 text-center">{r.route?.number ?? "—"}</td>
-                  <td className="border px-2 py-1 text-center">{r.busLine?.number ?? "—"}</td>
-                  <td className="border px-2 py-1">{r.driver?.fullName ?? "—"}</td>
-                  <td className="border px-2 py-1 text-center">{r.bus?.garageNumber ?? "—"}</td>
-                  <td className="border px-2 py-1">{r.text ?? "—"}</td>
-                  <td className="border px-2 py-1 text-center">{r.repairType ?? "—"}</td>
-                  <td className="border px-2 py-1 text-center">{r.status ?? "—"}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        {/* История по автобусу */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="bg-gradient-to-r from-sky-500 to-sky-700 text-white">
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" /> По автобусу
+            </CardTitle>
+            <CardDescription>По VIN-коду или ID</CardDescription>
+          </CardHeader>
+          <CardContent className="py-4 text-sm text-white-600">
+            Детальный отчет по конкретному автобусу. Показывает список всех ремонтов за указанный период.
+          </CardContent>
+          <CardFooter>
+            <Button onClick={() => router.push("/dashboard/repair-report/bus")}>Открыть</Button>
+          </CardFooter>
+        </Card>
+
+        {/* Статистика по колоннам */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="bg-gradient-to-r from-amber-500 to-yellow-600 text-white">
+            <CardTitle className="flex items-center gap-2">
+              <BarChart2 className="h-5 w-5" /> Статистика по колоннам
+            </CardTitle>
+            <CardDescription>Аналитика по дню и месяцу</CardDescription>
+          </CardHeader>
+          <CardContent className="py-4 text-sm text-white-600">
+            Количество неплановых ремонтов, выполненных в каждой автоколонне.
+          </CardContent>
+          <CardFooter>
+            <Button onClick={() => router.push("/dashboard/repair-report/convoy-stats")}>Открыть</Button>
+          </CardFooter>
+        </Card>
+
+        {/* Частота неплановых по автобусу */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+            <CardTitle className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5" /> Частота ремонтов
+            </CardTitle>
+            <CardDescription>Частотный анализ по одному автобусу</CardDescription>
+          </CardHeader>
+          <CardContent className="py-4 text-sm text-white-600">
+            Сколько раз автобус попадал в неплановый ремонт за выбранный период.
+          </CardContent>
+          <CardFooter>
+            <Button onClick={() => router.push("/dashboard/repair-report/bus-freq")}>Открыть</Button>
+          </CardFooter>
+        </Card>
       </div>
     </div>
-  )
+  );
 }

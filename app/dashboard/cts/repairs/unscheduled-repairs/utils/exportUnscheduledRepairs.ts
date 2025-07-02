@@ -9,8 +9,7 @@ export const exportUnscheduledRepairs = async (repairs: RouteExitRepairDto[], da
   const headers = [
     "№", "Дата", "Время заезда", "Колонна", "Маршрут / Выход",
     "ФИО водителя", "Гос. № (Гаражный №)", "Причина",
-    "Время начала ремонта", "Время окончания ремонта",
-    "Дата окончания", "Время выезда", "Пробег"
+    "Начало ремонта", "Окончание ремонта", "Дата окончания", "Выезд", "Пробег"
   ]
 
   worksheet.addRow(headers)
@@ -23,28 +22,32 @@ export const exportUnscheduledRepairs = async (repairs: RouteExitRepairDto[], da
       pattern: "solid",
       fgColor: { argb: "FFECECEC" },
     }
+    cell.border = {
+      top: { style: "thin" },
+      bottom: { style: "thin" },
+      left: { style: "thin" },
+      right: { style: "thin" },
+    }
   })
 
-  // Группировка по автобусу
-  const grouped = repairs.reduce<Record<string, RouteExitRepairDto[]>>((acc, repair) => {
-    const busId = repair.bus?.id
-    if (busId) {
-      if (!acc[busId]) acc[busId] = []
-      acc[busId].push(repair)
-    }
-    return acc
-  }, {})
-
-  repairs.forEach((r, idx) => {
+  // Вычисление повторных заездов
+  const seenBusIds = new Set<string>()
+  const repeatEntryIds = new Set<string>()
+  for (const r of repairs) {
     const busId = r.bus?.id
-    if (!busId) return // избегаем ошибок, если нет автобуса
+    if (!busId) continue
+    if (seenBusIds.has(busId)) repeatEntryIds.add(r.id)
+    seenBusIds.add(busId)
+  }
 
-    const isRepeat = grouped[busId].length > 1
-    const isLastRepeat = grouped[busId].at(-1)?.id === r.id
+  for (const [idx, r] of repairs.entries()) {
+    const isRepeat = repeatEntryIds.has(r.id)
     const isLongTerm = r.repairType === "LongTerm"
+    const isFinished = !!r.andTime
 
+    // Причина с метками
     let reasonText = r.text || "-"
-    if (isLastRepeat) reasonText += " • Повторный заезд"
+    if (isRepeat) reasonText += " • Повторный заезд"
     if (isLongTerm) reasonText += " • Длительный ремонт"
 
     const row = worksheet.addRow([
@@ -63,25 +66,35 @@ export const exportUnscheduledRepairs = async (repairs: RouteExitRepairDto[], da
       r.mileage ?? "-"
     ])
 
-    const fillColor =
-      isLongTerm ? "FFFF9999" : // красная
-      isLastRepeat ? "FFFFFF99" : undefined // жёлтая только для последнего повторного
+    // Цвет заливки по статусу
+    let fillColor: string | undefined = undefined
+    if (isFinished) fillColor = "FFCCFFCC" // зелёный
+    else if (isLongTerm) fillColor = "FFFFCCCC" // красный
+    else if (isRepeat) fillColor = "FFFFFF99" // жёлтый
 
-    if (fillColor) {
-      row.eachCell(cell => {
+    row.eachCell(cell => {
+      if (fillColor) {
         cell.fill = {
           type: "pattern",
           pattern: "solid",
           fgColor: { argb: fillColor },
         }
-      })
-    }
-  })
+      }
+      cell.border = {
+        top: { style: "thin" },
+        bottom: { style: "thin" },
+        left: { style: "thin" },
+        right: { style: "thin" },
+      }
+      cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true }
+    })
+  }
 
+  // Автоширина колонок
   worksheet.columns.forEach(column => {
     let maxLength = 10
     column.eachCell?.((cell) => {
-      const val = String(cell.value)
+      const val = String(cell.value ?? "")
       maxLength = Math.max(maxLength, val.length)
     })
     column.width = maxLength + 2

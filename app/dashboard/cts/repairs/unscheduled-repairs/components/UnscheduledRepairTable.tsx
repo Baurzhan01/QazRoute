@@ -63,14 +63,8 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
     res.isSuccess ? onRefresh?.() : toast({ title: "Ошибка", description: res.error || "Не удалось изменить статус" })
   }
 
-  // Группировка записей по bus.id
-  const groupedByBus = repairs.reduce<Record<string, RouteExitRepairDto[]>>((acc, r) => {
-    const busId = r.bus?.id
-    if (!busId) return acc
-    if (!acc[busId]) acc[busId] = []
-    acc[busId].push(r)
-    return acc
-  }, {})
+  // Группировка записей по bus.id (для отметки повторных)
+  const seenBusIds = new Set<string>()
 
   return (
     <div className="overflow-x-auto">
@@ -107,8 +101,8 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
           {repairs.map((r, idx) => {
             const busId = r.bus?.id
             const isLong = r.repairType === "LongTerm"
-            const isRepeat = !!busId && groupedByBus[busId]?.length > 1
-            const isLastRepeat = !!busId && groupedByBus[busId]?.at(-1)?.id === r.id
+            const isRepeat = !!busId && seenBusIds.has(busId)
+            if (busId) seenBusIds.add(busId)
 
             return (
               <tr
@@ -116,7 +110,7 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
                 className={cn(
                   "border",
                   r.andTime && "bg-green-100",
-                  isRepeat && isLastRepeat && "bg-yellow-100",
+                  isRepeat && "bg-yellow-100",
                   isLong && "bg-red-100"
                 )}
               >
@@ -135,7 +129,7 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
                 </td>
                 <td className="p-2 border text-red-600 font-medium">
                   {r.text}
-                  {isRepeat && isLastRepeat && <span className="text-xs text-yellow-700"> • Повторный заезд</span>}
+                  {isRepeat && <span className="text-xs text-yellow-700"> • Повторный заезд</span>}
                   {isLong && <span className="text-xs text-red-700"> • Длительный ремонт</span>}
                 </td>
                 <td className="p-2 border text-center">{r.startRepairTime?.slice(0, 5) || "–"}</td>

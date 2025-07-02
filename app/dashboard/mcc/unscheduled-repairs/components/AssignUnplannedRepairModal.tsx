@@ -200,6 +200,7 @@ export default function AssignUnplannedRepairModal({
       text: reason,
       mileage: parseInt(mileage, 10),
       isLongRepair: false,
+      repairType: "Unscheduled",
     })
 
     if (result.isSuccess) {
