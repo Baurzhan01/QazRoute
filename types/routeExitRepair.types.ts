@@ -12,6 +12,17 @@ export interface CreateRouteExitRepairDto {
   isLongRepair: boolean
   repairType: RouteExitRepairStatus
 }
+
+export interface BusRepairStatsResponse {
+  totalRepairs: number
+  unscheduledCount: number
+  longTermCount: number
+  otherCount: number
+  totalDowntimeHours: number
+  averageRepairDurationHours: number
+  history: RouteExitRepairDto[]
+}
+
   
 export type RouteExitRepairStatus = "Unscheduled" | "Other" | "LongTerm"
 

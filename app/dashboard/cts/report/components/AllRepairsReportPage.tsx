@@ -16,27 +16,13 @@ import { RepairTypeTable } from "./RepairTypeTable"
 import { routeExitRepairService } from "@/service/routeExitRepairService"
 import { convoyService } from "@/service/convoyService"
 import { getAuthData } from "@/lib/auth-utils"
-import { downloadExcel } from "@/lib/excel/exportExcel"
+import { exportRepairsToExcelGrouped } from "@/lib/excel/exportRepairsToExcel"
 import type {
   RouteExitRepairDto,
   RouteExitRepairStatus,
 } from "@/types/routeExitRepair.types"
 import { motion, AnimatePresence } from "framer-motion"
-import { repairTypeLabels } from "@/app/constants/repairTypeLabels"
-
-const normalizeRepairType = (type: string): RouteExitRepairStatus | null => {
-  const t = type.trim().toLowerCase()
-  switch (t) {
-    case "unscheduled":
-      return "Unscheduled"
-    case "other":
-      return "Other"
-    case "longterm":
-      return "LongTerm"
-    default:
-      return null
-  }
-}
+import { repairTypeLabels } from "@/lib/utils/repair-utils"
 
 export default function AllRepairsReportPage() {
   const [fromDate, setFromDate] = useState(new Date())
@@ -64,68 +50,53 @@ export default function AllRepairsReportPage() {
   const handleFetch = async () => {
     if (!depotId) return
     setLoading(true)
+    console.log("📤 Отправляем запрос на фильтр ремонтов")
 
-    const response = await routeExitRepairService.filter({
-      startDate: format(fromDate, "yyyy-MM-dd"),
-      endDate: format(toDate, "yyyy-MM-dd"),
-      depotId: String(depotId),
-      repairTypes: selectedRepairTypes,
-      ...(selectedConvoyId !== "all" && { convoyId: selectedConvoyId }),
-    })
+    try {
+      const response = await routeExitRepairService.filter({
+        startDate: format(fromDate, "yyyy-MM-dd"),
+        endDate: format(toDate, "yyyy-MM-dd"),
+        depotId: String(depotId),
+        repairTypes: selectedRepairTypes.join(","),
+        ...(selectedConvoyId !== "all" && { convoyId: selectedConvoyId }),
+      })
 
-    if (response.isSuccess && Array.isArray(response.value)) {
-      setRepairs(response.value)
-    } else {
+      console.log("📥 Ответ от сервера:", response)
+
+      const raw = response.isSuccess && Array.isArray(response.value)
+        ? response.value.map((r) => ({
+            ...r,
+            repairType: r.repairType?.trim() as RouteExitRepairStatus,
+          }))
+        : []
+
+      console.log("📊 Получено ремонтов:", raw.length)
+      console.log("🔍 Типы ремонтов:", [...new Set(raw.map(r => r.repairType))])
+
+      setRepairs(raw)
+    } catch (error) {
+      console.error("❌ Ошибка при получении ремонтов:", error)
       setRepairs([])
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   const exportToExcel = () => {
-    const rows = repairs.map((r) => ({
-      "Гос. номер": r.bus?.govNumber,
-      "Гаражный номер": r.bus?.garageNumber,
-      Марка: r.bus?.brand || "—",
-      VIN: r.bus?.vinCode || "—",
-      Техпаспорт: r.bus?.dataSheetNumber || "—",
-      Автоколонна: r.convoy?.number ? `№${r.convoy.number}` : "—",
-      "Тип ремонта": repairTypeLabels[normalizeRepairType(r.repairType) ?? "Other"],
-      Причина: r.text || "—",
-      Начало: `${r.startDate} ${r.startTime?.slice(0, 5)}`,
-      Окончание: r.endRepairDate
-        ? `${r.endRepairDate} ${r.endRepairTime?.slice(0, 5)}`
-        : "—",
-    }))
-
-    downloadExcel(rows, `Отчет_все_ремонты_${format(fromDate, "yyyy-MM-dd")}`)
+    exportRepairsToExcelGrouped(repairs, selectedRepairTypes, fromDate)
   }
-
-  const groupedByType: Record<RouteExitRepairStatus, RouteExitRepairDto[]> = {
-    Unscheduled: [],
-    Other: [],
-    LongTerm: [],
-  }
-
-  for (const repair of repairs) {
-    const normType = normalizeRepairType(repair.repairType)
-    if (normType) {
-      groupedByType[normType].push(repair)
-    } else {
-      console.warn("⚠️ Неизвестный тип ремонта:", repair.repairType)
-    }
-  }
-
-  const normalizedSelectedTypes = selectedRepairTypes
-    .map(normalizeRepairType)
-    .filter((t): t is RouteExitRepairStatus => !!t)
 
   return (
     <div className="container mx-auto py-8 space-y-6">
       <h1 className="text-2xl font-semibold text-sky-700">Все ремонты (по типам)</h1>
 
       <div className="flex flex-wrap items-end gap-6">
-        <DateRangePicker from={fromDate} to={toDate} onFromChange={setFromDate} onToChange={setToDate} />
+        <DateRangePicker
+          from={fromDate}
+          to={toDate}
+          onFromChange={setFromDate}
+          onToChange={setToDate}
+        />
 
         <Select value={selectedConvoyId} onValueChange={setSelectedConvoyId}>
           <SelectTrigger className="w-[200px]">
@@ -161,7 +132,7 @@ export default function AllRepairsReportPage() {
       </p>
 
       <AnimatePresence>
-        {normalizedSelectedTypes.map((type) => (
+        {selectedRepairTypes.map((type) => (
           <motion.div
             key={type}
             initial={{ opacity: 0, y: 10 }}
@@ -171,7 +142,7 @@ export default function AllRepairsReportPage() {
           >
             <RepairTypeTable
               type={type}
-              items={groupedByType[type] ?? []}
+              allItems={repairs}
               label={repairTypeLabels[type]}
               loading={loading}
             />

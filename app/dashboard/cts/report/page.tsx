@@ -41,7 +41,7 @@ export default function RepairReportsPage() {
             Фиксация всех случаев непланового ремонта. Доступна фильтрация по дате и автоколонне.
           </CardContent>
           <CardFooter>
-            <Button onClick={() => router.push("/dashboard/repair-report/unscheduled")}>Открыть</Button>
+            <Button onClick={() => router.push("/dashboard/cts/report/unscheduled")}>Открыть</Button>
           </CardFooter>
         </Card>
 
@@ -57,7 +57,7 @@ export default function RepairReportsPage() {
             Детальный отчет по конкретному автобусу. Показывает список всех ремонтов за указанный период.
           </CardContent>
           <CardFooter>
-            <Button onClick={() => router.push("/dashboard/repair-report/bus")}>Открыть</Button>
+            <Button onClick={() => router.push("/dashboard/cts/report/bus")}>Открыть</Button>
           </CardFooter>
         </Card>
 
@@ -73,7 +73,7 @@ export default function RepairReportsPage() {
             Количество неплановых ремонтов, выполненных в каждой автоколонне.
           </CardContent>
           <CardFooter>
-            <Button onClick={() => router.push("/dashboard/repair-report/convoy-stats")}>Открыть</Button>
+            <Button onClick={() => router.push("/dashboard/cts/report/convoy-stats")}>Открыть</Button>
           </CardFooter>
         </Card>
 
@@ -89,7 +89,7 @@ export default function RepairReportsPage() {
             Сколько раз автобус попадал в неплановый ремонт за выбранный период.
           </CardContent>
           <CardFooter>
-            <Button onClick={() => router.push("/dashboard/repair-report/bus-freq")}>Открыть</Button>
+            <Button onClick={() => router.push("/dashboard/cts/report/bus-freq")}>Открыть</Button>
           </CardFooter>
         </Card>
       </div>

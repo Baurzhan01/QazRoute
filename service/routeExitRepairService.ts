@@ -2,7 +2,7 @@
 
 import apiClient from "@/app/api/apiClient"
 import type { ApiResponse } from "@/types/api.types"
-import type { CreateRouteExitRepairDto, RouteExitRepairDto, RouteExitRepairStatus } from "@/types/routeExitRepair.types"
+import type { CreateRouteExitRepairDto, RouteExitRepairDto, RouteExitRepairStatus, BusRepairStatsResponse } from "@/types/routeExitRepair.types"
 
 
 export const routeExitRepairService = {
@@ -68,11 +68,15 @@ export const routeExitRepairService = {
     return res.data
   },  
 
-  getBusRepairStats: async (busId: string, startDate: string, endDate: string): Promise<ApiResponse<RouteExitRepairDto[]>> => {
+  getBusRepairStats: async (
+    busId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<ApiResponse<BusRepairStatsResponse>> => {
     const res = await apiClient.get("/route-exits-repair/bus-history-with-stats", {
       params: { busId, startDate, endDate }
-    });
-    return res.data;
+    })
+    return res.data
   },
 
   filter: async (params: {
@@ -80,27 +84,28 @@ export const routeExitRepairService = {
     endDate: string
     depotId: string
     convoyId?: string
-    repairTypes: string[]
-  }) => {
+    repairTypes: string
+  }): Promise<ApiResponse<RouteExitRepairDto[]>> => {
     try {
-      const response = await apiClient.get<RouteExitRepairDto[]>("/route-exits-repair/filter", {
+      const response = await apiClient.get("/route-exits-repair/filter", {
         params: {
           StartDate: params.startDate,
           EndDate: params.endDate,
           DepotId: params.depotId,
           ...(params.convoyId && { ConvoyId: params.convoyId }),
-          RepairTypes: params.repairTypes.join(","),
+          RepairTypes: params.repairTypes,
         },
       })
-      return { isSuccess: true, value: response.data }
+      return response.data // ✅ ключевая правка
     } catch (error: any) {
       return {
         isSuccess: false,
         error: error?.response?.data?.message || "Ошибка при получении данных",
         value: null,
+        statusCode: 500,
       }
     }
-  },
+  },  
 
   // 📅+🛠 Получение за дату и колонну
   getByDateAndConvoy: async (

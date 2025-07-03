@@ -15,18 +15,19 @@ import type {
 
 interface Props {
   type: RouteExitRepairStatus
-  items: RouteExitRepairDto[]
+  allItems: RouteExitRepairDto[]
   label: string
   loading?: boolean
 }
 
-export function RepairTypeTable({ type, items, label, loading }: Props) {
-  const showEmpty = !loading && items.length === 0
+export function RepairTypeTable({ type, allItems, label, loading }: Props) {
+  const filtered = allItems.filter(r => r.repairType?.toLowerCase() === type.toLowerCase())
+  const showEmpty = !loading && filtered.length === 0
 
   return (
     <div className="space-y-2">
       <h2 className="text-lg font-semibold mt-8 mb-2">
-        {label} — {items.length} записей
+        {label} — {filtered.length} записей
       </h2>
 
       <div className="border rounded-md overflow-x-auto">
@@ -46,7 +47,7 @@ export function RepairTypeTable({ type, items, label, loading }: Props) {
           </TableHeader>
 
           <TableBody>
-            {items.map((r) => (
+            {filtered.map((r) => (
               <TableRow key={r.id}>
                 <TableCell>{r.bus?.govNumber || "—"}</TableCell>
                 <TableCell>{r.bus?.garageNumber || "—"}</TableCell>
