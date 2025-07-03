@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "@/components/ui/use-toast"
+import ReplaceDriverDialog from "./ReplaceDriverDialog"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { getAuthData } from "@/lib/auth-utils"
@@ -59,6 +60,7 @@ export default function AssignUnplannedRepairModal({
   const [search, setSearch] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
+  const [replaceDialogOpen, setReplaceDialogOpen] = useState(false)
 
   const auth = getAuthData()
   const depotId = auth?.busDepotId ?? ""
@@ -158,6 +160,20 @@ export default function AssignUnplannedRepairModal({
 
     fetchBusMileage()
   }, [selectedItemId, dispatchItems, isMileageEdited])
+
+  const handleDriverReplaced = (newDriverId: string, newDriverName: string) => {
+    setDispatchItems((prev) =>
+      prev.map((item) =>
+        item.dispatchBusLineId === selectedItemId
+          ? {
+              ...item,
+              driverId: newDriverId,
+              driver: { id: newDriverId, fullName: newDriverName },
+            }
+          : item
+      )
+    )
+  }
 
   const isAlreadyInRepair = (item: DisplayAssignment): boolean => {
     return repairs.some(
@@ -274,6 +290,18 @@ export default function AssignUnplannedRepairModal({
                             <p className="text-base font-medium">
                               🚌 Водитель: {item.driver?.fullName ?? "–"}
                             </p>
+                            {item.driver && (
+                                <button
+                                  className="text-xs text-blue-600 underline mt-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setSelectedItemId(item.dispatchBusLineId)
+                                    setReplaceDialogOpen(true)
+                                  }}
+                                >
+                                  Заменить водителя
+                                </button>
+                              )}
                             <p className="text-sm text-muted-foreground">
                               🚣 {item.routeNumber?.startsWith("С ") ? (
                                 <span className={cn(
@@ -337,6 +365,18 @@ export default function AssignUnplannedRepairModal({
           <Button variant="outline" onClick={onClose}>Отмена</Button>
           <Button onClick={handleSave}>Сохранить</Button>
         </DialogFooter>
+        {replaceDialogOpen && selectedItemId && (
+            <ReplaceDriverDialog
+            open={replaceDialogOpen}
+            onClose={() => setReplaceDialogOpen(false)}
+            dispatchBusLineId={selectedItemId}
+            onSuccess={() => {
+              setReplaceDialogOpen(false)
+              toast({ title: "Водитель заменён" })
+            }}
+            onDriverReplaced={handleDriverReplaced}
+          />
+          )}
       </DialogContent>
     </Dialog>
   )

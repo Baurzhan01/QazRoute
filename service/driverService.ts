@@ -41,7 +41,14 @@ export const driverService = {
     )
     return response.data
   },
-  
+
+  searchDrivers: async (depotId: string, query: string): Promise<ApiResponse<Driver[]>> => {
+  const response = await apiClient.get("/drivers/search", {
+    params: { depotId, query },
+    })
+    return response.data
+  },
+
   getWeekendDrivers: async (
     date: string,
     convoyId: string

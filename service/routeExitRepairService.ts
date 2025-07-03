@@ -58,6 +58,16 @@ export const routeExitRepairService = {
       params: { date, depotId },
     })
     return res.data
+  }, 
+  
+  replaceDriver: async (
+    driverId: string,
+    dispatchBusLineId: string
+  ): Promise<ApiResponse<null>> => {
+    const res = await apiClient.post("/route-exits-repair/replace-driver", null, {
+      params: { driverId, dispatchBusLineId },
+    })
+    return res.data
   },  
 
   finishRepair: async (
