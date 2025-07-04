@@ -9,11 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { getAuthData } from "@/lib/auth-utils"
-import { dutyService } from "@/service/dutyService"
 import { toast } from "@/components/ui/use-toast"
+import { dutyService } from "@/service/dutyService"
 import { exportDutyExcel } from "./utils/exportDutyExcel"
 import DutyTable from "./components/DutyTable"
 import { DispatchDutyRecord } from "@/types/releasePlanTypes"
+import { getRouteStatusByDate } from "@/lib/date-utils/getRouteStatusByDate"
 
 export default function DutyPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -29,8 +30,10 @@ export default function DutyPage() {
       return
     }
 
+    const routeStatus = getRouteStatusByDate(selectedDate)
+
     setLoading(true)
-    const res = await dutyService.getByDepotAndDate(depotId, formattedDate)
+    const res = await dutyService.getByDepotAndDate(depotId, formattedDate, routeStatus)
 
     if (res.isSuccess && res.value) {
       const flattened: DispatchDutyRecord[] = res.value.flatMap(route =>
