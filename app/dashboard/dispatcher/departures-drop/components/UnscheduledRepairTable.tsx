@@ -60,20 +60,25 @@ export default function UnscheduledRepairTable({ repairs }: UnscheduledRepairTab
           </tr>
         </thead>
         <tbody>
-          {repairs.map((r, idx) => {
+        {repairs.map((r, idx) => {
+            const busId = r.bus?.id
             const isLong = r.repairType === "LongTerm"
-            const isRepeat = r.bus?.id && seenBusIds.has(r.bus.id)
+            const isFinished = Boolean(r.andTime)
+            const isRepeat = !!busId && seenBusIds.has(busId)
+            if (busId) seenBusIds.add(busId)
 
+            // ⬇️ приоритет: green > red > yellow
+            let rowBgColor = ""
+            if (isFinished) {
+                rowBgColor = "bg-green-100"
+            } else if (isLong) {
+                rowBgColor = "bg-red-100"
+            } else if (isRepeat) {
+                rowBgColor = "bg-yellow-100"
+            }
             return (
-              <tr
-                key={r.id}
-                className={cn(
-                  "border",
-                  r.andTime && "bg-green-100",
-                  isRepeat && "bg-yellow-100",
-                  isLong && "bg-red-100"
-                )}
-              >
+                <tr key={r.id} className={cn("border", rowBgColor)}>
+
                 <td className="p-2 border text-center">{idx + 1}</td>
                 <td className="p-2 border text-center">{r.startDate || "-"}</td>
                 <td className="p-2 border text-center">{r.startTime?.slice(0, 5) || "-"}</td>
