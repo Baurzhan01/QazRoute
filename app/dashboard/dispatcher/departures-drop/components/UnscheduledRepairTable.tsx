@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { format } from "date-fns"
 import { Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -19,14 +19,24 @@ function shortenName(fullName: string): string {
 }
 
 export default function UnscheduledRepairTable({ repairs }: UnscheduledRepairTableProps) {
-  const [seenBusIds, setSeenBusIds] = useState<Set<string>>(new Set())
+  const [duplicateBusIds, setDuplicateBusIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    const ids = new Set<string>()
-    repairs.forEach(r => {
-      if (r.bus?.id) ids.add(r.bus.id)
+    const countMap = new Map<string, number>()
+
+    repairs.forEach((r) => {
+      const id = r.bus?.id
+      if (id) {
+        countMap.set(id, (countMap.get(id) || 0) + 1)
+      }
     })
-    setSeenBusIds(ids)
+
+    const duplicates = new Set<string>()
+    countMap.forEach((count, id) => {
+      if (count > 1) duplicates.add(id)
+    })
+
+    setDuplicateBusIds(duplicates)
   }, [repairs])
 
   return (
@@ -60,37 +70,42 @@ export default function UnscheduledRepairTable({ repairs }: UnscheduledRepairTab
           </tr>
         </thead>
         <tbody>
-        {repairs.map((r, idx) => {
+          {repairs.map((r, idx) => {
             const busId = r.bus?.id
+            const isRepeat = !!busId && duplicateBusIds.has(busId)
             const isLong = r.repairType === "LongTerm"
             const isFinished = Boolean(r.andTime)
-            const isRepeat = !!busId && seenBusIds.has(busId)
-            if (busId) seenBusIds.add(busId)
 
-            // ⬇️ приоритет: green > red > yellow
+            // 🟢 Приоритет цвета: завершено > длительный > повторный
             let rowBgColor = ""
             if (isFinished) {
-                rowBgColor = "bg-green-100"
+              rowBgColor = "bg-green-100"
             } else if (isLong) {
-                rowBgColor = "bg-red-100"
+              rowBgColor = "bg-red-100"
             } else if (isRepeat) {
-                rowBgColor = "bg-yellow-100"
+              rowBgColor = "bg-yellow-100"
             }
-            return (
-                <tr key={r.id} className={cn("border", rowBgColor)}>
 
+            return (
+              <tr key={r.id} className={cn("border", rowBgColor)}>
                 <td className="p-2 border text-center">{idx + 1}</td>
                 <td className="p-2 border text-center">{r.startDate || "-"}</td>
                 <td className="p-2 border text-center">{r.startTime?.slice(0, 5) || "-"}</td>
                 <td className="p-2 border text-center">{r.convoy?.number ? `№${r.convoy.number}` : "-"}</td>
                 <td className="p-2 border text-center">
-                  {r.route?.number ? `${r.route.number}${r.busLine?.number ? ` / ${r.busLine.number}` : ""}` : "-"}
+                  {r.route?.number
+                    ? `${r.route.number}${r.busLine?.number ? ` / ${r.busLine.number}` : ""}`
+                    : "-"}
                 </td>
                 <td className="p-2 border">
-                  {r.driver?.fullName ? `${shortenName(r.driver.fullName)} (${r.driver.serviceNumber})` : "-"}
+                  {r.driver?.fullName
+                    ? `${shortenName(r.driver.fullName)} (${r.driver.serviceNumber})`
+                    : "-"}
                 </td>
                 <td className="p-2 border text-center">
-                  {r.bus?.govNumber && r.bus?.garageNumber ? `${r.bus.govNumber} (${r.bus.garageNumber})` : "-"}
+                  {r.bus?.govNumber && r.bus?.garageNumber
+                    ? `${r.bus.govNumber} (${r.bus.garageNumber})`
+                    : "-"}
                 </td>
                 <td className="p-2 border text-red-600 font-medium">
                   {r.text}
