@@ -65,7 +65,14 @@ export default function CTSPlanRepairPage() {
       setDepotName(depotRes.value.name)
 
       if (statsRes.isSuccess && typeof statsRes.value === "object") {
-        setRepairStats(statsRes.value)
+        const val = statsRes.value as any
+        setRepairStats({
+          totalPlanned: val.totalPlanned ?? val.total ?? 0,
+          totalUnplanned: val.totalUnplanned ?? 0,
+          totalLong: val.totalLong ?? 0,
+          totalOther: val.totalOther ?? 0,
+          byConvoy: val.byConvoy,
+        })
       } else {
         setRepairStats(null)
       }

@@ -29,6 +29,30 @@ export interface OrderAssignment {
   additionalInfo: string
 }
 
+// 📋 Общая дьюти разнарядка (Duty)
+export interface DispatchDutyRecord {
+  routeNumber: string
+  busLineNumber: string
+  govNumber?: string
+  garageNumber?: string
+  vinCode?: string
+  busBrand?: string
+  driverFullName?: string
+  driverServiceNumber?: string
+}
+
+export interface DutyApiResponse {
+  routeNumber: string
+  exits: {
+    exitNumber: string
+    garageNumber: string
+    govNumber: string
+    vinCode?: string
+    brand: string
+    driverFullName: string
+    driverServiceNumber?: string
+  }[]
+}
 
 // Создание разнарядки
 export interface DispatchRouteCreateRequest {

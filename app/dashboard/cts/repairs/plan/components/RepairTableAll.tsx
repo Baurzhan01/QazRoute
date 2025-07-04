@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { GroupedRepairsByConvoy, RepairRecord } from "@/types/repair.types";
 import EditRepairDialog from "./EditRepairDialog";
-import { Download } from "lucide-react"
-import { exportAllRepairs } from "../utils/exportAllRepairs"
+import { exportAllRepairs } from "../utils/exportAllRepairs";
 
 interface RepairTableAllProps {
   data: GroupedRepairsByConvoy[];
@@ -36,55 +35,73 @@ export default function RepairTableAll({
 
   return (
     <div className="space-y-8">
-        <div className="flex justify-end mb-4">
-        <Button onClick={() => exportAllRepairs(data, date)}>
+      {/* 🔽 Кнопка экспорта */}
+      <div className="flex justify-end mb-4">
+        <Button variant="secondary" onClick={() => exportAllRepairs(data, date)} className="flex items-center gap-2">
+          <Download className="w-4 h-4" />
           Экспорт в Excel
         </Button>
-       </div>
+      </div>
+
+      {/* 🔄 Таблицы по колоннам */}
       {data.length === 0 ? (
         <p className="text-gray-500">Нет данных по ремонтам</p>
       ) : (
         data.map(({ convoyId, convoyNumber, repairs }) => (
-          <div key={convoyId}>
-            <h3 className="text-lg font-semibold mb-2">Автоколонна №{convoyNumber}</h3>
+          <div key={convoyId} className="space-y-2">
+            <h3 className="text-xl font-semibold text-sky-700 border-b pb-1">
+              🚍 Автоколонна №{convoyNumber}
+            </h3>
+
             {repairs.length === 0 ? (
-              <p className="text-gray-500 ml-2">Нет ремонтов в этой колонне</p>
+              <p className="text-gray-400 italic ml-2">Нет ремонтов в этой колонне</p>
             ) : (
-              <div className="border rounded-md overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="p-2">🚌 Автобус</th>
-                      <th className="p-2">👨‍🔧 Водитель</th>
-                      <th className="p-2">🛠 Описание</th>
-                      <th className="p-2 text-center">✏️</th>
+              <div className="rounded-lg border shadow-sm overflow-hidden">
+                <table className="w-full text-sm text-gray-800">
+                  <thead className="bg-gray-50 border-b">
+                    <tr className="text-left">
+                      <th className="px-4 py-2 w-[25%]">🚌 Автобус</th>
+                      <th className="px-4 py-2 w-[25%]">👨‍🔧 Водитель</th>
+                      <th className="px-4 py-2">🛠 Описание</th>
+                      <th className="px-4 py-2 text-center w-[50px]">✏️</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {repairs.map((r) => (
-                      <tr
-                        key={`${r.bus.id}-${r.driver.id}-${r.number}`}
-                        className="border-t hover:bg-gray-50"
+                {repairs.map((r) => (
+                  <tr
+                    key={`${r.bus.id}-${r.driver.id}-${r.number}`}
+                    className="border-t hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="px-4 py-2">
+                      <div className="font-medium">
+                        {r.bus?.govNumber || "—"}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        ({r.bus?.garageNumber || "—"})
+                      </div>
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="font-medium">{r.driver?.fullName || "—"}</div>
+                      <div className="text-sm text-gray-500">Таб. № {r.driver?.serviceNumber || "—"}</div>
+                    </td>
+                    <td className="px-4 py-2">
+                      <span className="text-red-600 font-semibold text-base">
+                        {r.description || <span className="text-gray-400 italic">—</span>}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditClick(r, convoyId)}
+                        className="text-blue-600 hover:text-blue-800"
                       >
-                        <td className="p-2">
-                          {r.bus?.govNumber ?? "?"} ({r.bus?.garageNumber ?? "?"})
-                        </td>
-                        <td className="p-2">
-                          {r.driver?.fullName ?? "?"} (№ {r.driver?.serviceNumber ?? "?"})
-                        </td>
-                        <td className="p-2">{r.description || "—"}</td>
-                        <td className="p-2 text-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditClick(r, convoyId)}
-                          >
-                            <Pencil className="w-4 h-4 text-blue-600" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
                 </table>
               </div>
             )}
@@ -92,6 +109,7 @@ export default function RepairTableAll({
         ))
       )}
 
+      {/* ✏️ Диалог редактирования */}
       {selectedRepair && selectedConvoyId && (
         <EditRepairDialog
           open={true}

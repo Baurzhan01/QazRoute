@@ -8,11 +8,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useQuery } from "@tanstack/react-query"
 import { useFinalDispatch } from "@/app/dashboard/fleet-manager/release-plan/hooks/useFinalDispatch"
-import FinalDispatchTable from "@/app/dashboard/fleet-manager/release-plan/components/FinalDispatchTable"
 import { convoyService } from "@/service/convoyService"
 import { format } from "date-fns"
 import { CalendarIcon } from "lucide-react"
 import { getDayTypeFromDate } from "@/app/dashboard/dispatcher/convoy/[id]/release-plan/utils/dateUtils"
+import FinalDispatchSection from "@/app/dashboard/fleet-manager/release-plan/components/FinalDispatchSection"
 import type { ValidDayType } from "@/types/releasePlanTypes"
 
 export default function CtsReleasePlanPage() {
@@ -36,10 +36,10 @@ export default function CtsReleasePlanPage() {
 
   const dayType: ValidDayType = useMemo(() => {
     if (!selectedDate) return "workday"
-    const localDateStr = format(selectedDate, "yyyy-MM-dd") // ✅ локальная дата
+    const localDateStr = format(selectedDate, "yyyy-MM-dd")
     return getDayTypeFromDate(localDateStr)
   }, [selectedDate])
-    
+
   const {
     finalDispatch,
     convoySummary,
@@ -53,6 +53,7 @@ export default function CtsReleasePlanPage() {
     <div className="p-6 space-y-6">
       <h1 className="text-3xl font-bold">Разнарядка по колоннам</h1>
 
+      {/* 📅 Блок выбора даты */}
       <div className="w-[280px]">
         <Popover>
           <PopoverTrigger asChild>
@@ -78,6 +79,7 @@ export default function CtsReleasePlanPage() {
         </p>
       </div>
 
+      {/* 📋 Таблица по колоннам */}
       <div className="flex-1">
         <Tabs value={activeConvoyId ?? ""} onValueChange={setActiveConvoyId}>
           <TabsList className="flex flex-wrap gap-2 mt-4">
@@ -95,18 +97,21 @@ export default function CtsReleasePlanPage() {
                   loading ? (
                     <p className="text-gray-500">Загрузка данных...</p>
                   ) : finalDispatch ? (
-                    <FinalDispatchTable
-                      data={finalDispatch}
-                      depotNumber={convoy.number}
-                      convoyId={convoy.id}
-                      driversCount={driversCount}
-                      busesCount={busesCount}
-                      convoySummary={convoySummary}
-                      dayType={dayType}
-                      readOnlyMode
-                      disableLinks={true}
-                      orderAssignments={orderAssignments}
-                    />
+                    // ✅ Обёртка для экспорта в PNG/PDF. Стили .print-export применяются только внутри этого div
+                    <div className="print-export">
+                      <FinalDispatchSection
+                        data={finalDispatch}
+                        convoyNumber={convoy.number}
+                        convoySummary={convoySummary}
+                        driversCount={driversCount}
+                        busesCount={busesCount}
+                        date={selectedDate ?? new Date()}
+                        dayType={dayType}
+                        readOnlyMode
+                        disableLinks
+                        orderAssignments={orderAssignments}
+                      />
+                    </div>
                   ) : (
                     <p className="text-gray-500">Нет данных</p>
                   )

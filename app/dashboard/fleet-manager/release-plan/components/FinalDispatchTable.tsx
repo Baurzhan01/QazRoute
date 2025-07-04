@@ -1,26 +1,32 @@
-"use client";
+"use client"
 
-import RouteSection from "./RouteSection";
-import ReserveRowSection from "./ReserveRowSection";
-import BottomBlocks from "./BottomBlocks";
-import type { FinalDispatchData, OrderAssignment, ReserveAssignmentUI, RouteGroup } from "@/types/releasePlanTypes";
-import { mapToReserveAssignmentUI } from "../utils/releasePlanUtils";
+import { useMemo } from "react"
+import RouteSection from "./RouteSection"
+import ReserveRowSection from "./ReserveRowSection"
+import BottomBlocks from "./BottomBlocks"
+import type {
+  FinalDispatchData,
+  OrderAssignment,
+  ReserveAssignmentUI,
+  RouteGroup,
+} from "@/types/releasePlanTypes"
+import { mapToReserveAssignmentUI } from "../utils/releasePlanUtils"
 
 interface FinalDispatchTableProps {
-  data: FinalDispatchData;
-  depotNumber?: number;
-  driversCount: number;
-  busesCount: number;
+  data: FinalDispatchData
+  depotNumber?: number
+  driversCount: number
+  busesCount: number
   convoySummary?: {
-    totalDrivers?: number;
-    totalBuses?: number;
-    driverOnWork?: number;
-    busOnWork?: number;
-  };
-  dayType: string;
-  readOnlyMode?: boolean;
-  disableLinks?: boolean;
-  orderAssignments?: OrderAssignment[];
+    totalDrivers?: number
+    totalBuses?: number
+    driverOnWork?: number
+    busOnWork?: number
+  }
+  dayType: string
+  readOnlyMode?: boolean
+  disableLinks?: boolean
+  orderAssignments?: OrderAssignment[]
 }
 
 export default function FinalDispatchTable({
@@ -41,24 +47,51 @@ export default function FinalDispatchTable({
     dayOffBuses = [],
     driverStatuses = {},
     date,
-  } = data;
+  } = data
 
-  const displayDate = new Date(date);
+  const displayDate = useMemo(() => new Date(date), [date])
 
-  const mappedReserve: ReserveAssignmentUI[] = reserveAssignments.map((r, i) =>
-    mapToReserveAssignmentUI(r, i, "Reserved")
-  );
-  const mappedOrders: ReserveAssignmentUI[] = orderAssignments.map((r, i) =>
-    mapToReserveAssignmentUI(r, i, "Order")
-  );
+  const mappedReserve = useMemo<ReserveAssignmentUI[]>(
+    () => reserveAssignments.map((r, i) => mapToReserveAssignmentUI(r, i, "Reserved")),
+    [reserveAssignments]
+  )
+
+  const mappedOrders = useMemo<ReserveAssignmentUI[]>(
+    () => orderAssignments.map((r, i) => mapToReserveAssignmentUI(r, i, "Order")),
+    [orderAssignments]
+  )
+
+  const routeSections = useMemo(
+    () =>
+      routeGroups.map((group: RouteGroup) => (
+        <RouteSection
+          key={group.routeId}
+          group={group}
+          date={date}
+          dayType={dayType}
+          displayDate={displayDate}
+          readOnlyMode={readOnlyMode}
+          disableLinks={disableLinks}
+        />
+      )),
+    [routeGroups, date, dayType, displayDate, readOnlyMode, disableLinks]
+  )
 
   return (
     <div className="text-[18px] leading-relaxed space-y-1 text-gray-900">
       <div className="flex justify-between border px-6 py-4 bg-gray-50 rounded-lg shadow-sm">
         <div className="space-y-1">
-          <div><strong>Водителей в колонне:</strong> {convoySummary?.totalDrivers ?? driversCount}</div>
-          <div><strong>Автобусов в колонне:</strong> {convoySummary?.totalBuses ?? busesCount}</div>
-          <div><strong>Привл. автобусов:</strong> 0</div>
+          <div>
+            <strong>Водителей в колонне:</strong>{" "}
+            {convoySummary?.totalDrivers ?? driversCount}
+          </div>
+          <div>
+            <strong>Автобусов в колонне:</strong>{" "}
+            {convoySummary?.totalBuses ?? busesCount}
+          </div>
+          <div>
+            <strong>Привл. автобусов:</strong> 0
+          </div>
         </div>
         <div className="text-center">
           <div className="font-bold text-lg tracking-wide">
@@ -70,17 +103,7 @@ export default function FinalDispatchTable({
         </div>
       </div>
 
-      {routeGroups.map((group: RouteGroup) => (
-        <RouteSection
-          key={group.routeId}
-          group={group}
-          date={date}
-          dayType={dayType}
-          displayDate={displayDate}
-          readOnlyMode={readOnlyMode}
-          disableLinks={disableLinks}
-        />
-      ))}
+      {routeSections}
 
       <ReserveRowSection
         title="РЕЗЕРВ"
@@ -122,5 +145,5 @@ export default function FinalDispatchTable({
         disableLinks={disableLinks}
       />
     </div>
-  );
+  )
 }

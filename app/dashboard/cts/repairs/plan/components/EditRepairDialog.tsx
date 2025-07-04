@@ -35,7 +35,7 @@ export default function EditRepairDialog({
   const handleSave = async () => {
     try {
       setLoading(true);
-      const result = await repairService.updateRepair(date, repair.convoyId, {
+      const result = await repairService.updateRepair(repair.id, {
         driverId: repair.driver.id,
         busId: repair.bus.id,
         description,

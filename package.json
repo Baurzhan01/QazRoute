@@ -74,6 +74,7 @@
     "uuid": "^11.1.0",
     "vaul": "^0.9.6",
     "xlsx": "^0.18.5",
+    "xlsx-style": "^0.8.13",
     "zod": "^3.24.1"
   },
   "devDependencies": {

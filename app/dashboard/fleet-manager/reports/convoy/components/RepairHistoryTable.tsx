@@ -25,11 +25,10 @@ export default function RepairHistoryTable({ repairs, loading }: Props) {
   return (
     <div className="overflow-x-auto border rounded-md">
       <div className="flex justify-end mb-4">
-        <Button onClick={() => exportConvoyRepairHistory(repairs, "repair-convoy-history")}>
-          Экспорт в Excel
-        </Button>
+      <Button onClick={() => exportConvoyRepairHistory(repairs, "repair-convoy-history")}>
+        Экспорт в Excel
+      </Button>
       </div>
-
       <Table>
         <TableHeader>
           <TableRow className="bg-gray-100 text-base font-bold">

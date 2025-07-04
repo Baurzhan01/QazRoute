@@ -193,7 +193,7 @@ body, table, th, td {
   height: auto !important;
   line-height: 1.2 !important;
   vertical-align: middle !important;
-  background-color: white !important;
+  background-color: inherit !important;
 }
 .print-export td,
 .print-export th {

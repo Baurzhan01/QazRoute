@@ -14,6 +14,7 @@ import {
   UserCircle,
   Truck,
   AlertTriangle,
+  Briefcase,
   BarChart2,
   FileText,
   Users,
@@ -67,11 +68,12 @@ export default function Sidebar() {
     { title: "Главная", href: "/dashboard/dispatcher", icon: <Home className="h-5 w-5" /> },
     { title: "План выпуска", href: "/dashboard/dispatcher/release-plan", icon: <ClipboardList className="h-5 w-5" /> },
     { title: "Ведомость", href: "/dashboard/dispatcher/final-dispatch", icon: <FileText className="h-5 w-5" /> },
-    { title: "Сходы с слиний", href: "/dashboard/dispatcher/departures-drop", icon: <AlertTriangle className="h-5 w-5" /> },
+    { title: "Сходы с линии", href: "/dashboard/dispatcher/departures-drop", icon: <AlertTriangle className="h-5 w-5" /> },
     { title: "Плановый ремонт", href: "/dashboard/dispatcher/maintenance-plan", icon: <Wrench className="h-5 w-5" /> },
+    { title: "Дьюти", href: "/dashboard/dispatcher/duty", icon: <Briefcase className="h-5 w-5" /> },
     { title: "Отчеты", href: "/dashboard/dispatcher/reports", icon: <BarChart2 className="h-5 w-5" /> },
     { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
-  ];
+  ]
 
   const defaultNavItems: NavItem[] = [
     { title: "Панель управления", href: dashboardPath, icon: <Home className="h-5 w-5 text-sky-500" /> },
