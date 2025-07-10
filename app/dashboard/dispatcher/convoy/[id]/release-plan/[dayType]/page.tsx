@@ -14,24 +14,70 @@ import { useConvoyReleasePlan } from "../../../../hooks/useConvoyReleasePlan"
 import ConvoyDispatchTable from "../../../../components/ConvoyDispatchTable"
 import { useConvoy } from "../../../../context/ConvoyContext"
 import type { ValidDayType } from "@/types/releasePlanTypes"
-import { DispatchBusLineStatus } from "@/types/releasePlanTypes"
 
 export default function ConvoyReleasePlanPage() {
   const { convoyId } = useConvoy()
   const router = useRouter()
 
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0])
-  const [search, setSearch] = useState("")
-  const [selectedStatus, setSelectedStatus] = useState<string>("")
+  const [search, setSearch] = useState("")   // текст в поле ввода
+  const [query, setQuery] = useState("")     // текст по которому ищем
 
   const dayType: ValidDayType = useMemo(() => getDayTypeFromDate(date), [date])
 
-  const { data, summary, loading, error, refetch } = useConvoyReleasePlan(
+  const { data: originalData, summary, loading, error, refetch } = useConvoyReleasePlan(
     date,
     convoyId ?? "",
-    dayType,
-    search // ✅ всего 4 аргумента — корректно
+    dayType
   )
+
+  const filteredData = useMemo(() => {
+    if (!originalData) return null
+    if (!query.trim()) return originalData
+
+    const q = query.toLowerCase()
+
+    const routeGroups = originalData.routeGroups
+      .map(group => ({
+        ...group,
+        assignments: group.assignments.filter(a =>
+          a.driver?.fullName.toLowerCase().includes(q) ||
+          a.driver?.serviceNumber?.toLowerCase().includes(q) ||
+          a.bus?.govNumber?.toLowerCase().includes(q) ||
+          a.bus?.garageNumber?.toLowerCase().includes(q)
+        )
+      }))
+      .filter(group => group.assignments.length > 0)
+
+    const orders = originalData.orders.filter(o =>
+      o.driver?.fullName.toLowerCase().includes(q) ||
+      o.driver?.serviceNumber?.toLowerCase().includes(q) ||
+      o.govNumber?.toLowerCase().includes(q) ||
+      o.garageNumber?.toLowerCase().includes(q)
+    )
+
+    const reserveAssignments = originalData.reserveAssignments.filter(r =>
+      r.driver?.fullName.toLowerCase().includes(q) ||
+      r.driver?.serviceNumber?.toLowerCase().includes(q) ||
+      r.govNumber?.toLowerCase().includes(q) ||
+      r.garageNumber?.toLowerCase().includes(q)
+    )
+
+    const scheduledRepairs = originalData.scheduledRepairs.filter(r =>
+      r.driver?.fullName.toLowerCase().includes(q) ||
+      r.driver?.serviceNumber?.toLowerCase().includes(q) ||
+      r.bus?.govNumber?.toLowerCase().includes(q) ||
+      r.bus?.garageNumber?.toLowerCase().includes(q)
+    )
+
+    return {
+      ...originalData,
+      routeGroups,
+      orders,
+      reserveAssignments,
+      scheduledRepairs,
+    }
+  }, [originalData, query])
 
   if (!convoyId) {
     return <div className="text-red-500 p-6">Ошибка: не выбрана автоколонна</div>
@@ -50,7 +96,7 @@ export default function ConvoyReleasePlanPage() {
         </Button>
       </div>
 
-      {/* Дата и заголовок */}
+      {/* Дата */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-sky-800 tracking-tight">
@@ -58,13 +104,10 @@ export default function ConvoyReleasePlanPage() {
           </h1>
           <p className="text-gray-600 text-sm mt-1">
             {
-              dayType === "workday"
-                ? "Будний день"
-                : dayType === "saturday"
-                ? "Суббота"
-                : dayType === "sunday"
-                ? "Воскресенье"
-                : "Праздничный день"
+              dayType === "workday" ? "Будний день" :
+              dayType === "saturday" ? "Суббота" :
+              dayType === "sunday" ? "Воскресенье" :
+              "Праздничный день"
             }
           </p>
         </div>
@@ -79,36 +122,35 @@ export default function ConvoyReleasePlanPage() {
         </div>
       </div>
 
-      {/* Фильтры */}
+      {/* Фильтр */}
       <Card className="p-4 border space-y-4">
-        <div className="flex flex-wrap gap-3">
-          <div className="flex items-center gap-2">
-            <Search className="text-muted-foreground" />
-            <Input
-              placeholder="Поиск по ФИО, табельному номеру или автобусу..."
-              value={search}
-              onChange={(e) => {
-                const value = e.target.value
-                setSearch(value)
-                if (value === "") refetch()
-              }}
-              className="max-w-md"
-            />
-          </div>
+        <div className="flex flex-wrap gap-3 items-center">
+          <Search className="text-muted-foreground" />
+          <Input
+            placeholder="Поиск по ФИО, табельному номеру или автобусу..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-md"
+          />
+          <Button onClick={() => setQuery(search.trim())}>Найти</Button>
+          <Button variant="ghost" onClick={() => { setSearch(""); setQuery(""); }}>
+            Очистить
+          </Button>
         </div>
       </Card>
 
-      {/* Состояние */}
+      {/* Статус */}
       {loading && <p className="text-muted-foreground">Загрузка данных...</p>}
       {error && <p className="text-red-500">Ошибка: {error}</p>}
 
       {/* Таблица */}
-      {data && (
+      {filteredData && (
         <ConvoyDispatchTable
-          data={data}
+          data={filteredData}
           convoySummary={summary ?? undefined}
           date={date}
           dayType={dayType}
+          search={query}
           readOnlyMode={true}
           onReload={() => refetch()}
         />

@@ -30,7 +30,6 @@ export function useConvoyReleasePlan(
   date: string,
   convoyId: string,
   dayType?: ValidDayType,
-  search?: string
 ) {
   const [data, setData] = useState<FinalDispatchData | null>(null)
   const [summary, setSummary] = useState<ConvoySummary | null>(null)
@@ -60,7 +59,7 @@ export function useConvoyReleasePlan(
         internDriversRes,
         repairBusesRes,
       ] = await Promise.all([
-        releasePlanService.getFullDispatchByDate(date, convoyId, routeStatus, search),
+        releasePlanService.getFullDispatchByDate(date, convoyId, routeStatus),
         releasePlanService.getReserveAssignmentsByDate(date, convoyId),
         convoyService.getConvoySummary(convoyId, date),
         driverService.getWeekendDrivers(date, convoyId),
@@ -106,55 +105,31 @@ export function useConvoyReleasePlan(
       ])
 
       const rawRoutes = (dispatchRes.value as any)?.routes ?? []
-      const lowerSearch = search?.toLowerCase().trim()
 
-      const routeGroups: RouteGroup[] = rawRoutes.map((route: any) => {
-        let busLines = route.busLines ?? []
+      const routeGroups: RouteGroup[] = rawRoutes.map((route: any) => ({
+        routeId: route.routeId,
+        routeNumber: route.routeNumber,
+        assignments: (route.busLines ?? []).map((bl: any) => ({
+          dispatchBusLineId: bl.dispatchBusLineId,
+          busLineNumber: bl.busLineNumber ?? "—",
+          garageNumber: bl.bus?.garageNumber ?? "—",
+          stateNumber: bl.bus?.govNumber ?? "—",
+          driver: bl.firstDriver ?? null,
+          shift2Driver: bl.secondDriver ?? undefined,
+          departureTime: bl.exitTime ?? "—",
+          scheduleTime: bl.scheduleStart ?? "—",
+          endTime: bl.endTime ?? "—",
+          additionalInfo: bl.description ?? "",
+          shift2AdditionalInfo: bl.shift2AdditionalInfo ?? "",
+          status: typeof bl.status === "string" ? statusMap[bl.status] ?? 0 : bl.status ?? 0,
+          isRealsed: bl.isRealsed ?? false,
+          releasedTime: bl.releasedTime ?? "",
+          fuelAmount: bl.normSolarium ?? "",
+          bus: bl.bus ?? undefined,
+        }))
+      }))
 
-        if (lowerSearch) {
-          busLines = busLines.filter((bl: any) => {
-            const fullName = bl.firstDriver?.fullName?.toLowerCase() ?? ""
-            const serviceNumber = bl.firstDriver?.serviceNumber ?? ""
-            const garage = bl.bus?.garageNumber?.toLowerCase() ?? ""
-            const gov = bl.bus?.govNumber?.toLowerCase() ?? ""
-            return (
-              fullName.includes(lowerSearch) ||
-              serviceNumber.includes(lowerSearch) ||
-              garage.includes(lowerSearch) ||
-              gov.includes(lowerSearch)
-            )
-          })
-        }
-
-        return {
-          routeId: route.routeId,
-          routeNumber: route.routeNumber,
-          assignments: busLines.map((bl: any) => {
-            const normalizedStatus = typeof bl.status === "string" ? statusMap[bl.status] ?? 0 : bl.status ?? 0
-            return {
-              dispatchBusLineId: bl.dispatchBusLineId,
-              busLineNumber: bl.busLineNumber ?? "—",
-              garageNumber: bl.bus?.garageNumber ?? "—",
-              stateNumber: bl.bus?.govNumber ?? "—",
-              driver: bl.firstDriver ?? null,
-              shift2Driver: bl.secondDriver ?? undefined,
-              departureTime: bl.exitTime ?? "—",
-              scheduleTime: bl.scheduleStart ?? "—",
-              endTime: bl.endTime ?? "—",
-              additionalInfo: bl.description ?? "",
-              shift2AdditionalInfo: bl.shift2AdditionalInfo ?? "",
-              status: normalizedStatus,
-              isRealsed: bl.isRealsed ?? false,
-              releasedTime: bl.releasedTime ?? "",
-              fuelAmount: bl.normSolarium ?? "",
-              bus: bl.bus ?? undefined,
-            }
-          })
-        }
-      }).filter((group: RouteGroup) => group.assignments.length > 0)
-
-      const reserveAssignments = (reserveRes.value ?? [])
-      .map((r: any, index: number) => ({
+      const reserveAssignments = (reserveRes.value ?? []).map((r: any, index: number) => ({
         id: r.id ?? `reserve-${index}`,
         dispatchBusLineId: r.dispatchBusLineId,
         sequenceNumber: r.sequenceNumber ?? index + 1,
@@ -172,18 +147,8 @@ export function useConvoyReleasePlan(
         status: r.status,
         isReplace: r.status === 2,
       }))
-      .filter((r) => {
-        if (!lowerSearch) return true
-        return (
-          r.driver?.fullName?.toLowerCase().includes(lowerSearch) ||
-          r.driver?.serviceNumber?.includes(lowerSearch) ||
-          r.garageNumber.toLowerCase().includes(lowerSearch) ||
-          r.govNumber.toLowerCase().includes(lowerSearch)
-        )
-      })    
 
-      const orderAssignments: OrderAssignment[] = (orderRes.value ?? [])
-      .map((r: any, i: number) => ({
+      const orderAssignments: OrderAssignment[] = (orderRes.value ?? []).map((r: any, i: number) => ({
         id: r.id,
         sequenceNumber: r.sequenceNumber ?? i + 1,
         departureTime: r.departureTime ?? "—",
@@ -201,19 +166,8 @@ export function useConvoyReleasePlan(
           : undefined,
         additionalInfo: r.description ?? "",
       }))
-      .filter((r) => {
-        if (!lowerSearch) return true
-        return (
-          r.driver?.fullName?.toLowerCase().includes(lowerSearch) ||
-          r.driver?.serviceNumber?.includes(lowerSearch) ||
-          r.garageNumber.toLowerCase().includes(lowerSearch) ||
-          r.govNumber.toLowerCase().includes(lowerSearch)
-        )
-      })
 
-
-      const scheduledRepairs: RepairRecord[] = (plannedRepairsRes?.value ?? [])
-      .map((entry: any) => ({
+      const scheduledRepairs: RepairRecord[] = (plannedRepairsRes?.value ?? []).map((entry: any) => ({
         id: entry.id,
         bus: {
           id: entry.bus.id,
@@ -227,28 +181,12 @@ export function useConvoyReleasePlan(
           id: entry.driver.id,
           fullName: entry.driver.fullName,
           serviceNumber: entry.driver.serviceNumber,
-          driverStatus: "OnWork" as DriverStatus,
+          driverStatus: "OnWork",
           isAssigned: false,
           isBusy: false,
         },
         description: entry.description,
       }))
-      .filter((r) => {
-        if (!lowerSearch) return true
-        return (
-          r.driver.fullName.toLowerCase().includes(lowerSearch) ||
-          r.driver.serviceNumber.includes(lowerSearch) ||
-          r.bus.garageNumber.toLowerCase().includes(lowerSearch) ||
-          r.bus.govNumber.toLowerCase().includes(lowerSearch)
-        )
-      })
-
-      const formatName = (fullName?: string, serviceNumber?: string) => {
-        if (!fullName) return "—"
-        const [last, first = "", middle = ""] = fullName.split(" ")
-        const initials = `${first.charAt(0)}.${middle.charAt(0)}.`.toUpperCase()
-        return serviceNumber ? `${last} ${initials} (№ ${serviceNumber})` : `${last} ${initials}`
-      }
 
       const finalDispatch: FinalDispatchData = {
         date,
@@ -257,10 +195,10 @@ export function useConvoyReleasePlan(
         repairBuses: repairBusesRes.items?.map(b => `${b.garageNumber} (${b.govNumber})`) ?? [],
         dayOffBuses: weekendBusesRes.value?.map(b => `${b.garageNumber} (${b.govNumber})`) ?? [],
         driverStatuses: {
-          OnSickLeave: sickLeaveDriversRes.value?.items?.map(d => formatName(d.fullName, d.serviceNumber)) ?? [],
-          OnVacation: vacationDriversRes.value?.items?.map(d => formatName(d.fullName, d.serviceNumber)) ?? [],
-          Intern: internDriversRes.value?.items?.map(d => formatName(d.fullName, d.serviceNumber)) ?? [],
-          DayOff: weekendDriversRes.value?.map(d => formatName(d.fullName, d.serviceNumber)) ?? [],
+          OnSickLeave: sickLeaveDriversRes.value?.items?.map(d => d.fullName) ?? [],
+          OnVacation: vacationDriversRes.value?.items?.map(d => d.fullName) ?? [],
+          Intern: internDriversRes.value?.items?.map(d => d.fullName) ?? [],
+          DayOff: weekendDriversRes.value?.map(d => d.fullName) ?? [],
           total: summaryRes.value?.totalDrivers ?? undefined,
         },
         orders: orderAssignments,
@@ -275,7 +213,6 @@ export function useConvoyReleasePlan(
       setSummary(summaryRes.value ?? null)
       setError(null)
     } catch (err: any) {
-      console.error("Ошибка useConvoyReleasePlan:", err)
       setError(err.message || "Не удалось загрузить план выпуска")
       setData(null)
       setSummary(null)
@@ -285,7 +222,7 @@ export function useConvoyReleasePlan(
     } finally {
       setLoading(false)
     }
-  }, [date, convoyId, dayType, search])
+  }, [date, convoyId, dayType]) // ⛔️ search убран отсюда
 
   useEffect(() => {
     load()
