@@ -37,102 +37,102 @@ export default function ReserveTable({
     })
   }, [departures, search])
 
+  const headerClass = "p-2 border text-center bg-yellow-100 text-black text-sm font-semibold"
+  const cellClass = "p-2 border text-center text-sm"
+
   return (
-    <div className="mt-6 border rounded-lg shadow overflow-hidden bg-white">
-      <div className="w-full bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-300 px-4 py-2 flex items-center gap-3">
-        <span className="text-lg font-bold tracking-wide text-black uppercase">РЕЗЕРВ</span>
-      </div>
+    <div className="overflow-auto rounded-md border print-export mt-6">
+      <table className="w-full text-sm text-gray-800 border-collapse">
+        <thead>
+          <tr>
+            <th className={headerClass}>Резерв</th>
+            <th className={headerClass}>№</th>
+            <th className={headerClass}>Гар. номер</th>
+            <th className={headerClass}>Гос. номер</th>
+            <th className={headerClass}>ФИО</th>
+            <th className={headerClass}>Таб. номер</th>
+            <th className={headerClass}>Норма (л)</th>
+            <th className={headerClass}>Время выхода</th>
+            <th className={headerClass}>Доп. информация</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredDepartures.map((r, i) => {
+            const key = r.dispatchBusLineId ?? `fallback-${i}`
+            const isGoneToRoute = r.isReplace === true
+            const isRemoved = r.additionalInfo?.toLowerCase().includes("снят с маршрута")
+            const isReplacedAfter = r.additionalInfo?.toLowerCase().includes("резерв после замены")
 
-      <div className="flex-1">
-        <table className="w-full border text-sm">
-          <thead className="bg-yellow-100 text-black">
-            <tr>
-              <th className="p-2 border">№</th>
-              <th className="p-2 border">Гар. номер</th>
-              <th className="p-2 border">Гос. номер</th>
-              <th className="p-2 border">ФИО</th>
-              <th className="p-2 border">Таб. номер</th>
-              <th className="p-2 border">Норма (л)</th>
-              <th className="p-2 border">Время выхода</th>
-              <th className="p-2 border">Доп. информация</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredDepartures.map((r, i) => {
-              const key = r.dispatchBusLineId ?? `fallback-${i}`
-              const isGoneToRoute = r.isReplace === true
-              const isRemoved = r.additionalInfo?.toLowerCase().includes("снят с маршрута")
-              const isReplacedAfter = r.additionalInfo?.toLowerCase().includes("резерв после замены")
+            const rowColor = isRemoved
+              ? "bg-red-100/50"
+              : isReplacedAfter
+              ? "bg-red-50"
+              : isGoneToRoute
+              ? "bg-yellow-50"
+              : i % 2 === 1
+              ? "bg-gray-50"
+              : ""
 
-              return (
-                <tr
-                  key={key}
-                  className={`font-medium ${
-                    isRemoved
-                      ? "bg-red-100/50"
-                      : isReplacedAfter
-                      ? "bg-red-50"
-                      : isGoneToRoute
-                      ? "bg-yellow-50"
-                      : i % 2 === 1
-                      ? "bg-gray-50"
-                      : ""
-                  }`}
-                >
-                  <td className="px-1 py-[2px] border text-center font-semibold">
-                    {r.sequenceNumber || i + 1}
-                  </td>
-                  <td className="px-1 py-[2px] border font-semibold">{r.garageNumber || "—"}</td>
-                  <td className="px-1 py-[2px] border font-semibold">{r.govNumber || "—"}</td>
-                  <td className="px-1 py-[2px] border font-semibold">
-                    {formatShortName(r.driver?.fullName || "—")}
-                    {isGoneToRoute && (
-                      <span className="ml-2 text-xs text-blue-800 italic">🔁 Назначен на маршрут</span>
-                    )}
-                    {isRemoved && (
-                      <span className="ml-2 text-xs text-red-800 italic">❌ Снят с маршрута</span>
-                    )}
-                  </td>
-                  <td className="px-1 py-[2px] border text-center font-semibold">
-                    {r.driver?.serviceNumber || "—"}
-                  </td>
-                  <td className="px-1 py-[2px] border text-center">
-                    <input
-                      type="text"
-                      value={fuelNorms[key] ?? ""}
-                      onChange={(e) =>
-                        setFuelNorms((prev) => ({
-                          ...prev,
-                          [key]: e.target.value,
-                        }))
-                      }
-                      className="w-16 text-center text-red-600 font-semibold border border-red-300 rounded px-1 py-[2px] outline-none focus:ring-1 focus:ring-red-400"
-                      placeholder="—"
-                      disabled={readOnly}
-                    />
-                  </td>
-                  <td className="px-1 py-[2px] border text-center font-semibold">—</td>
-                  <td className="px-1 py-[2px] border font-semibold">
+            return (
+              <tr key={key} className={rowColor}>
+                {i === 0 && (
+                <td
+                className="p-2 border text-center font-bold text-black bg-yellow-300 special-bg"
+                rowSpan={filteredDepartures.length}
+                style={{ minWidth: "80px", verticalAlign: "middle" }}
+              >
+                РЕЗЕРВ
+              </td>                              
+                )}
+                <td className={cellClass}>{r.sequenceNumber || i + 1}</td>
+                <td className={cellClass}>{r.garageNumber || "—"}</td>
+                <td className={cellClass}>{r.govNumber || "—"}</td>
+                <td className={cellClass}>
+                  {formatShortName(r.driver?.fullName || "—")}
+                  {isGoneToRoute && (
+                    <span className="ml-2 text-xs text-blue-800 italic">🔁 Назначен на маршрут</span>
+                  )}
+                  {isRemoved && (
+                    <span className="ml-2 text-xs text-red-800 italic">❌ Снят с маршрута</span>
+                  )}
+                </td>
+                <td className={cellClass}>{r.driver?.serviceNumber || "—"}</td>
+                <td className={cellClass}>
+                  <input
+                    type="text"
+                    value={fuelNorms[key] ?? ""}
+                    onChange={(e) =>
+                      setFuelNorms((prev) => ({
+                        ...prev,
+                        [key]: e.target.value,
+                      }))
+                    }
+                    className="w-16 text-center text-red-600 font-semibold border border-red-300 rounded px-1 py-[2px] outline-none focus:ring-1 focus:ring-red-400"
+                    placeholder="—"
+                    disabled={readOnly}
+                  />
+                </td>
+                <td className={cellClass}>—</td>
+                <td className={cellClass}>
                   {isReplacedAfter && (
-                      <span className="ml-2 text-xs text-rose-700 italic">🔄 Снят с маршрута</span>
-                    )}
-                    <InfoCell
-                      initialValue={r.additionalInfo ?? ""}
-                      assignmentId={r.dispatchBusLineId}
-                      date={displayDate}
-                      type="reserve"
-                      busId={null}
-                      driverId={r.driver?.id ?? null}
-                      textClassName="text-red-600 font-semibold"
-                      readOnly={readOnly}
-                    />
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                    <span className="ml-2 text-xs text-rose-700 italic">🔄 Снят с маршрута</span>
+                  )}
+                  <InfoCell
+                    initialValue={r.additionalInfo ?? ""}
+                    assignmentId={r.dispatchBusLineId}
+                    date={displayDate}
+                    type="reserve"
+                    busId={null}
+                    driverId={r.driver?.id ?? null}
+                    textClassName="text-red-600 font-semibold"
+                    readOnly={readOnly}
+                  />
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }

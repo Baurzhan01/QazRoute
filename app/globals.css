@@ -223,4 +223,16 @@ body, table, th, td {
   width: 100% !important;
 }
 
+.print-export td.special-bg {
+  background-color: #fde047 !important; /* yellow-300 */
+}
+.print-export td.special-order-bg {
+  background-color: #bef264 !important; /* lime-300 */
+}
+.print-export td.special-route-bg {
+  background-color: #e0f2fe !important; /* голубой цвет маршрута */
+}
+.print-export td.special-repair-bg {
+  background-color: #fca5a5 !important; /* красный bg, примерно как red-300 */
+}
 

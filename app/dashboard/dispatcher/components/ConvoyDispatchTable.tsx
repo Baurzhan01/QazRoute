@@ -9,6 +9,8 @@ import DriverStatusTables from "./DriverStatusTables"
 import MaintenanceSummary from "./MaintenanceSummary"
 import ViewDriverDialog from "@/app/dashboard/fleet-manager/drivers/components/ViewDriverDialog"
 import ReplaceAssignmentModal from "./ReplaceAssignmentModal"
+import OrderTable from "./OrderTable"
+import ScheduledRepairTable from "./ScheduledRepairTable"
 import { useDispatchTableState } from "../hooks/useDispatchTableState"
 import { driverService } from "@/service/driverService"
 import { releasePlanService } from "@/service/releasePlanService"
@@ -155,6 +157,12 @@ export default function ConvoyDispatchTable(props: ConvoyDispatchTableProps) {
           />
         ))
       )}
+          <OrderTable
+            orders={data.orders}
+            displayDate={dateObj}
+            fuelNorms={fuelNorms}
+            setFuelNorms={setFuelNorms}
+          />
       {data.reserveAssignments.length > 0 && (
         <div ref={reserveRef}>
           <ReserveTable
@@ -166,6 +174,8 @@ export default function ConvoyDispatchTable(props: ConvoyDispatchTableProps) {
           />
         </div>
       )}
+
+      <ScheduledRepairTable repairs={data.scheduledRepairs} />
 
       <MaintenanceSummary
         repairBuses={data.repairBuses}

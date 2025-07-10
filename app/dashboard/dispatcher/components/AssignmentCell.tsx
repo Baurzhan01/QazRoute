@@ -7,9 +7,10 @@ interface AssignmentCellProps {
   assignment: RouteAssignment
   date: Date
   readOnly: boolean
+  textClassName?: string // ✅ добавить
 }
 
-export default function AssignmentCell({ assignment, date, readOnly }: AssignmentCellProps) {
+export default function AssignmentCell({ assignment, date, readOnly,textClassName }: AssignmentCellProps) {
   const {
     additionalInfo,
     dispatchBusLineId,
@@ -47,7 +48,7 @@ export default function AssignmentCell({ assignment, date, readOnly }: Assignmen
         type="route"
         busId={bus?.id ?? null}
         driverId={driver?.id ?? null}
-        textClassName="text-red-600 font-semibold"
+        textClassName={textClassName} 
         readOnly={readOnly}
       />
 

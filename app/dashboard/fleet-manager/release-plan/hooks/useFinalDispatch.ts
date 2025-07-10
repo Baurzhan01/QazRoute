@@ -209,6 +209,8 @@ export function useFinalDispatch(
           DayOff: weekendDriversRes.value?.map(d => formatDriverName(d.fullName, d.serviceNumber)) ?? [],
           total: undefined,
         },
+        orders: orderAssignments,
+        scheduledRepairs: [], // пока пусть будет пустой, если не подключал usePlannedRepairs
       }
 
       const uniqueDrivers = new Set<string>()

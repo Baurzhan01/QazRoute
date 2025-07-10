@@ -2,6 +2,8 @@
 
 import type { DisplayDriver } from "@/types/driver.types"
 import type { DisplayBus } from "@/types/bus.types"
+import type { RepairRecord } from "../app/dashboard/repairs/planned/hooks/usePlannedRepairs"
+
 
 export type ValidDayType = "workday" | "saturday" | "sunday" | "holiday"
 
@@ -27,6 +29,7 @@ export interface OrderAssignment {
     serviceNumber: string
   }
   additionalInfo: string
+  
 }
 
 // 📋 Общая дьюти разнарядка (Duty)
@@ -259,6 +262,8 @@ export interface FinalDispatchData {
   buses?: DisplayBus[]
   drivers?: DisplayDriver[]
   reserve?: ReserveReplacementCandidate[]
+  orders: OrderAssignment[] // ✅ правильно // или OrderAssignment[] если у тебя он отдельно
+  scheduledRepairs: RepairRecord[]
 }
 
 export interface ReserveReplacementCandidate {
@@ -334,6 +339,7 @@ export interface ReserveAssignment {
   scheduleTime: string
   status?: DispatchBusLineStatus
   isReplace:boolean
+  time?: string | null  // ← вот это важно!
   additionalInfo?: string
   shift2Driver?: {
     id: string

@@ -10,11 +10,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Trash2, Check, Pencil } from "lucide-react"
+import { MoreHorizontal, Trash2, Check, Pencil, ClipboardCheck } from "lucide-react"
 import { routeExitRepairService } from "@/service/routeExitRepairService"
 import { cn } from "@/lib/utils"
 import type { RouteExitRepairDto } from "@/types/routeExitRepair.types"
-import EditRepairModal from "./EditRepairModal" // 👈 убедись, что путь корректный
+import EditRepairModal from "./EditRepairModal"
 
 interface UnscheduledRepairTableProps {
   repairs: RouteExitRepairDto[]
@@ -57,15 +57,58 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
     else toast({ title: "Ошибка при завершении", description: result.error || "", variant: "destructive" })
   }
 
+  const handleReady = async (repair: RouteExitRepairDto) => {
+    setLoadingId(repair.id)
+  
+    const result = await routeExitRepairService.update(repair.id, {
+      ...repair,
+      isReady: true,
+      text: `${repair.text?.trim() || ""}${repair.text?.trim()?.endsWith(".") ? "" : "."} <span style="color: black;">Готово!</span>`
+    })
+  
+    setLoadingId(null)
+  
+    if (result.isSuccess) {
+      onRefresh?.()
+    } else {
+      toast({
+        title: "Ошибка при отметке готовности",
+        description: result.error || "",
+        variant: "destructive",
+      })
+    }
+  }  
+
+  const handleUnready = async (repair: RouteExitRepairDto) => {
+    setLoadingId(repair.id)
+  
+    const result = await routeExitRepairService.update(repair.id, {
+      ...repair,
+      isReady: false,
+      // можно удалить "Готово!" из текста, если нужно:
+      text: repair.text?.replace(/\.?\s*<span[^>]*>Готово!<\/span>/i, "") ?? "",
+    })
+  
+    setLoadingId(null)
+  
+    if (result.isSuccess) {
+      onRefresh?.()
+    } else {
+      toast({
+        title: "Ошибка при отмене готовности",
+        description: result.error || "",
+        variant: "destructive",
+      })
+    }
+  }
+  
   const handleDelete = async (repairId: string) => {
     if (!confirm("Удалить запись о ремонте?")) return
-
     const result = await routeExitRepairService.delete(repairId)
     if (result.isSuccess) onRefresh?.()
     else toast({ title: "Ошибка при удалении", description: result.error || "", variant: "destructive" })
   }
 
-  // Правильное определение повторных заездов
   const seenBusIds = new Set<string>()
   const repeatEntries = new Set<string>()
 
@@ -107,8 +150,7 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
             const rowClass = cn(
               "border",
               r.andTime ? "bg-green-100" : isLongTerm ? "bg-red-100" : isRepeat ? "bg-yellow-100" : "",
-              r.andTime && isRepeat && "ring-2 ring-yellow-400",
-              r.andTime && isLongTerm && "ring-2 ring-red-400"
+              r.isReady && "bg-sky-100"
             )
 
             return (
@@ -118,18 +160,28 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
                 <td className="p-2 border text-center">{r.startTime?.slice(0, 5) || "-"}</td>
                 <td className="p-2 border text-center">{r.convoy?.number ? `№${r.convoy.number}` : "-"}</td>
                 <td className="p-2 border text-center">
-                  {r.route?.number ? `${r.route.number}${r.busLine?.number ? ` / ${r.busLine.number}` : ""}` : "-"}
+                  {r.route?.number
+                    ? `${r.route.number}${r.busLine?.number ? ` / ${r.busLine.number}` : ""}`
+                    : r.reserveId
+                    ? "С резерва"
+                    : r.repairId && !r.dispatchBusLineId
+                    ? "Плановый ремонт"
+                    : r.repairId
+                    ? "С заказа"
+                    : "-"}
                 </td>
                 <td className="p-2 border">
-                  {r.driver?.fullName ? `${shortenName(r.driver.fullName)} (${r.driver.serviceNumber})` : "-"}
+                  {r.driver?.fullName
+                    ? `${shortenName(r.driver.fullName)} (${r.driver.serviceNumber})`
+                    : "-"}
                 </td>
                 <td className="p-2 border text-center">
-                  {r.bus?.govNumber && r.bus?.garageNumber ? `${r.bus.govNumber} (${r.bus.garageNumber})` : "-"}
+                  {r.bus?.govNumber && r.bus?.garageNumber
+                    ? `${r.bus.govNumber} (${r.bus.garageNumber})`
+                    : "-"}
                 </td>
                 <td className="p-2 border text-red-600 font-medium">
-                  {r.text}
-                  {isRepeat && <span className="text-xs text-yellow-600"> • Повторный заезд</span>}
-                  {isLongTerm && <span className="text-xs text-red-600"> • Длительный ремонт</span>}
+                  <div dangerouslySetInnerHTML={{ __html: r.text || "–" }} />
                 </td>
                 <td className="p-2 border text-center">{r.startRepairTime?.slice(0, 5) || "–"}</td>
                 <td className="p-2 border text-center">{r.endRepairTime?.slice(0, 5) || "–"}</td>
@@ -153,6 +205,23 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
                           Выезд на линию
                         </DropdownMenuItem>
                       )}
+                      {r.isReady ? (
+                          <DropdownMenuItem
+                            onClick={() => handleUnready(r)}
+                            disabled={loadingId === r.id}
+                          >
+                            <ClipboardCheck className="w-4 h-4 mr-2 text-yellow-600" />
+                            Отменить готовность
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem
+                            onClick={() => handleReady(r)}
+                            disabled={loadingId === r.id}
+                          >
+                            <ClipboardCheck className="w-4 h-4 mr-2 text-sky-600" />
+                            Готово
+                          </DropdownMenuItem>
+                        )}
                       <DropdownMenuItem onClick={() => setEditRepair(r)}>
                         <Pencil className="w-4 h-4 mr-2 text-blue-600" />
                         Редактировать

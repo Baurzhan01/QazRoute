@@ -1,6 +1,7 @@
 "use client"
 
 import type { RouteExitRepairDto } from "@/types/routeExitRepair.types"
+import { cn } from "@/lib/utils"
 
 interface Props {
   repairs: RouteExitRepairDto[]
@@ -13,6 +14,18 @@ function shortenName(fullName: string): string {
 }
 
 export default function ConvoyUnplannedRepairTable({ repairs }: Props) {
+  const seenBusIds = new Set<string>()
+  const repeatEntryIds = new Set<string>()
+
+  repairs.forEach((r) => {
+    const busId = r.bus?.id
+    if (!busId) return
+    if (seenBusIds.has(busId)) {
+      repeatEntryIds.add(r.id)
+    }
+    seenBusIds.add(busId)
+  })
+
   return (
     <div className="overflow-x-auto max-h-[70vh]">
       <table className="w-full text-sm border">
@@ -30,29 +43,60 @@ export default function ConvoyUnplannedRepairTable({ repairs }: Props) {
           </tr>
         </thead>
         <tbody>
-          {repairs.map((r, idx) => (
-            <tr key={r.id} className={`border ${r.endRepairTime ? "bg-green-100" : ""}`}>
-              <td className="p-2 border text-center">{idx + 1}</td>
-              <td className="p-2 border text-center">{r.route?.number ?? "–"}</td>
-              <td className="p-2 border">
-                {r.driver
-                  ? `${shortenName(r.driver.fullName)} (${r.driver.serviceNumber})`
-                  : "–"}
-              </td>
-              <td className="p-2 border text-center">
-                {r.bus ? `${r.bus.govNumber} (${r.bus.garageNumber})` : "–"}
-              </td>
-              <td className="p-2 border text-red-600 font-medium">{r.text || "–"}</td>
-              <td className="p-2 border text-center">
-                {r.startRepairTime ? r.startRepairTime.slice(0, 5) : "–"}
-              </td>
-              <td className="p-2 border text-center">
-                {r.endRepairTime ? r.endRepairTime.slice(0, 5) : "–"}
-              </td>
-              <td className="p-2 border text-center">{r.endRepairDate || "–"}</td>
-              <td className="p-2 border text-center">{r.mileage != null ? r.mileage : "–"}</td>
-            </tr>
-          ))}
+          {repairs.map((r, idx) => {
+            const isRepeat = repeatEntryIds.has(r.id)
+            const isLongTerm = r.repairType === "LongTerm"
+            const isReady = r.isReady
+
+            const rowClass = cn(
+              "border",
+              r.endRepairTime && "bg-green-100",
+              isLongTerm && "bg-red-100",
+              isRepeat && "bg-yellow-100",
+              isReady && "bg-sky-100"
+            )
+
+            return (
+              <tr key={r.id} className={rowClass}>
+                <td className="p-2 border text-center">{idx + 1}</td>
+                <td className="p-2 border text-center">
+                  {r.route?.number
+                    ? `${r.route.number}${r.busLine?.number ? ` / ${r.busLine.number}` : ""}`
+                    : r.reserveId
+                    ? "С резерва"
+                    : r.repairId && !r.dispatchBusLineId
+                    ? "Плановый ремонт"
+                    : r.repairId
+                    ? "С заказа"
+                    : "–"}
+                </td>
+                <td className="p-2 border">
+                  {r.driver
+                    ? `${shortenName(r.driver.fullName)} (${r.driver.serviceNumber})`
+                    : "–"}
+                </td>
+                <td className="p-2 border text-center">
+                  {r.bus
+                    ? `${r.bus.govNumber} (${r.bus.garageNumber})`
+                    : "–"}
+                </td>
+                <td className="p-2 border text-red-600 font-medium">
+                  <div dangerouslySetInnerHTML={{ __html: r.text || "–" }} />
+                  {isReady && <div className="text-xs text-sky-700">• Отмечено как готово</div>}
+                  {isRepeat && <div className="text-xs text-yellow-700">• Повторный заезд</div>}
+                  {isLongTerm && <div className="text-xs text-red-700">• Длительный ремонт</div>}
+                </td>
+                <td className="p-2 border text-center">
+                  {r.startRepairTime ? r.startRepairTime.slice(0, 5) : "–"}
+                </td>
+                <td className="p-2 border text-center">
+                  {r.endRepairTime ? r.endRepairTime.slice(0, 5) : "–"}
+                </td>
+                <td className="p-2 border text-center">{r.endRepairDate || "–"}</td>
+                <td className="p-2 border text-center">{r.mileage != null ? r.mileage : "–"}</td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
 

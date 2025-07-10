@@ -1,4 +1,3 @@
-// components/RouteSection.tsx
 "use client"
 
 import Link from "next/link"
@@ -30,55 +29,63 @@ export default function RouteSection({
   const hasSecondShift = sortedAssignments.some(a => a.shift2Driver)
 
   return (
-    <div className="flex mt-6 rounded shadow border overflow-hidden">
-      {disableLinks ? (
-        <div className="bg-sky-100 text-black flex flex-col items-center justify-center px-6 py-2 min-w-[110px] opacity-50">
-          <div className="text-5xl font-extrabold leading-none">{group.routeNumber}</div>
-          <div className="text-base font-semibold mt-1 uppercase text-gray-800">Маршрут</div>
-        </div>
-      ) : (
-        <Link
-          href={`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${date}/route/${group.routeId}?from=final-dispatch`}
-          className="bg-sky-100 text-black flex flex-col items-center justify-center px-6 py-2 min-w-[110px] hover:bg-sky-200 transition"
-        >
-          <div className="text-5xl font-extrabold leading-none">{group.routeNumber}</div>
-          <div className="text-base font-semibold mt-1 uppercase text-gray-800">Маршрут</div>
-        </Link>
-      )}
-      <div className="flex-1">
-        <table className="w-full border text-sm">
-          <thead className="bg-sky-100 text-sky-900">
-            <tr>
-              <th className="border px-1 text-xl">№</th>
-              <th className="border px-1 text-xl">Гар. номер</th>
-              <th className="border px-1 text-xl">Гос. номер</th>
-              <th className="border px-1 text-xl">ФИО</th>
-              <th className="border px-1 text-xl">Таб. номер</th>
-              <th className="border px-1 text-xl">Время выхода</th>
-              <th className="border px-2 text-xl w-[800px]">Доп. информация</th>
-              {hasSecondShift && (
-                <>
-                  <th className="border px-1 text-xl">Пересменка</th>
-                  <th className="border px-1 text-xl">ФИО</th>
-                  <th className="border px-1 text-xl">Таб. номер</th>
-                </>
+    <div className="overflow-auto rounded-md border print-export">
+      <table className="w-full text-sm text-gray-800 border-collapse">
+        <thead className="bg-sky-100 text-sky-900">
+          <tr>
+            <th className="p-2 border text-center">Маршрут</th>
+            <th className="p-2 border text-center">№</th>
+            <th className="p-2 border text-center">Гар. номер</th>
+            <th className="p-2 border text-center">Гос. номер</th>
+            <th className="p-2 border text-center">ФИО</th>
+            <th className="p-2 border text-center">Таб. номер</th>
+            <th className="p-2 border text-center">Время выхода</th>
+            <th className="p-2 border text-center w-[800px]">Доп. информация</th>
+            {hasSecondShift && (
+              <>
+                <th className="p-2 border text-center">Пересменка</th>
+                <th className="p-2 border text-center">ФИО</th>
+                <th className="p-2 border text-center">Таб. номер</th>
+              </>
+            )}
+            <th className="p-2 border text-center">Конец</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sortedAssignments.map((a: RouteAssignment, i: number) => (
+            <tr key={a.dispatchBusLineId || `${group.routeId}-${i}`}>
+              {/* Первая колонка: ячейка с маршрутами — объединена по rowspan */}
+              {i === 0 && (
+                <td
+                className="p-2 border text-center text-sm font-bold align-middle bg-[#e0f2fe] special-route-bg"
+                rowSpan={sortedAssignments.length}
+                style={{ minWidth: '120px', verticalAlign: 'middle' }}
+              >
+                {disableLinks ? (
+                  <div className="w-full h-full flex items-center justify-center px-2 py-6 bg-sky-100 text-4xl font-bold font-semibold text-center break-words whitespace-pre-wrap">
+                    {group.routeNumber}
+                  </div>
+                ) : (
+                  <Link href={`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${date}/route/${group.routeId}?from=final-dispatch`}>
+                    <div className="w-full h-full flex items-center justify-center px-2 py-6 bg-sky-100 hover:bg-sky-200 text-lg font-semibold text-center break-words whitespace-pre-wrap transition">
+                      {group.routeNumber}
+                    </div>
+                  </Link>
+                )}
+              </td>                   
               )}
-              <th className="border px-1 text-xl">Конец</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedAssignments.map((a: RouteAssignment, i: number) => (
+
               <AssignmentRow
-                key={a.dispatchBusLineId || `${group.routeId}-${i}`}
                 a={a}
                 i={i}
                 readOnlyMode={readOnlyMode}
                 displayDate={displayDate}
+                renderWithoutRoute
               />
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

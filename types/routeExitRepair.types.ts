@@ -6,6 +6,7 @@ export interface CreateRouteExitRepairDto {
   andTime: string | null
   dispatchBusLineId?: string | null // ← теперь опционально
   reserveId?: string | null         // ← новое поле
+  repairId?: string | null
   isExist: boolean
   text: string
   mileage: number
@@ -37,7 +38,9 @@ export interface RouteExitRepairDto {
   text: string
   mileage: number | null
   isExist: boolean
+  isReady: boolean
   dispatchBusLineId: string | null
+  repairId?: string | null
   reserveId: string | null
   repairType: RouteExitRepairStatus
 

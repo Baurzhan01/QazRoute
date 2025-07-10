@@ -43,7 +43,14 @@ export const releasePlanService = {
       throw new Error(error.response?.data?.error || "Не удалось создать разнарядку")
     }
   },  
-  
+  markOrderAsReleased: async (orderId: string, time: string | null): Promise<void> => {
+    const url = `/dispatches/order/start/${orderId}`
+    await apiClient.put(url, null, {
+      params: {
+        time: time ?? null
+      }
+    })
+  },  
 
   replaceAssignment: async (
     dispatchBusLineId: string,
@@ -249,6 +256,8 @@ export const releasePlanService = {
     const { data } = await apiClient.get(`/dispatches/reserve/${date}/all`)
     return data
   },
+
+  
 
   updateDispatchStatus(dispatchId: string, status: DispatchBusLineStatus, isRealsed: boolean) {
     const statusString = statusEnumMap[status];

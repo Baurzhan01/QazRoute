@@ -311,7 +311,7 @@ interface ReplaceAssignmentModalProps {
                         id: r.busId,
                         garageNumber: r.garageNumber,
                         govNumber: r.govNumber,
-                        busStatus: "Reserve",
+                        status: "Reserve",
                         })
                     }}
                     className={`cursor-pointer hover:bg-sky-50 ${

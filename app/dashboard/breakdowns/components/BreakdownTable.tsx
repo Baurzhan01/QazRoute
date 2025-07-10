@@ -14,7 +14,6 @@ function shortenName(fullName: string): string {
 }
 
 export default function BreakdownTable({ repairs }: BreakdownTableProps) {
-  // Правильное определение повторных заездов
   const seenBusIds = new Set<string>()
   const repeatEntryIds = new Set<string>()
 
@@ -47,25 +46,31 @@ export default function BreakdownTable({ repairs }: BreakdownTableProps) {
           {repairs.map((r, idx) => {
             const isRepeat = repeatEntryIds.has(r.id)
             const isLongTerm = r.repairType === "LongTerm"
+            const isReady = r.isReady
 
-            // Заливка строки по логике
             const rowClass = cn(
               "border",
               r.endRepairTime && "bg-green-100",
               isLongTerm && "bg-red-100",
-              isRepeat && "bg-yellow-100"
+              isRepeat && "bg-yellow-100",
+              isReady && "bg-sky-100"
             )
-
-            const reasonLabels = []
-            if (isLongTerm) reasonLabels.push("• Длительный ремонт")
-            if (isRepeat) reasonLabels.push("• Повторный заезд")
-            const reason = `${r.text || "–"} ${reasonLabels.join(" ")}`.trim()
 
             return (
               <tr key={r.id} className={rowClass}>
                 <td className="p-2 border text-center">{idx + 1}</td>
                 <td className="p-2 border text-center">{r.startDate || "–"}</td>
-                <td className="p-2 border text-center">{r.route?.number ?? "–"}</td>
+                <td className="p-2 border text-center">
+                  {r.route?.number
+                    ? `${r.route.number}${r.busLine?.number ? ` / ${r.busLine.number}` : ""}`
+                    : r.reserveId
+                    ? "С резерва"
+                    : r.repairId && !r.dispatchBusLineId
+                    ? "Плановый ремонт"
+                    : r.repairId
+                    ? "С заказа"
+                    : "–"}
+                </td>
                 <td className="p-2 border">
                   {r.driver
                     ? `${shortenName(r.driver.fullName)} (${r.driver.serviceNumber})`
@@ -76,7 +81,11 @@ export default function BreakdownTable({ repairs }: BreakdownTableProps) {
                     ? `${r.bus.govNumber} (${r.bus.garageNumber})`
                     : "–"}
                 </td>
-                <td className="p-2 border text-red-600 font-medium">{reason}</td>
+                <td className="p-2 border text-red-600 font-medium">
+                  <div dangerouslySetInnerHTML={{ __html: r.text || "–" }} />
+                  {isRepeat && <div className="text-xs text-yellow-700">• Повторный заезд</div>}
+                  {isLongTerm && <div className="text-xs text-red-700">• Длительный ремонт</div>}
+                </td>
                 <td className="p-2 border text-center">
                   {r.startRepairTime ? r.startRepairTime.slice(0, 5) : "–"}
                 </td>

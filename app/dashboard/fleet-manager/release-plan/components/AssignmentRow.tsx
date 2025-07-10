@@ -9,6 +9,7 @@ interface AssignmentRowProps {
   i: number
   readOnlyMode?: boolean
   displayDate: Date
+  renderWithoutRoute?: boolean
 }
 
 function formatShortName(fullName?: string, serviceNumber?: string): string {
@@ -21,7 +22,7 @@ function formatShortName(fullName?: string, serviceNumber?: string): string {
 
 function formatTime(time?: string): string {
   if (!time || time === "00:00:00") return "—"
-  return time.slice(0, 5) // выводит только часы и минуты
+  return time.slice(0, 5)
 }
 
 const AssignmentRow = memo(function AssignmentRow({ a, i, readOnlyMode, displayDate }: AssignmentRowProps) {
@@ -29,14 +30,14 @@ const AssignmentRow = memo(function AssignmentRow({ a, i, readOnlyMode, displayD
   const shift2DriverName = formatShortName(a.shift2Driver?.fullName, a.shift2Driver?.serviceNumber)
 
   return (
-    <tr className="even:bg-gray-50 font-medium text-xl text-center">
-      <td className="border px-1">{a.busLineNumber ?? "—"}</td>
-      <td className="border px-1">{a.garageNumber}</td>
-      <td className="border px-1">{a.stateNumber}</td>
-      <td className="border px-1 text-left">{primaryDriverName}</td>
-      <td className="border px-1">{a.driver?.serviceNumber ?? "—"}</td>
-      <td className="border px-1">{formatTime(a.departureTime)}</td>
-      <td className="border px-1 text-left">
+    <>
+      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">{a.busLineNumber ?? "—"}</td>
+      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">{a.garageNumber}</td>
+      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">{a.stateNumber}</td>
+      <td className="border px-1 text-left text-lg whitespace-pre-wrap break-words">{primaryDriverName}</td>
+      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">{a.driver?.serviceNumber ?? "—"}</td>
+      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">{formatTime(a.departureTime)}</td>
+      <td className="border px-1 text-left text-lg whitespace-pre-wrap break-words">
         <PopoverEditor
           initialValue={a.additionalInfo ?? ""}
           assignmentId={a.dispatchBusLineId}
@@ -47,17 +48,16 @@ const AssignmentRow = memo(function AssignmentRow({ a, i, readOnlyMode, displayD
           readOnly={readOnlyMode}
         />
       </td>
-
       {a.shift2Driver && (
         <>
-          <td className="border px-1 text-left">{a.shift2AdditionalInfo ?? "—"}</td>
-          <td className="border px-1 text-left">{shift2DriverName}</td>
-          <td className="border px-1">{a.shift2Driver?.serviceNumber ?? "—"}</td>
+          <td className="border px-1 text-left text-lg whitespace-pre-wrap break-words">{a.shift2AdditionalInfo ?? "—"}</td>
+          <td className="border px-1 text-left text-lg whitespace-pre-wrap break-words">{shift2DriverName}</td>
+          <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">{a.shift2Driver?.serviceNumber ?? "—"}</td>
         </>
       )}
 
-      <td className="border px-1">{formatTime(a.endTime)}</td>
-    </tr>
+      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">{formatTime(a.endTime)}</td>
+    </>
   )
 })
 

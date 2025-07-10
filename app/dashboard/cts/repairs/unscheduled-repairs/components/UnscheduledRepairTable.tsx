@@ -30,7 +30,6 @@ function shortenName(fullName: string): string {
 export default function UnscheduledRepairTable({ repairs, onRefresh }: UnscheduledRepairTableProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
-  // Автообновление
   useEffect(() => {
     if (!onRefresh) return
     const interval = setInterval(() => onRefresh(), 5000)
@@ -63,7 +62,6 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
     res.isSuccess ? onRefresh?.() : toast({ title: "Ошибка", description: res.error || "Не удалось изменить статус" })
   }
 
-  // Группировка записей по bus.id (для отметки повторных)
   const seenBusIds = new Set<string>()
 
   return (
@@ -102,16 +100,16 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
             const busId = r.bus?.id
             const isLong = r.repairType === "LongTerm"
             const isRepeat = !!busId && seenBusIds.has(busId)
-            if (busId) seenBusIds.add(busId)
 
-            return (
+            const row = (
               <tr
                 key={r.id}
                 className={cn(
                   "border",
                   r.andTime && "bg-green-100",
                   isRepeat && "bg-yellow-100",
-                  isLong && "bg-red-100"
+                  isLong && "bg-red-100",
+                  r.isReady && "bg-sky-100"
                 )}
               >
                 <td className="p-2 border text-center">{idx + 1}</td>
@@ -119,7 +117,15 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
                 <td className="p-2 border text-center">{r.startTime?.slice(0, 5) || "-"}</td>
                 <td className="p-2 border text-center">{r.convoy?.number ? `№${r.convoy.number}` : "-"}</td>
                 <td className="p-2 border text-center">
-                  {r.route?.number ? `${r.route.number}${r.busLine?.number ? ` / ${r.busLine.number}` : ""}` : "-"}
+                  {r.route?.number
+                    ? `${r.route.number}${r.busLine?.number ? ` / ${r.busLine.number}` : ""}`
+                    : r.reserveId
+                    ? "С резерва"
+                    : r.repairId && !r.dispatchBusLineId
+                    ? "Плановый ремонт"
+                    : r.repairId
+                    ? "С заказа"
+                    : "–"}
                 </td>
                 <td className="p-2 border">
                   {r.driver?.fullName ? `${shortenName(r.driver.fullName)} (${r.driver.serviceNumber})` : "-"}
@@ -128,9 +134,9 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
                   {r.bus?.govNumber && r.bus?.garageNumber ? `${r.bus.govNumber} (${r.bus.garageNumber})` : "-"}
                 </td>
                 <td className="p-2 border text-red-600 font-medium">
-                  {r.text}
-                  {isRepeat && <span className="text-xs text-yellow-700"> • Повторный заезд</span>}
-                  {isLong && <span className="text-xs text-red-700"> • Длительный ремонт</span>}
+                  <div dangerouslySetInnerHTML={{ __html: r.text || "–" }} />
+                  {isRepeat && <div className="text-xs text-yellow-700">• Повторный заезд</div>}
+                  {isLong && <div className="text-xs text-red-700">• Длительный ремонт</div>}
                 </td>
                 <td className="p-2 border text-center">{r.startRepairTime?.slice(0, 5) || "–"}</td>
                 <td className="p-2 border text-center">{r.endRepairTime?.slice(0, 5) || "–"}</td>
@@ -178,6 +184,10 @@ export default function UnscheduledRepairTable({ repairs, onRefresh }: Unschedul
                 </td>
               </tr>
             )
+
+            if (busId) seenBusIds.add(busId)
+
+            return row
           })}
         </tbody>
       </table>

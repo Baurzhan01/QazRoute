@@ -23,13 +23,23 @@ import { releasePlanService } from "@/service/releasePlanService"
 import { routeExitRepairService } from "@/service/routeExitRepairService"
 import { busService } from "@/service/busService"
 import type { FinalDispatchForRepair, ReserveAssignmentUI } from "@/types/releasePlanTypes"
+import type { RepairDto } from "@/types/repair.types"
 import type { RouteExitRepairDto } from "@/types/routeExitRepair.types"
+import { repairService } from "@/service/repairService"
 
 interface AssignUnplannedRepairModalProps {
   open: boolean
   onClose: () => void
   date: Date
   onSuccess?: () => void
+}
+
+type EnrichedReserveAssignment = ReserveAssignmentUI & {
+  driverId?: string
+  driverFullName?: string
+  govNumber?: string
+  garageNumber?: string
+  busId?: string
 }
 
 interface DisplayAssignment {
@@ -61,6 +71,7 @@ export default function AssignUnplannedRepairModal({
   const [isLoading, setIsLoading] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
   const [replaceDialogOpen, setReplaceDialogOpen] = useState(false)
+  const [scheduledRepairs, setScheduledRepairs] = useState<RepairDto[]>([])
 
   const auth = getAuthData()
   const depotId = auth?.busDepotId ?? ""
@@ -87,16 +98,44 @@ export default function AssignUnplannedRepairModal({
 
     const fetchAll = async () => {
       setIsLoading(true)
-
-      const [dispatchRes, repairsRes] = await Promise.all([
+    
+      const [dispatchRes, repairsRes, scheduledRepairsRes] = await Promise.all([
         releasePlanService.getFullDispatchByDate(formattedDate, convoyId),
         routeExitRepairService.getByDate(formattedDate, depotId),
+        repairService.getRepairsByDate(formattedDate, convoyId),
       ])
-
+    
       const items: DisplayAssignment[] = []
-
+    
+      // 🛠 Плановый ремонт
+      let scheduledRepairItems: DisplayAssignment[] = []
+      if (scheduledRepairsRes.isSuccess && scheduledRepairsRes.value) {
+        setScheduledRepairs(scheduledRepairsRes.value)
+    
+        scheduledRepairItems = scheduledRepairsRes.value
+          .filter(r => r.bus?.id)
+          .map((r) => ({
+            dispatchBusLineId: `scheduled-${r.id}`,
+            busId: r.bus!.id,
+            driverId: r.driver?.id,
+            bus: {
+              id: r.bus!.id,
+              govNumber: r.bus!.govNumber,
+              garageNumber: r.bus!.garageNumber,
+            },
+            driver: r.driver ?? {
+              id: "",
+              fullName: "–",
+            },
+            routeNumber: "Плановый ремонт",
+            isReserve: false,
+          }))
+      }
+    
+      // 📋 Выходы по маршрутам и резерв
       if (dispatchRes.isSuccess && dispatchRes.value) {
         const dispatch = dispatchRes.value as unknown as FinalDispatchForRepair
+    
         const busLineItems = dispatch.routes?.flatMap((route) =>
           route.busLines?.map((line) => ({
             dispatchBusLineId: line.dispatchBusLineId,
@@ -107,11 +146,11 @@ export default function AssignUnplannedRepairModal({
             routeNumber: route.routeNumber,
           })) ?? []
         ) ?? []
-
-        const reserveItems = dispatch.reserves?.map((r: ReserveAssignmentUI) => ({
+    
+        const reserveItems = (dispatch.reserves as EnrichedReserveAssignment[]).map((r) => ({
           dispatchBusLineId: r.id,
           busId: r.busId ?? undefined,
-          driverId: r.driver?.id ?? undefined,
+          driverId: r.driverId ?? undefined,
           bus: r.busId
             ? {
                 id: r.busId,
@@ -119,27 +158,27 @@ export default function AssignUnplannedRepairModal({
                 garageNumber: r.garageNumber,
               }
             : undefined,
-          driver: r.driver
-            ? {
-                id: r.driver.id,
-                fullName: r.driver.fullName,
-              }
-            : undefined,
+          driver: {
+            id: r.driverId ?? "",
+            fullName: r.driverFullName ?? "–",
+          },
           routeNumber: r.status === "Reserved" ? "С резерва" : "С заказа",
           isReserve: true,
           reserveStatus: r.status,
-        })) ?? []
-
-        items.push(...busLineItems, ...reserveItems)
+        }))
+    
+        items.push(...busLineItems, ...reserveItems, ...scheduledRepairItems)
       }
-
+    
+      // 🧰 Уже назначенные ремонты
       if (repairsRes.isSuccess && repairsRes.value) {
         setRepairs(repairsRes.value)
       }
-
+    
       setDispatchItems(items)
       setIsLoading(false)
     }
+    
 
     fetchAll()
   }, [convoyId, formattedDate])
@@ -201,17 +240,29 @@ export default function AssignUnplannedRepairModal({
 
   const handleSave = async () => {
     const selected = dispatchItems.find((i) => i.dispatchBusLineId === selectedItemId)
-    if (!selected) return toast({ title: "Не выбран выход", variant: "destructive" })
-    if (!reason.trim()) return toast({ title: "Укажите причину неисправности", variant: "destructive" })
-    if (!mileage) return toast({ title: "Укажите пробег", variant: "destructive" })
+    if (!selected) {
+      return toast({ title: "Не выбран выход", variant: "destructive" })
+    }
+
+    const isScheduledRepairItem = selected.dispatchBusLineId.startsWith("scheduled-")
+    const matchedRepair = scheduledRepairs.find((r) => r.bus?.id === selected.busId)
+    const repairId = matchedRepair?.id ?? null
+
+    if (!reason.trim()) {
+      return toast({ title: "Укажите причину неисправности", variant: "destructive" })
+    }
+    if (!mileage) {
+      return toast({ title: "Укажите пробег", variant: "destructive" })
+    }
 
     const result = await routeExitRepairService.create({
       startDate: formattedDate,
       startTime: currentTime,
       andDate: null,
       andTime: null,
-      dispatchBusLineId: selected.isReserve ? null : selectedItemId,
-      reserveId: selected.isReserve ? selectedItemId : null,
+      dispatchBusLineId: isScheduledRepairItem ? null : (selected.isReserve ? null : selectedItemId),
+      reserveId: isScheduledRepairItem ? null : (selected.isReserve ? selectedItemId : null),
+      repairId: repairId, // <-- плановый ремонт сюда
       isExist: true,
       text: reason,
       mileage: parseInt(mileage, 10),
@@ -273,6 +324,7 @@ export default function AssignUnplannedRepairModal({
 
                   <ScrollArea className="h-[300px] overflow-y-auto border rounded-md divide-y">
                     {filteredItems.map((item, index) => {
+                      const isFromScheduledRepair = scheduledRepairs.some(r => r.bus?.id === item.busId)
                       const disabled = isAlreadyInRepair(item)
                       return (
                         <div
@@ -319,6 +371,11 @@ export default function AssignUnplannedRepairModal({
                           </div>
                           {selectedItemId === item.dispatchBusLineId && !disabled && (
                             <div className="text-green-600 text-xl font-bold">✅</div>
+                          )}
+                          {isFromScheduledRepair && (
+                            <div className="text-indigo-600 text-xs font-medium ml-4">
+                              🛠 Плановый ремонт
+                            </div>
                           )}
                           {isAlreadyInRepair(item) && (
                             <div className="text-orange-500 text-xs font-medium ml-4">

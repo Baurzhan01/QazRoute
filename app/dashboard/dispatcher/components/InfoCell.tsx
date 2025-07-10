@@ -13,7 +13,7 @@ interface InfoCellProps {
   initialValue: string
   assignmentId: string
   date: Date
-  type?: "route" | "reserve"
+  type?: "route" | "reserve" | "order"
   busId?: string | null
   driverId?: string | null
   readOnly?: boolean
@@ -28,6 +28,7 @@ export function InfoCell({
   busId = null,
   driverId = null,
   readOnly = false,
+  textClassName,
 }: InfoCellProps) {
   const [value, setValue] = useState(initialValue ?? "")
   const [editing, setEditing] = useState(false)
@@ -103,14 +104,13 @@ export function InfoCell({
   if (readOnly && !editing) {
     return (
       <span
-        className={`block text-xs px-1 py-0.5 rounded`}
-        style={{ color: textColor }}
+        className={`block px-1 py-0.5 rounded ${textClassName ?? "text-red-600 font-bold text-[16px]"}`}
       >
         {getIcon()}
         {value || "—"}
       </span>
     )
-  }
+  }  
 
   return (
     <div

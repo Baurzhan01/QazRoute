@@ -19,24 +19,29 @@ function shortenName(fullName: string): string {
 }
 
 export default function UnscheduledRepairTable({ repairs }: UnscheduledRepairTableProps) {
-  const [duplicateBusIds, setDuplicateBusIds] = useState<Set<string>>(new Set())
+  const [repeatRepairIds, setRepeatRepairIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    const countMap = new Map<string, number>()
-
+    const busMap = new Map<string, RouteExitRepairDto[]>()
+  
     repairs.forEach((r) => {
-      const id = r.bus?.id
-      if (id) {
-        countMap.set(id, (countMap.get(id) || 0) + 1)
+      const busId = r.bus?.id
+      if (!busId) return
+      if (!busMap.has(busId)) {
+        busMap.set(busId, [])
+      }
+      busMap.get(busId)!.push(r)
+    })
+  
+    const repeats = new Set<string>()
+    busMap.forEach((entries) => {
+      if (entries.length > 1) {
+        // добавить только 2ю и далее записи
+        entries.slice(1).forEach((r) => repeats.add(r.id))
       }
     })
-
-    const duplicates = new Set<string>()
-    countMap.forEach((count, id) => {
-      if (count > 1) duplicates.add(id)
-    })
-
-    setDuplicateBusIds(duplicates)
+  
+    setRepeatRepairIds(repeats)
   }, [repairs])
 
   return (
@@ -72,19 +77,22 @@ export default function UnscheduledRepairTable({ repairs }: UnscheduledRepairTab
         <tbody>
           {repairs.map((r, idx) => {
             const busId = r.bus?.id
-            const isRepeat = !!busId && duplicateBusIds.has(busId)
+            const isRepeat = repeatRepairIds.has(r.id)
             const isLong = r.repairType === "LongTerm"
             const isFinished = Boolean(r.andTime)
+            const isReady = r.isReady === true
 
             // 🟢 Приоритет цвета: завершено > длительный > повторный
             let rowBgColor = ""
-            if (isFinished) {
-              rowBgColor = "bg-green-100"
-            } else if (isLong) {
-              rowBgColor = "bg-red-100"
-            } else if (isRepeat) {
-              rowBgColor = "bg-yellow-100"
-            }
+              if (isFinished) {
+                rowBgColor = "bg-green-100"
+              } else if (isReady) {
+                rowBgColor = "bg-sky-100"
+              } else if (isLong) {
+                rowBgColor = "bg-red-100"
+              } else if (isRepeat) {
+                rowBgColor = "bg-yellow-100"
+              }
 
             return (
               <tr key={r.id} className={cn("border", rowBgColor)}>
@@ -95,7 +103,13 @@ export default function UnscheduledRepairTable({ repairs }: UnscheduledRepairTab
                 <td className="p-2 border text-center">
                   {r.route?.number
                     ? `${r.route.number}${r.busLine?.number ? ` / ${r.busLine.number}` : ""}`
-                    : "-"}
+                    : r.reserveId
+                    ? "С резерва"
+                    : r.repairId && !r.dispatchBusLineId
+                    ? "Плановый ремонт"
+                    : r.repairId
+                    ? "С заказа"
+                    : "–"}
                 </td>
                 <td className="p-2 border">
                   {r.driver?.fullName
@@ -108,7 +122,7 @@ export default function UnscheduledRepairTable({ repairs }: UnscheduledRepairTab
                     : "-"}
                 </td>
                 <td className="p-2 border text-red-600 font-medium">
-                  {r.text}
+                  <div dangerouslySetInnerHTML={{ __html: r.text || "–" }} />
                   {isRepeat && <span className="text-xs text-yellow-700"> • Повторный заезд</span>}
                   {isLong && <span className="text-xs text-red-700"> • Длительный ремонт</span>}
                 </td>

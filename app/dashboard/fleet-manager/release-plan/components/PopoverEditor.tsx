@@ -48,8 +48,12 @@ export default function PopoverEditor({
   }
 
   if (readOnly) {
-    return <div className="text-xs text-gray-700 px-1 py-0.5">{value || "—"}</div>
-  }
+    return (
+      <div className="w-full h-full flex items-center justify-center text-red-600 font-bold text-lg px-1 py-0.5 break-words whitespace-pre-wrap">
+        {value || "—"}
+      </div>
+    )
+  }  
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
