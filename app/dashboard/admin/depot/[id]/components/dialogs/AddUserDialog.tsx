@@ -35,6 +35,8 @@ const roleOptions = [
   { value: "taskInspector", label: "Отдел таксировки" },
   { value: "CTS", label: "КТС" },
   { value: "MCC", label: "ЦУП" },
+  { value: "Guide", label: "Руководство" },
+  { value: "LRT", label: "CTS" },
   { value: "admin", label: "Админ" },
 ]
 

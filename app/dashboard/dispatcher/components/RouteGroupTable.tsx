@@ -81,7 +81,10 @@ export default function RouteGroupTable({
 
     let newStatus = currentStatus
     let newIsRealsed = checked
-    let newReleasedTime = checked ? new Date().toISOString().slice(11, 19) : ""
+    let newReleasedTime = checked
+  ? new Date().toLocaleTimeString("ru-RU", { hour12: false }).slice(0, 5) + ":00"
+  : ""
+
 
     if (checked) {
       if (currentStatus === DispatchBusLineStatus.Undefined) {

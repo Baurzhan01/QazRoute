@@ -32,7 +32,9 @@ export default function LoginPage() {
       dispatcher: "dispatcher",
       hr: "hr",
       taskInspector: "task-inspector",
-      admin: "admin"
+      admin: "admin",
+      Guide: "guide",
+      LRT: "lrt",
     }
   
     return map[role] || role.toLowerCase()

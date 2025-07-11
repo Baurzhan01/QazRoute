@@ -9,7 +9,8 @@ import {
   Wrench, 
   UserPlus, 
   Shield, 
-  Building2 
+  Building2,
+  UserCog // 👈 добавь сюда
 } from "lucide-react"
 
 import UserCard from "../UserCard"
@@ -32,6 +33,8 @@ const roleDefinitions: { key: UserRole; icon: React.ElementType; label: string }
   { key: "taskInspector", icon: FileText, label: "Отдел таксировки" },
   { key: "CTS", icon: Shield, label: "КТС (Контроль тех. состояния)" },
   { key: "MCC", icon: Building2, label: "ЦУП (Центр управления)" },
+  { key: "LRT", icon: Building2, label: "LRT (Логистика/Ремонт/Транспорт)" },
+  { key: "Guide", icon: UserCog, label: "Руководство" },
 ]
 
 

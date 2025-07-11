@@ -26,11 +26,16 @@ const roleOptions = [
   { value: "seniorDispatcher", label: "Старший диспетчер" },
   { value: "dispatcher", label: "Диспетчер" },
   { value: "mechanic", label: "Механик" },
+  { value: "mechanicOnDuty", label: "Механик на дежурстве" },
   { value: "hr", label: "Отдел кадров" },
   { value: "taskInspector", label: "Отдел таксировки" },
   { value: "CTS", label: "КТС" },
   { value: "MCC", label: "ЦУП" },
+  { value: "Guide", label: "Руководство" },
+  { value: "LRT", label: "CTS" },
+  { value: "admin", label: "Админ" },
 ]
+
 
 interface EditUserDialogProps {
   open: boolean

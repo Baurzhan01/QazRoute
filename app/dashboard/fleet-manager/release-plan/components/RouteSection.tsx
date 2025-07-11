@@ -56,23 +56,31 @@ export default function RouteSection({
             <tr key={a.dispatchBusLineId || `${group.routeId}-${i}`}>
               {/* Первая колонка: ячейка с маршрутами — объединена по rowspan */}
               {i === 0 && (
-                <td
-                className="p-2 border text-center text-sm font-bold align-middle bg-[#e0f2fe] special-route-bg"
-                rowSpan={sortedAssignments.length}
-                style={{ minWidth: '120px', verticalAlign: 'middle' }}
-              >
-                {disableLinks ? (
-                  <div className="w-full h-full flex items-center justify-center px-2 py-6 bg-sky-100 text-4xl font-bold font-semibold text-center break-words whitespace-pre-wrap">
-                    {group.routeNumber}
-                  </div>
-                ) : (
-                  <Link href={`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${date}/route/${group.routeId}?from=final-dispatch`}>
-                    <div className="w-full h-full flex items-center justify-center px-2 py-6 bg-sky-100 hover:bg-sky-200 text-lg font-semibold text-center break-words whitespace-pre-wrap transition">
-                      {group.routeNumber}
-                    </div>
-                  </Link>
-                )}
-              </td>                   
+               <td
+               className="p-2 border text-center align-middle bg-[#e0f2fe] special-route-bg"
+               rowSpan={sortedAssignments.length}
+               style={{ minWidth: '120px', verticalAlign: 'middle' }}
+             >
+               {disableLinks ? (
+                 <div
+                   className="w-full h-full flex items-center justify-center px-2 py-6 font-extrabold text-center break-words whitespace-pre-wrap"
+                   style={{ fontSize: "48px", lineHeight: "1.1", color: "#003366", fontWeight: 800 }}
+                 >
+                   {group.routeNumber}
+                 </div>
+               ) : (
+                 <Link
+                   href={`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${date}/route/${group.routeId}?from=final-dispatch`}
+                 >
+                   <div
+                     className="w-full h-full flex items-center justify-center px-2 py-6 font-extrabold text-center break-words whitespace-pre-wrap transition hover:bg-sky-200"
+                     style={{ fontSize: "48px", lineHeight: "1.1", color: "#003366", fontWeight: 800 }}
+                   >
+                     {group.routeNumber}
+                   </div>
+                 </Link>
+               )}
+             </td>             
               )}
 
               <AssignmentRow

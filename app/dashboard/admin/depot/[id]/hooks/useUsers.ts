@@ -4,6 +4,8 @@ import type { UpdateUserRequest, RegisterRequest } from "@/types/auth.types"
 import type { UserRole } from "../types"
 import { toast } from "@/components/ui/use-toast"
 import { authService } from "@/service/authService"
+import { normalizeRole } from "../utils/roleUtils" // если вынес в утилиту
+
 
 interface UseUsersProps {
   initialUsers: User[]
@@ -25,12 +27,6 @@ export function useUsers({ initialUsers, updateUserConvoy }: UseUsersProps) {
     convoyId: undefined,
     convoyNumber: undefined,
   })
-
-  // Нормализация роли: PascalCase -> kebab-case или lowercase
-  const normalizeRole = (role: string): UserRole => {
-    if (role === "CTS" || role === "MCC") return role as UserRole
-    return (role.charAt(0).toLowerCase() + role.slice(1)) as UserRole
-  }
   
 
   useEffect(() => {
@@ -52,6 +48,8 @@ export function useUsers({ initialUsers, updateUserConvoy }: UseUsersProps) {
       "CTS",
       "MCC",
       "taskInspector",
+      "Guide",
+      "LRT",
     ]
     roles.forEach(role => (result[role] = []))
     users.forEach(user => {

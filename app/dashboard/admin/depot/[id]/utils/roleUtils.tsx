@@ -52,7 +52,33 @@ const roleMap: Record<UserRole, { name: string; cardTitle: string; key: string }
     cardTitle: "Пользователи с ролью ЦУП",
     key: "MCC",
   },
+  LRT: {
+    name: "LRT",
+    cardTitle: "Пользователи с ролью LRT",
+    key: "LRT",
+  },  
+  Guide: {
+    name: "Руководство",
+    cardTitle: "Пользователи с ролью Руководство",
+    key: "Guide",
+  },
 }
+
+// utils/roleUtils.ts (или вверху useUsers.ts, если локально)
+export const normalizeRole = (role?: string): UserRole => {
+  if (!role || typeof role !== "string") return "dispatcher" // дефолтная безопасная роль
+
+  const exceptions: Record<string, UserRole> = {
+    CTS: "CTS",
+    MCC: "MCC",
+    LRT: "LRT",
+    Guide: "Guide",
+  }
+
+  return exceptions[role] ?? (role.charAt(0).toLowerCase() + role.slice(1)) as UserRole
+}
+
+
 
 export function getRoleName(role: string): string {
   return roleMap[role as UserRole]?.name ?? "Неизвестная роль"
@@ -78,6 +104,8 @@ export const getRoleCardGradient = (role: UserRole): string => {
     case "mechanicOnDuty": return "from-indigo-500 to-indigo-700"
     case "CTS": return "from-red-500 to-red-700"
     case "MCC": return "from-yellow-500 to-yellow-600"
+    case "Guide": return "from-pink-500 to-pink-700"
+    case "LRT": return "from-cyan-500 to-cyan-700"
     default: return "from-gray-400 to-gray-600"
   }
 }
@@ -94,6 +122,8 @@ export const getRoleBorderColor = (role: UserRole): string => {
     mechanicOnDuty: "border-indigo-500",
     CTS: "border-red-500",
     MCC: "border-yellow-500",
+    Guide: "text-pink-100",
+    LRT: "text-cyan-100",
   }
 
   return map[role] ?? "border-gray-400"

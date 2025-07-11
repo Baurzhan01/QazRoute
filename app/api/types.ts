@@ -7,7 +7,7 @@ export interface ApiResponse<T> {
   value: T | null;
 }
 
-export type UserRole = 
+export type UserRole =
   | "fleetManager"
   | "mechanic"
   | "admin"
@@ -15,8 +15,11 @@ export type UserRole =
   | "dispatcher"
   | "seniorDispatcher"
   | "hr"
-  | "taskInspector";
-
+  | "taskInspector"
+  | "CTS" 
+  | "MCC"
+  | "Guide"
+  | "LRT" // ← добавляем новую роль
 
 export interface Bus {
   id?: string;
@@ -103,7 +106,7 @@ export interface RegisterRequest {
   email: string;
   login: string;
   password: string;
-  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" | "taskInspector";
+  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" |"CTS" |"MCC" | "taskInspector" | "LRT" |"Guide"
   busDepotId?: string;
   convoyId?: string;
 }
@@ -113,7 +116,7 @@ export interface User {
   fullName: string;
   email: string;
   login: string;
-  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" | "taskInspector";
+  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" |"CTS" |"MCC" | "taskInspector" | "LRT" |"Guide"
   busDepotId?: string;
   convoyId?: string;
   convoyNumber?: number;

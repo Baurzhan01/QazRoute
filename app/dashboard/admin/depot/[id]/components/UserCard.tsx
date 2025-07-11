@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Edit, Eye, UserPlus, Trash2, ShieldAlert, ActivitySquare } from "lucide-react"
+import { Edit, Eye, UserPlus, Trash2, ShieldAlert, ActivitySquare, UserCog } from "lucide-react"
 import { getRoleCardGradient, getRoleBorderColor } from "../utils/roleUtils"
 
 interface UserCardProps {
@@ -31,6 +31,8 @@ function getRoleColorClass(role: UserRole): string {
     mechanicOnDuty: "text-indigo-100",
     CTS: "text-red-100",
     MCC: "text-yellow-100",
+    LRT: "text-cyan-100",
+    Guide: "text-pink-100",
   }
   return map[role] ?? "text-gray-300"
 }
@@ -38,6 +40,8 @@ function getRoleColorClass(role: UserRole): string {
 function getRoleIcon(role: UserRole) {
   if (role === "CTS") return <ShieldAlert className="h-4 w-4" />
   if (role === "MCC") return <ActivitySquare className="h-4 w-4" />
+  if (role === "Guide") return <UserCog className="h-4 w-4" />
+
   return null
 }
 

@@ -28,7 +28,9 @@ type Role =
   | "on-duty-mechanic"
   | "hr"
   | "payroll"
-  | "default";
+  | "lrt"
+  | "guide"
+  | "default"
 
 const roleNavItems: Record<Role, NavItem[]> = {
   "fleet-manager": [
@@ -58,6 +60,16 @@ const roleNavItems: Record<Role, NavItem[]> = {
     { title: "Посещаемость", href: "/dashboard/hr/attendance", icon: <Clock className="h-5 w-5" /> },
     { title: "Обучение", href: "/dashboard/hr/training", icon: <FileText className="h-5 w-5" /> },
   ],
+  lrt: [
+    { title: "Главная", href: "/dashboard/lrt", icon: <Home className="h-5 w-5" /> },
+    { title: "Документы", href: "/dashboard/lrt/documents", icon: <FileText className="h-5 w-5" /> },
+    { title: "Ремонт", href: "/dashboard/lrt/repairs", icon: <Wrench className="h-5 w-5" /> },
+  ],
+  guide: [
+    { title: "Главная", href: "/dashboard/guide", icon: <Home className="h-5 w-5" /> },
+    { title: "Отчеты", href: "/dashboard/guide/reports", icon: <BarChart3 className="h-5 w-5" /> },
+    { title: "Контроль", href: "/dashboard/guide/overview", icon: <Users className="h-5 w-5" /> },
+  ],  
   payroll: [
     { title: "Расчет зарплаты", href: "/dashboard/payroll/salary", icon: <BarChart3 className="h-5 w-5" /> },
     { title: "Отчеты", href: "/dashboard/payroll/reports", icon: <FileText className="h-5 w-5" /> },

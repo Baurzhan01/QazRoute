@@ -47,6 +47,8 @@ interface ViewUsersDialogProps {
     | "taskInspector"
     | "CTS"
     | "MCC"
+    | "LRT"
+    | "Guide"
     | null;
   usersByRole: Record<string, User[]>;
   onEdit: (user: User) => void;

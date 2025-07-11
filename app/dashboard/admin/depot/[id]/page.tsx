@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowLeft, MapPin } from "lucide-react"
 import { busDepotService } from "@/service/busDepotService"
 import { authService } from "@/service/authService"
+import { normalizeRole } from "./utils/roleUtils" // если вынес в утилиту
 import { toast } from "@/components/ui/use-toast"
 
 import type { BusDepot, User, Convoy } from "./types"
@@ -70,10 +71,8 @@ export default function DepotDetailPage() {
 
       return response.value.map((user: User) => ({
         ...user,
-        role: user.role === "CTS" || user.role === "MCC"
-          ? user.role
-          : user.role.charAt(0).toLowerCase() + user.role.slice(1),
-      })) as User[]
+        role: normalizeRole(user.role),
+      }))
     },
     enabled: !!depotId && isAdmin,
   })
