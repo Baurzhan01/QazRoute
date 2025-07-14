@@ -66,9 +66,8 @@ export default function Sidebar() {
 
   const lrtNavItems: NavItem[] = [
     { title: "Главная", href: "/dashboard/lrt", icon: <Home className="h-5 w-5" /> },
-    { title: "Документы", href: "/dashboard/lrt/documents", icon: <FileText className="h-5 w-5" /> },
-    { title: "Ремонт", href: "/dashboard/lrt/repairs", icon: <Wrench className="h-5 w-5" /> },
-    { title: "Личный кабинет", href: "/dashboard/lrt/profile", icon: <UserCircle className="h-5 w-5" /> },
+    { title: "Сходы с линий", href: "/dashboard/lrt/breakdowns", icon: <Wrench className="h-5 w-5" /> },
+    { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
   ];
   
   const guideNavItems: NavItem[] = [
