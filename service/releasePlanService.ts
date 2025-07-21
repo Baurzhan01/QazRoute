@@ -15,7 +15,8 @@ import type {
   DayPlan,
   FinalDispatchData,
   ReserveReplacementCandidate,
-  AssignUnplannedDispatchResponse
+  AssignUnplannedDispatchResponse,
+  AssignmentReplacement
 } from "@/types/releasePlanTypes"
 
 
@@ -88,7 +89,18 @@ export const releasePlanService = {
   
     return data;
   },
-  
+
+  getExtendedAssignmentsByDepot: async (
+    date: string,
+    depotId: string,
+    routeStatus?: string
+  ): Promise<ApiResponse<AssignmentReplacement[]>> => {
+    const response = await apiClient.get(
+      `/dispatches/duta/extended/by-depot/${depotId}/${date}`,
+      { params: routeStatus ? { routeStatus } : undefined }
+    );
+    return response.data;
+  },  
 
   assignReserve: async (
     date: string,

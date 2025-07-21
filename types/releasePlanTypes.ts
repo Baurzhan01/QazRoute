@@ -57,6 +57,40 @@ export interface DutyApiResponse {
   }[]
 }
 
+export interface AssignmentReplacement {
+  exitNumber: string
+  routeNumber: string
+  bus: {
+    id?: string
+    govNumber: string
+    garageNumber: string
+    convoyId?: string
+    convoyNumber?: number
+    brand?: string
+  } | null
+  firstDriver: {
+    id?: string
+    fullName: string
+    convoyId?: string
+    convoyNumber?: number
+  } | null
+  secondDriver: {
+    id?: string
+    fullName: string
+    convoyId?: string
+    convoyNumber?: number
+  } | null
+  departureTime: string
+  endTime: string
+  releasedTime: string | null
+  normSolarium: number
+  description: string | null
+  status: string
+  isReleased: boolean
+  historyReplace: any
+}
+
+
 // Создание разнарядки
 export interface DispatchRouteCreateRequest {
   convoyId: string
