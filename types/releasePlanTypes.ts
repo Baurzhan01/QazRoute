@@ -315,10 +315,14 @@ export interface ReserveReplacementCandidate {
 
 export enum DispatchBusLineStatus {
   Undefined = 0,
-  Released = 1, //выпущенно
-  Replaced = 2, //Заменен резерва
-  Permutation = 3,//Перестановка
-  Removed = 4,//Снятно (удалено)
+  Released = 1,                     // Выпущено
+  Replaced = 2,                     // Замена — из резерва
+  Permutation = 3,                  // Перестановка — в выходной
+  Removed = 4,                      // Снято
+
+  RearrangingRoute = 5,            // Перестановка по маршруту
+  RearrangementRenovation = 6,     // Перестановка с ремонта
+  Oder = 7                         // С заказа (возможно Order?)
 }
 
 export interface RouteGroup {

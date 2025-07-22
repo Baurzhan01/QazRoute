@@ -1,4 +1,3 @@
-// ReplaceAssignmentModal.tsx (финальная версия с выносом handleConfirm)
 "use client"
 
 import {
@@ -15,11 +14,16 @@ import { driverService } from "@/service/driverService"
 import { busService } from "@/service/busService"
 import { releasePlanService } from "@/service/releasePlanService"
 import { repairService } from "@/service/repairService"
+import { toast } from "@/components/ui/use-toast"
+import type { RepairDto } from "@/types/repair.types"
 import type { DisplayBus } from "@/types/bus.types"
 import type { DisplayDriver } from "@/types/driver.types"
-import type { ReserveAssignment, ReserveReplacementCandidate, RouteAssignment } from "@/types/releasePlanTypes"
-import type { RepairDto } from "@/types/repair.types"
-import { toast } from "@/components/ui/use-toast"
+import type {
+  ReserveAssignment,
+  ReserveReplacementCandidate,
+  RouteAssignment,
+  AssignmentReplacement,
+} from "@/types/releasePlanTypes"
 import { DispatchBusLineStatus } from "@/types/releasePlanTypes"
 import OrderReplacementList from "./ReplaceAssignmentModal/OrderReplacementList"
 import RepairReplacementList from "./ReplaceAssignmentModal/RepairReplacementList"
@@ -29,7 +33,6 @@ import ReserveReplacementTable from "./ReplaceAssignmentModal/ReserveReplacement
 import FreeDriversGrid from "./ReplaceAssignmentModal/FreeDriversGrid"
 import FreeBusesGrid from "./ReplaceAssignmentModal/FreeBusesGrid"
 import { handleReplaceConfirm } from "./ReplaceAssignmentModal/handleReplaceConfirm"
-import type { AssignmentReplacement } from "@/types/releasePlanTypes"
 
 interface ReplaceAssignmentModalProps {
   open: boolean
@@ -62,11 +65,11 @@ export default function ReplaceAssignmentModal({
   const [repairReplacements, setRepairReplacements] = useState<RepairDto[]>([])
   const [orderReplacements, setOrderReplacements] = useState<ReserveAssignment[]>([])
   const [assignmentReplacements, setAssignmentReplacements] = useState<AssignmentReplacement[]>([])
-
+  const [isFirstShift, setIsFirstShift] = useState<number>(1) // 1 по умолчанию
 
   useEffect(() => {
     if (!open || !date || !convoyId) return
-  
+
     fetchReserve()
     fetchFreeBuses()
     fetchFreeDrivers()
@@ -74,6 +77,14 @@ export default function ReplaceAssignmentModal({
     fetchOrders()
     fetchAssignments()
   }, [open, date, convoyId])
+
+  useEffect(() => {
+    // при смене вкладки сбрасываем выбор
+    setSelectedDriver(null)
+    setSelectedBus(null)
+    setSelectedRowKey(null)
+    setIsFirstShift(1)
+  }, [tab])
 
   const fetchRepairs = async () => {
     try {
@@ -83,7 +94,7 @@ export default function ReplaceAssignmentModal({
       toast({ title: "Ошибка загрузки ремонтов", variant: "destructive" })
     }
   }
-  
+
   const fetchOrders = async () => {
     try {
       const res = await releasePlanService.getReserveAssignmentsByDate(date, convoyId, "Order")
@@ -92,12 +103,12 @@ export default function ReplaceAssignmentModal({
       toast({ title: "Ошибка загрузки заказов", variant: "destructive" })
     }
   }
-  
+
   const fetchAssignments = async () => {
     try {
-      const depotId = localStorage.getItem("busDepotId") // 👈 из localStorage
+      const depotId = localStorage.getItem("busDepotId")
       if (!depotId) return
-  
+
       const res = await releasePlanService.getExtendedAssignmentsByDepot(date, depotId)
       setAssignmentReplacements(res.value || [])
     } catch {
@@ -134,12 +145,12 @@ export default function ReplaceAssignmentModal({
 
   const tabToReplacementTypeMap: Record<string, string> = {
     reserve: "Replaced",
-    orders: "Oder", // проверь, возможно должно быть "Order"
+    orders: "Oder", // ❗если ожидается именно "Oder", иначе поправь на "Order"
     repairs: "RearrangementRenovation",
     assignments: "RearrangingRoute",
     buses: "Permutation",
     drivers: "Permutation",
-  }  
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -150,33 +161,32 @@ export default function ReplaceAssignmentModal({
             Выберите водителя или автобус для замены на выбранном выходе
           </p>
           <StatusBanner
-              selectedDriver={selectedDriver}
-              selectedBus={selectedBus}
-              currentTab={tab}
-            />
+            selectedDriver={selectedDriver}
+            selectedBus={selectedBus}
+            currentTab={tab}
+          />
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={setTab} className="mt-2">
-        <TabsList>
-          <TabsTrigger value="reserve">Резерв</TabsTrigger>
-          <TabsTrigger value="orders">С заказов</TabsTrigger>
-          <TabsTrigger value="repairs">С планового ремонтов</TabsTrigger>
-          <TabsTrigger value="assignments">С маршрутов</TabsTrigger>
-          <TabsTrigger value="buses">Автобусы</TabsTrigger>
-          <TabsTrigger value="drivers">Водители</TabsTrigger>
-        </TabsList>
-
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList>
+            <TabsTrigger value="reserve">Резерв</TabsTrigger>
+            <TabsTrigger value="orders">С заказов</TabsTrigger>
+            <TabsTrigger value="repairs">С ремонтов</TabsTrigger>
+            <TabsTrigger value="assignments">С маршрутов</TabsTrigger>
+            <TabsTrigger value="buses">Автобусы</TabsTrigger>
+            <TabsTrigger value="drivers">Водители</TabsTrigger>
+          </TabsList>
 
           <div className="my-2">
             <input
               type="text"
               placeholder="Поиск..."
               value={tab === "reserve" ? searchReserve : searchText}
-              onChange={(e) => {
+              onChange={(e) =>
                 tab === "reserve"
                   ? setSearchReserve(e.target.value)
                   : setSearchText(e.target.value)
-              }}
+              }
               className="w-full px-2 py-1 border rounded text-sm"
             />
           </div>
@@ -191,6 +201,48 @@ export default function ReplaceAssignmentModal({
                 setSelectedBus(bus)
               }}
               search={searchReserve}
+            />
+          </TabsContent>
+
+          <TabsContent value="orders">
+            <OrderReplacementList
+              items={orderReplacements}
+              selectedDriver={selectedDriver}
+              selectedBus={selectedBus}
+              onSelect={(driver, bus) => {
+                setSelectedDriver(driver)
+                setSelectedBus(bus)
+              }}
+              search={searchText}
+            />
+          </TabsContent>
+
+          <TabsContent value="repairs">
+            <RepairReplacementList
+              items={repairReplacements}
+              selectedDriver={selectedDriver}
+              selectedBus={selectedBus}
+              onSelect={(driver, bus) => {
+                setSelectedDriver(driver)
+                setSelectedBus(bus)
+              }}
+              search={searchText}
+            />
+          </TabsContent>
+
+          <TabsContent value="assignments">
+            <AssignmentReplacementList
+              items={assignmentReplacements}
+              selectedDriver={selectedDriver}
+              selectedBus={selectedBus}
+              onSelect={(driver, bus, shift) => {
+                setSelectedDriver(driver)
+                setSelectedBus(bus)
+                if (shift) setIsFirstShift(shift)
+              }}
+              search={searchText}
+              selectedRowKey={selectedRowKey}
+              setSelectedRowKey={setSelectedRowKey}
             />
           </TabsContent>
 
@@ -211,61 +263,27 @@ export default function ReplaceAssignmentModal({
               search={searchText}
             />
           </TabsContent>
-          <TabsContent value="orders">
-            <OrderReplacementList
-              items={orderReplacements}
-              selectedDriver={selectedDriver}
-              selectedBus={selectedBus}
-              onSelect={(driver, bus) => {
-                setSelectedDriver(driver)
-                setSelectedBus(bus)
-              }}
-              search={searchText}
-            />
-          </TabsContent>
-          <TabsContent value="repairs">
-            <RepairReplacementList
-              items={repairReplacements}
-              selectedDriver={selectedDriver}
-              selectedBus={selectedBus}
-              onSelect={(driver, bus) => {
-                setSelectedDriver(driver)
-                setSelectedBus(bus)
-              }}
-              search={searchText}
-            />
-          </TabsContent>
-          <TabsContent value="assignments">
-            <AssignmentReplacementList
-              items={assignmentReplacements} // ✅ правильно
-              selectedDriver={selectedDriver}
-              selectedBus={selectedBus}
-              onSelect={(driver, bus) => {
-                setSelectedDriver(driver)
-                setSelectedBus(bus)
-              }}
-              search={searchText}
-              selectedRowKey={selectedRowKey}
-              setSelectedRowKey={setSelectedRowKey}
-            />
-          </TabsContent>
         </Tabs>
 
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={onClose}>Отмена</Button>
+          <Button variant="outline" onClick={onClose}>
+            Отмена
+          </Button>
           <Button
-            onClick={() => handleReplaceConfirm({
-              selectedAssignment,
-              selectedBus,
-              selectedDriver,
-              reserve,
-              replacementType: tabToReplacementTypeMap[tab], // ⬅️ вот здесь
-              onReplaceSuccess,
-              onReload,
-              onClose,
-            })}
-            
-            disabled={!selectedBus && !selectedDriver}
+            disabled={!selectedDriver && !selectedBus}
+            onClick={() => {
+              handleReplaceConfirm({
+                selectedAssignment,
+                isFirstShift: isFirstShift === 1,
+                selectedBus,
+                selectedDriver,
+                reserve,
+                replacementType: tabToReplacementTypeMap[tab],
+                onReplaceSuccess,
+                onReload,
+                onClose,
+              })
+            }}
           >
             Заменить
           </Button>

@@ -20,12 +20,15 @@ import type {
 } from "@/types/releasePlanTypes"
 
 
-const statusEnumMap: Record<DispatchBusLineStatus, string> = {
+export const statusEnumMap: Record<DispatchBusLineStatus, string> = {
   [DispatchBusLineStatus.Undefined]: "Undefined",
   [DispatchBusLineStatus.Released]: "Released",
   [DispatchBusLineStatus.Replaced]: "Replaced",
   [DispatchBusLineStatus.Permutation]: "Permutation",
   [DispatchBusLineStatus.Removed]: "Removed",
+  [DispatchBusLineStatus.RearrangingRoute]: "RearrangingRoute",
+  [DispatchBusLineStatus.RearrangementRenovation]: "RearrangementRenovation",
+  [DispatchBusLineStatus.Oder]: "Oder", // ✅ если на сервере именно так, оставить
 }
 
 

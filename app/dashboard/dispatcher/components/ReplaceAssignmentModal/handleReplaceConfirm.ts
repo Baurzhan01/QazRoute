@@ -1,11 +1,16 @@
 import { toast } from "@/components/ui/use-toast"
 import { releasePlanService } from "@/service/releasePlanService"
-import { DispatchBusLineStatus, RouteAssignment, ReserveReplacementCandidate } from "@/types/releasePlanTypes"
+import {
+  DispatchBusLineStatus,
+  RouteAssignment,
+  ReserveReplacementCandidate,
+} from "@/types/releasePlanTypes"
 import { DisplayBus } from "@/types/bus.types"
 import { DisplayDriver } from "@/types/driver.types"
 
 interface HandleReplaceConfirmParams {
   selectedAssignment: RouteAssignment
+  isFirstShift: boolean
   selectedBus: DisplayBus | null
   selectedDriver: DisplayDriver | null
   reserve: ReserveReplacementCandidate[]
@@ -17,6 +22,7 @@ interface HandleReplaceConfirmParams {
 
 export async function handleReplaceConfirm({
   selectedAssignment,
+  isFirstShift,
   selectedBus,
   selectedDriver,
   reserve,
@@ -30,11 +36,15 @@ export async function handleReplaceConfirm({
     return
   }
 
+  const driverId = selectedDriver?.id ?? selectedAssignment.driver?.id ?? ""
+  const busId = selectedBus?.id ?? selectedAssignment.bus?.id ?? ""
+
   const isBusChanged = !!selectedBus && selectedBus.id !== selectedAssignment.bus?.id
   const isDriverChanged = !!selectedDriver && selectedDriver.id !== selectedAssignment.driver?.id
 
   const isFromReserve =
-    selectedDriver && selectedBus &&
+    selectedDriver &&
+    selectedBus &&
     reserve.some((r) => r.driverId === selectedDriver.id && r.busId === selectedBus.id)
 
   if (!isFromReserve && !isBusChanged && !isDriverChanged) {
@@ -43,19 +53,19 @@ export async function handleReplaceConfirm({
   }
 
   try {
-    const res = await releasePlanService.replaceAssignment(
+    const response = await releasePlanService.replaceAssignment(
       selectedAssignment.dispatchBusLineId,
-      true,
+      isFirstShift,
       replacementType,
-      selectedDriver?.id || selectedAssignment.driver?.id || "",
-      selectedBus?.id || selectedAssignment.bus?.id || ""
+      driverId,
+      busId
     )
 
+    // Удалить из резерва при обычной замене
     if (replacementType === "Replaced") {
       const reserveEntry = reserve.find(
         (r) => r.driverId === selectedDriver?.id && r.busId === selectedBus?.id
       )
-
       if (reserveEntry) {
         await releasePlanService.removeFromReserve([reserveEntry.id])
       }
@@ -66,34 +76,37 @@ export async function handleReplaceConfirm({
       description: `✅ Замена выполнена (${replacementType})`,
     })
 
-    if (res?.value && onReplaceSuccess) {
+    // Обновляем состояние
+    if (response?.isSuccess && onReplaceSuccess) {
+      const replacementTypeToStatusMap: Record<string, DispatchBusLineStatus> = {
+        Replaced: DispatchBusLineStatus.Replaced,
+        Permutation: DispatchBusLineStatus.Permutation,
+        RearrangingRoute: DispatchBusLineStatus.RearrangingRoute,
+        RearrangementRenovation: DispatchBusLineStatus.RearrangementRenovation,
+        Oder: DispatchBusLineStatus.Oder, // ❗ если сервер требует именно "Oder" — оставим, но это подозрительно
+      }
+
+      const newStatus =
+        replacementTypeToStatusMap[replacementType] ?? DispatchBusLineStatus.Undefined
+
       onReplaceSuccess({
         ...selectedAssignment,
-        bus: selectedBus
-          ? {
-              id: selectedBus.id,
-              garageNumber: selectedBus.garageNumber,
-              govNumber: selectedBus.govNumber,
-            }
-          : selectedAssignment.bus,
+        bus: selectedBus ?? selectedAssignment.bus,
         garageNumber: selectedBus?.garageNumber ?? selectedAssignment.garageNumber,
         stateNumber: selectedBus?.govNumber ?? selectedAssignment.stateNumber,
-        driver: selectedDriver
-          ? {
-              id: selectedDriver.id,
-              fullName: selectedDriver.fullName,
-              serviceNumber: selectedDriver.serviceNumber,
-            }
-          : selectedAssignment.driver,
-        status: replacementType === "Replaced"
-          ? DispatchBusLineStatus.Replaced
-          : DispatchBusLineStatus.Permutation,
+        driver: selectedDriver ?? selectedAssignment.driver,
+        status: newStatus,
       })
     }
 
     onReload?.()
     onClose()
   } catch (error: any) {
-    toast({ title: "Ошибка при замене", description: error.message, variant: "destructive" })
+    toast({
+      title: "Ошибка при замене",
+      description: error?.message || "Произошла ошибка",
+      variant: "destructive",
+    })
+    console.error("Ошибка при замене:", error)
   }
 }

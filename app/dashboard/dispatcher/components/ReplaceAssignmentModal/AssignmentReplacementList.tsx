@@ -1,7 +1,9 @@
+"use client"
+
 import type { AssignmentReplacement } from "@/types/releasePlanTypes"
 import type { DisplayBus } from "@/types/bus.types"
 import type { DisplayDriver } from "@/types/driver.types"
-import { CheckCircle2, XCircle } from "lucide-react"
+import { CheckCircle2, User, BusFront } from "lucide-react"
 import { useMemo } from "react"
 import {
   Tooltip,
@@ -14,12 +16,10 @@ interface AssignmentReplacementListProps {
   items: AssignmentReplacement[]
   selectedDriver: DisplayDriver | null
   selectedBus: DisplayBus | null
-  onSelect: (driver: DisplayDriver | null, bus: DisplayBus | null) => void
+  onSelect: (driver: DisplayDriver | null, bus: DisplayBus | null, shift?: number) => void
   search: string
-//   selectedRowIndex: number | null
   selectedRowKey: string | null
   setSelectedRowKey: (key: string | null) => void
-//   setSelectedRowIndex: (index: number | null) => void
 }
 
 export default function AssignmentReplacementList({
@@ -36,21 +36,25 @@ export default function AssignmentReplacementList({
     return items.filter((r) => {
       const fullName1 = r.firstDriver?.fullName?.toLowerCase() || ""
       const fullName2 = r.secondDriver?.fullName?.toLowerCase() || ""
+      const tab1 = typeof (r.firstDriver as any)?.serviceNumber === "string"
+        ? (r.firstDriver as any).serviceNumber.toLowerCase()
+        : ""
+      const tab2 = typeof (r.secondDriver as any)?.serviceNumber === "string"
+        ? (r.secondDriver as any).serviceNumber.toLowerCase()
+        : ""
       const garage = r.bus?.garageNumber?.toLowerCase() || ""
       const gov = r.bus?.govNumber?.toLowerCase() || ""
+
       return (
         fullName1.includes(q) ||
         fullName2.includes(q) ||
+        tab1.includes(q) ||
+        tab2.includes(q) ||
         garage.includes(q) ||
         gov.includes(q)
       )
     })
   }, [items, search])
-
-  const isRemoved = (driver: any) =>
-    driver?.status?.toLowerCase() === "removed" ||
-    driver?.driverStatus?.toLowerCase() === "removed" ||
-    driver?.isRemoved === true
 
   return (
     <TooltipProvider>
@@ -60,6 +64,7 @@ export default function AssignmentReplacementList({
             <tr className="bg-sky-100 text-sky-800">
               <th className="border px-2 py-1">№</th>
               <th className="border px-2 py-1">ФИО</th>
+              <th className="border px-2 py-1">Таб. номер</th>
               <th className="border px-2 py-1">Колонна</th>
               <th className="border px-2 py-1">Смена</th>
               <th className="border px-2 py-1">Маршрут</th>
@@ -71,58 +76,79 @@ export default function AssignmentReplacementList({
           </thead>
           <tbody>
             {filtered.flatMap((r, index) => {
-              const rows = []
               const bus = r.bus
 
-              const renderRow = (
+              const renderDriverRow = (
                 driver: AssignmentReplacement["firstDriver"] | AssignmentReplacement["secondDriver"],
                 shift: number
               ) => {
-                if (!driver || !bus) return null
-
-                const rowKey = `${bus.id}-${driver.id}-${shift}`
+                const rowKey = `r-${r.routeNumber}-e${r.exitNumber}-s${shift}`
                 const isRowSelected = selectedRowKey === rowKey
+                const hasBus = !!bus
+                const hasDriver = !!driver
+                const rowColor = !hasBus && !hasDriver
+                  ? "bg-orange-100"
+                  : !hasDriver
+                  ? "bg-red-50"
+                  : !hasBus
+                  ? "bg-yellow-50"
+                  : ""
 
-                const removed = isRemoved(driver)
-                
+                const displayDriver: DisplayDriver | null = driver?.id
+                  ? {
+                      id: driver.id,
+                      fullName: driver.fullName,
+                      serviceNumber:
+                        typeof (driver as any)?.serviceNumber === "string"
+                          ? (driver as any).serviceNumber
+                          : "",
+                      driverStatus: "OnWork",
+                    }
+                  : null
+
+                const displayBus: DisplayBus | null = bus?.id
+                  ? {
+                      id: bus.id,
+                      garageNumber: bus.garageNumber ?? "",
+                      govNumber: bus.govNumber ?? "",
+                      status: "Reserve",
+                    }
+                  : null
+
+                const isSelectable = !!displayDriver // можем выбирать только если есть водитель
 
                 return (
                   <tr
-                    key={`row-${bus.id ?? index}-${driver.id ?? shift}-${shift}`}
-                    className={`cursor-pointer hover:bg-sky-50 ${
-                      isRowSelected ? "bg-green-100" : removed ? "bg-red-50" : ""
-                    }`}
+                    key={rowKey}
+                    className={`cursor-pointer hover:bg-sky-50 ${isRowSelected ? "bg-green-100" : rowColor}`}
                     onClick={() => {
-                        if (isRowSelected) {
-                          onSelect(null, null)
-                          setSelectedRowKey(null)
-                        } else {
-                          onSelect(
-                            { id: driver.id!, fullName: driver.fullName!, serviceNumber: "", driverStatus: "OnWork" },
-                            { id: bus.id!, garageNumber: bus.garageNumber!, govNumber: bus.govNumber!, status: "OnWork" }
-                          )
-                          setSelectedRowKey(rowKey)
-                        }
-                      }}
-                      
+                      if (!isSelectable) return
+                      if (isRowSelected) {
+                        console.log("❌ Сняли выбор", rowKey)
+                        onSelect(null, null, undefined)
+                        setSelectedRowKey(null)
+                      } else {
+                        console.log("✅ Выбрали", { displayDriver, displayBus, shift })
+                        onSelect(displayDriver, displayBus, shift)
+                        setSelectedRowKey(rowKey)
+                      }
+                    }}
                   >
                     <td className="border px-2 py-1 text-center">{index + 1}</td>
-                    <td className="border px-2 py-1">
-                      <div className="flex items-center gap-1">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>{driver.fullName}</span>
-                          </TooltipTrigger>
-                          <TooltipContent>Смена {shift}</TooltipContent>
-                        </Tooltip>
-                        {removed && (
-                          <span className="text-red-500 text-xs flex items-center gap-1">
-                            <XCircle className="w-4 h-4" /> Снят
-                          </span>
-                        )}
-                      </div>
+                    <td className="border px-2 py-1 flex items-center gap-1">
+                      {!hasDriver && <User className="w-4 h-4 text-muted-foreground" />}
+                      {driver?.fullName ?? (
+                        <span className="text-muted-foreground italic">Нет водителя</span>
+                      )}
                     </td>
-                    <td className="border px-2 py-1 text-center">{driver.convoyNumber ?? "-"}</td>
+                    <td className="border px-2 py-1 text-center">
+                      {typeof (driver as any)?.serviceNumber === "string"
+                        ? (driver as any).serviceNumber
+                        : "—"}
+                    </td>
+                    <td className="border px-2 py-1 text-center">
+                      {driver?.convoyNumber ?? "—"}
+                    </td>
                     <td className="border px-2 py-1 text-center">
                       <span
                         className={`inline-block w-5 text-white text-xs px-1 rounded ${
@@ -134,8 +160,13 @@ export default function AssignmentReplacementList({
                     </td>
                     <td className="border px-2 py-1 text-center">{r.routeNumber}</td>
                     <td className="border px-2 py-1 text-center">{r.exitNumber}</td>
-                    <td className="border px-2 py-1 text-center">{bus.garageNumber}</td>
-                    <td className="border px-2 py-1 text-center">{bus.govNumber}</td>
+                    <td className="border px-2 py-1 flex items-center justify-center gap-1">
+                      {!hasBus && <BusFront className="w-4 h-4 text-muted-foreground" />}
+                      {bus?.garageNumber ?? (
+                        <span className="text-muted-foreground italic">Нет автобуса</span>
+                      )}
+                    </td>
+                    <td className="border px-2 py-1 text-center">{bus?.govNumber ?? "—"}</td>
                     <td className="border px-2 py-1 text-center">
                       {isRowSelected && (
                         <div className="flex items-center gap-1 text-green-700 font-semibold">
@@ -148,9 +179,9 @@ export default function AssignmentReplacementList({
                 )
               }
 
-              if (r.firstDriver) rows.push(renderRow(r.firstDriver, 1))
-              if (r.secondDriver) rows.push(renderRow(r.secondDriver, 2))
-
+              const rows = []
+              if (r.firstDriver || r.bus) rows.push(renderDriverRow(r.firstDriver ?? null, 1))
+              if (r.secondDriver || r.bus) rows.push(renderDriverRow(r.secondDriver ?? null, 2))
               return rows
             })}
           </tbody>
