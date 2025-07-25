@@ -52,10 +52,15 @@ export default function RouteGroupTable({
     setAssignments(group.assignments)
   }, [group.assignments])
 
-  const handleReplaceSuccess = (updated: RouteAssignment & {
-    oldBus?: { garageNumber?: string; stateNumber?: string }
-    oldDriver?: { fullName?: string }
-  }) => {
+  const handleReplaceSuccess = (
+    updated: RouteAssignment & {
+      oldBus?: { garageNumber?: string; stateNumber?: string }
+      oldDriver?: { fullName?: string }
+      replacementType?: string
+    }
+  ) => {
+    const isPermutation = updated.replacementType === "permutation"
+  
     setAssignments((prev) =>
       prev.map((a) =>
         a.dispatchBusLineId === updated.dispatchBusLineId
@@ -68,12 +73,16 @@ export default function RouteGroupTable({
               status: updated.status,
               oldBus: updated.oldBus,
               oldDriver: updated.oldDriver,
+              additionalInfo: isPermutation
+                ? "🔁 Перестановка с маршрута"
+                : updated.additionalInfo ?? a.additionalInfo,
             }
           : a
       )
     )
+  
     onReplaceSuccess?.(updated)
-  }
+  }  
 
   const handleCheckboxChange = async (assignment: RouteAssignment, checked: boolean) => {
     const dispatchId = assignment.dispatchBusLineId
@@ -164,11 +173,12 @@ export default function RouteGroupTable({
 
               const isReplaced = a.status === DispatchBusLineStatus.Replaced
               const isPermutation = a.status === DispatchBusLineStatus.Permutation
+              const isRearrangingRoute = a.status === DispatchBusLineStatus.RearrangingRoute
               const isReleased = a.status === DispatchBusLineStatus.Released
 
               const rowColor = isReplaced
                 ? "bg-yellow-50"
-                : isPermutation
+                : isPermutation || isRearrangingRoute
                 ? "bg-blue-50"
                 : isReleased
                 ? "bg-green-50"

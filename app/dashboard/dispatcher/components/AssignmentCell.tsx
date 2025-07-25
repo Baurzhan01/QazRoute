@@ -7,10 +7,10 @@ interface AssignmentCellProps {
   assignment: RouteAssignment
   date: Date
   readOnly: boolean
-  textClassName?: string // ✅ добавить
+  textClassName?: string
 }
 
-export default function AssignmentCell({ assignment, date, readOnly,textClassName }: AssignmentCellProps) {
+export default function AssignmentCell({ assignment, date, readOnly, textClassName }: AssignmentCellProps) {
   const {
     additionalInfo,
     dispatchBusLineId,
@@ -31,6 +31,7 @@ export default function AssignmentCell({ assignment, date, readOnly,textClassNam
 
   const showReplacement = status === 2
   const showPermutation = status === 3
+  const showRearrangingRoute = status === 5
 
   const permutationInfo = () => {
     const oldBusText = oldBus?.garageNumber ? `🚌 ${oldBus.garageNumber} → ${bus?.garageNumber}` : ""
@@ -48,11 +49,11 @@ export default function AssignmentCell({ assignment, date, readOnly,textClassNam
         type="route"
         busId={bus?.id ?? null}
         driverId={driver?.id ?? null}
-        textClassName={textClassName} 
+        textClassName={textClassName}
         readOnly={readOnly}
       />
 
-      {/* Статус: замена или перестановка */}
+      {/* Статусы */}
       {showReplacement && (
         <span className="text-yellow-600 text-xs mt-1 italic">
           🔁 Замена с резерва
@@ -61,6 +62,11 @@ export default function AssignmentCell({ assignment, date, readOnly,textClassNam
       {showPermutation && (
         <span className="text-blue-600 text-xs mt-1 italic">
           🔄 Перестановка: {permutationInfo()}
+        </span>
+      )}
+      {showRearrangingRoute && (
+        <span className="text-blue-600 text-xs mt-1 italic">
+          🔄 Перестановка по маршруту
         </span>
       )}
     </div>
