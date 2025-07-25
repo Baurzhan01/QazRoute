@@ -33,6 +33,9 @@ import ReserveReplacementTable from "./ReplaceAssignmentModal/ReserveReplacement
 import FreeDriversGrid from "./ReplaceAssignmentModal/FreeDriversGrid"
 import FreeBusesGrid from "./ReplaceAssignmentModal/FreeBusesGrid"
 import { handleReplaceConfirm } from "./ReplaceAssignmentModal/handleReplaceConfirm"
+type AssignmentReplacementWithId = AssignmentReplacement & {
+  dispatchBusLineId: string
+}
 
 interface ReplaceAssignmentModalProps {
   open: boolean
@@ -63,9 +66,10 @@ export default function ReplaceAssignmentModal({
   const [searchText, setSearchText] = useState("")
   const [searchReserve, setSearchReserve] = useState("")
   const [repairReplacements, setRepairReplacements] = useState<RepairDto[]>([])
-  const [orderReplacements, setOrderReplacements] = useState<ReserveAssignment[]>([])
-  const [assignmentReplacements, setAssignmentReplacements] = useState<AssignmentReplacement[]>([])
+  const [orderReplacements, setOrderReplacements] = useState<ReserveReplacementCandidate[]>([])
   const [isFirstShift, setIsFirstShift] = useState<number>(1) // 1 по умолчанию
+  const [assignmentReplacements, setAssignmentReplacements] = useState<AssignmentReplacementWithId[]>([])
+
 
   useEffect(() => {
     if (!open || !date || !convoyId) return
@@ -98,23 +102,45 @@ export default function ReplaceAssignmentModal({
   const fetchOrders = async () => {
     try {
       const res = await releasePlanService.getReserveAssignmentsByDate(date, convoyId, "Order")
-      setOrderReplacements(res.value || [])
+  
+      const mapped = (res.value || []).map((item) => ({
+        id: item.id,
+        busId: item.dispatchBusLineId, // или другой подходящий ID автобуса
+        driverId: item.driver.id,
+        driverFullName: item.driver.fullName,
+        driverTabNumber: item.driver.serviceNumber,
+        garageNumber: item.garageNumber,
+        govNumber: item.govNumber,
+        isReplace: item.isReplace,
+        description: item.additionalInfo ?? undefined,
+      } satisfies ReserveReplacementCandidate))
+  
+      setOrderReplacements(mapped)
     } catch {
       toast({ title: "Ошибка загрузки заказов", variant: "destructive" })
     }
   }
+  
 
   const fetchAssignments = async () => {
     try {
       const depotId = localStorage.getItem("busDepotId")
       if (!depotId) return
-
+  
       const res = await releasePlanService.getExtendedAssignmentsByDepot(date, depotId)
-      setAssignmentReplacements(res.value || [])
+  
+      const mapped: AssignmentReplacementWithId[] = (res.value || []).map((item) => ({
+        ...item,
+        dispatchBusLineId: item.dispatchBusLineId || "", // fallback для безопасного доступа
+      }))
+      
+  
+      setAssignmentReplacements(mapped)
     } catch {
       toast({ title: "Ошибка загрузки выходов маршрутов", variant: "destructive" })
     }
   }
+  
 
   const fetchReserve = async () => {
     try {
@@ -151,6 +177,11 @@ export default function ReplaceAssignmentModal({
     buses: "Permutation",
     drivers: "Permutation",
   }
+
+  const reloadAssignmentReplacements = () => {
+    fetchAssignments()
+  }
+  
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -232,17 +263,15 @@ export default function ReplaceAssignmentModal({
 
           <TabsContent value="assignments">
             <AssignmentReplacementList
-              items={assignmentReplacements}
+              items={assignmentReplacements} // это уже AssignmentReplacementWithId[]
               selectedDriver={selectedDriver}
               selectedBus={selectedBus}
-              onSelect={(driver, bus, shift) => {
+              onSelect={(driver, bus) => {
                 setSelectedDriver(driver)
                 setSelectedBus(bus)
-                if (shift) setIsFirstShift(shift)
               }}
               search={searchText}
-              selectedRowKey={selectedRowKey}
-              setSelectedRowKey={setSelectedRowKey}
+              reloadAssignmentReplacements={reloadAssignmentReplacements} // ✅ вот это
             />
           </TabsContent>
 

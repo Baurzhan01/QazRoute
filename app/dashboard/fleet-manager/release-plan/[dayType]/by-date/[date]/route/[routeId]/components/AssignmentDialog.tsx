@@ -77,7 +77,7 @@ export default function AssignmentDialog({
       .then((res) => {
         const buses = (res ?? []).map((bus) => ({
           ...bus,
-          isAssigned: bus.isBusy ?? false,
+          isAssigned: bus.isAssigned ?? false,
         }))
         setAvailableBuses(buses)
       })
@@ -172,7 +172,7 @@ export default function AssignmentDialog({
                 disableItem={(bus) =>
                   bus.isAssigned ||
                   !!assignedBusesMap[bus.id] ||
-                  ["UnderRepair", "LongTermRepair", "Decommissioned"].includes(bus.busStatus)
+                  ["UnderRepair", "LongTermRepair", "Decommissioned"].includes(bus.status ?? "")
                 }
               />
             </div>

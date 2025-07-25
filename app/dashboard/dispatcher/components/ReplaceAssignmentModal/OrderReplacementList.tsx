@@ -1,28 +1,43 @@
-// ReplaceAssignmentModal/OrderReplacementList.tsx
+"use client"
 
 import { CheckCircle2 } from "lucide-react"
-import type { ReserveAssignment } from "@/types/releasePlanTypes"
 import type { DisplayBus } from "@/types/bus.types"
 import type { DisplayDriver } from "@/types/driver.types"
 
+interface OrderReserve {
+  id: string
+  driverId: string
+  driverFullName: string
+  driverTabNumber: string
+  garageNumber: string
+  govNumber: string
+}
+
 interface Props {
-  items: ReserveAssignment[]
+  items: OrderReserve[]
   selectedDriver: DisplayDriver | null
   selectedBus: DisplayBus | null
   onSelect: (driver: DisplayDriver, bus: DisplayBus) => void
   search: string
 }
 
-export default function OrderReplacementList({ items, selectedDriver, selectedBus, onSelect, search }: Props) {
-  const isSelected = (item: ReserveAssignment) =>
-    selectedDriver?.id === item.driver.id && selectedBus?.govNumber === item.govNumber
+export default function OrderReplacementList({
+  items,
+  selectedDriver,
+  selectedBus,
+  onSelect,
+  search,
+}: Props) {
+  const isSelected = (item: OrderReserve) =>
+    selectedDriver?.id === item.driverId && selectedBus?.govNumber === item.govNumber
+
+  const q = search.toLowerCase()
 
   const filtered = items.filter((item) => {
-    const fullName = item.driver.fullName.toLowerCase()
-    const tabNumber = item.driver.serviceNumber.toLowerCase()
-    const gov = item.govNumber.toLowerCase()
-    const garage = item.garageNumber.toLowerCase()
-    const q = search.toLowerCase()
+    const fullName = item.driverFullName?.toLowerCase() || ""
+    const tabNumber = item.driverTabNumber?.toLowerCase() || ""
+    const gov = item.govNumber?.toLowerCase() || ""
+    const garage = item.garageNumber?.toLowerCase() || ""
 
     return (
       fullName.includes(q) ||
@@ -46,44 +61,48 @@ export default function OrderReplacementList({ items, selectedDriver, selectedBu
           </tr>
         </thead>
         <tbody>
-          {filtered.map((item, index) => (
-            <tr
-              key={item.id}
-              className={`cursor-pointer hover:bg-blue-50 ${
-                isSelected(item) ? "bg-green-100" : ""
-              }`}
-              onClick={() => {
-                onSelect(
-                  {
-                    id: item.driver.id,
-                    fullName: item.driver.fullName,
-                    serviceNumber: item.driver.serviceNumber,
-                    driverStatus: "OnWork",
-                  },
-                  {
-                    id: "",
-                    garageNumber: item.garageNumber,
-                    govNumber: item.govNumber,
-                    status: "Reserve",
-                  }
-                )
-              }}
-            >
-              <td className="border px-2 py-1 text-center">{index + 1}</td>
-              <td className="border px-2 py-1">{item.driver.fullName}</td>
-              <td className="border px-2 py-1 text-center">{item.driver.serviceNumber}</td>
-              <td className="border px-2 py-1 text-center">{item.garageNumber}</td>
-              <td className="border px-2 py-1 text-center">{item.govNumber}</td>
-              <td className="border px-2 py-1 text-center">
-                {isSelected(item) && (
-                  <div className="flex items-center gap-1 text-green-700 font-semibold">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Выбрано</span>
-                  </div>
-                )}
-              </td>
-            </tr>
-          ))}
+          {filtered.map((item, index) => {
+            const isItemSelected = isSelected(item)
+
+            return (
+              <tr
+                key={`${item.id}-${index}`}
+                className={`cursor-pointer hover:bg-blue-50 ${
+                  isItemSelected ? "bg-green-100" : ""
+                }`}
+                onClick={() => {
+                  onSelect(
+                    {
+                      id: item.driverId,
+                      fullName: item.driverFullName,
+                      serviceNumber: item.driverTabNumber,
+                      driverStatus: "OnWork",
+                    },
+                    {
+                      id: "", // у заказных автобусов ID может быть пустым
+                      garageNumber: item.garageNumber,
+                      govNumber: item.govNumber,
+                      status: "Reserve",
+                    }
+                  )
+                }}
+              >
+                <td className="border px-2 py-1 text-center">{index + 1}</td>
+                <td className="border px-2 py-1">{item.driverFullName}</td>
+                <td className="border px-2 py-1 text-center">{item.driverTabNumber}</td>
+                <td className="border px-2 py-1 text-center">{item.garageNumber}</td>
+                <td className="border px-2 py-1 text-center">{item.govNumber}</td>
+                <td className="border px-2 py-1 text-center">
+                  {isItemSelected && (
+                    <div className="flex items-center gap-1 text-green-700 font-semibold">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Выбрано</span>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

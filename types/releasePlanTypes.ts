@@ -60,6 +60,7 @@ export interface DutyApiResponse {
 export interface AssignmentReplacement {
   exitNumber: string
   routeNumber: string
+  dispatchBusLineId: string
   bus: {
     id?: string
     govNumber: string
