@@ -21,28 +21,41 @@ export default function AssignmentCell({ assignment, date, readOnly, textClassNa
     driver,
     oldBus,
     oldDriver,
+    replacementType, // ✅ добавь сюда
   } = assignment as RouteAssignment & {
     oldBus?: { garageNumber?: string; stateNumber?: string }
     oldDriver?: { fullName?: string }
+    replacementType?: string // ✅
   }
+  
 
   const showReleasedTime =
     releasedTime && releasedTime !== "00:00:00" && (status === 1 || isRealsed)
 
-  const showReplacement = status === 2
-  const showPermutation = status === 3
-  const showRearrangingRoute = status === 5
+    const showReplacement = status === 2 || replacementType === "Replaced"
+    const showPermutation = status === 3 || replacementType === "Permutation"
+    const showRearrangingRoute = status === 5 || replacementType === "RearrangingRoute"    
 
+  const formatInitials = (fullName?: string) => {
+    if (!fullName) return ""
+    const [last, first, middle] = fullName.split(" ")
+    const initials = [first?.[0], middle?.[0]].filter(Boolean).join(".")
+    return `${last} ${initials}.`
+  }
+  
   const permutationInfo = () => {
     const oldBusText = oldBus?.garageNumber ? `🚌 ${oldBus.garageNumber} → ${bus?.garageNumber}` : ""
-    const oldDriverText = oldDriver?.fullName ? `👤 ${oldDriver.fullName} → ${driver?.fullName}` : ""
+    const oldDriverText = oldDriver?.fullName
+      ? `👤 ${formatInitials(oldDriver.fullName)} → ${formatInitials(driver?.fullName || "")}`
+      : ""
     return [oldBusText, oldDriverText].filter(Boolean).join(" · ")
   }
-
+  
   return (
     <div className="flex flex-col leading-tight">
       {/* Основная ячейка с доп. информацией */}
       <InfoCell
+         key={`${assignment.dispatchBusLineId}-${assignment.additionalInfo ?? ""}`}
         initialValue={additionalInfo ?? ""}
         assignmentId={dispatchBusLineId}
         date={date}
@@ -66,7 +79,7 @@ export default function AssignmentCell({ assignment, date, readOnly, textClassNa
       )}
       {showRearrangingRoute && (
         <span className="text-blue-600 text-xs mt-1 italic">
-          🔄 Перестановка по маршруту
+          🔄 Перестановка по маршруту: {permutationInfo()}
         </span>
       )}
     </div>

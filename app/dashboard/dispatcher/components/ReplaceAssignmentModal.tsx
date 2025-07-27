@@ -308,10 +308,11 @@ export default function ReplaceAssignmentModal({
                 selectedDriver,
                 reserve,
                 replacementType: tabToReplacementTypeMap[tab],
+                date, // 👈 добавлено
                 onReplaceSuccess,
                 onReload,
                 onClose,
-              })
+              })              
             }}
           >
             Заменить

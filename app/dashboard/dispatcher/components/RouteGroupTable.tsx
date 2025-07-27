@@ -47,6 +47,7 @@ export default function RouteGroupTable({
 }: RouteGroupTableProps) {
   const { convoyId } = useConvoy()
   const [assignments, setAssignments] = useState<RouteAssignment[]>(group.assignments)
+  
 
   useEffect(() => {
     setAssignments(group.assignments)
@@ -59,7 +60,8 @@ export default function RouteGroupTable({
       replacementType?: string
     }
   ) => {
-    const isPermutation = updated.replacementType === "permutation"
+    const isPermutation = updated.replacementType === "Permutation"
+    const isRearrangingRoute = updated.replacementType === "RearrangingRoute"    
   
     setAssignments((prev) =>
       prev.map((a) =>
@@ -73,9 +75,12 @@ export default function RouteGroupTable({
               status: updated.status,
               oldBus: updated.oldBus,
               oldDriver: updated.oldDriver,
+              description: updated.description ?? a.description, // ⬅️ ДОБАВЬ ЭТО
               additionalInfo: isPermutation
-                ? "🔁 Перестановка с маршрута"
-                : updated.additionalInfo ?? a.additionalInfo,
+              ? "🔁 Перестановка с маршрута"
+              : isRearrangingRoute
+              ? "🔄 Перестановка по маршруту"
+              : updated.additionalInfo ?? a.additionalInfo,
             }
           : a
       )
@@ -107,8 +112,9 @@ export default function RouteGroupTable({
         newStatus = DispatchBusLineStatus.Undefined
       } else if (
         currentStatus === DispatchBusLineStatus.Replaced ||
-        currentStatus === DispatchBusLineStatus.Permutation
-      ) {
+        currentStatus === DispatchBusLineStatus.Permutation ||
+        currentStatus === DispatchBusLineStatus.RearrangingRoute
+      ) {      
         newStatus = currentStatus
       }
     }
@@ -235,7 +241,7 @@ export default function RouteGroupTable({
                   </td>
                   <td className={cellClass}>{a.scheduleTime}</td>
                   <td className={cellClass}>
-                    <AssignmentCell assignment={a} date={displayDate} readOnly={readOnly} />
+                  <AssignmentCell key={a.dispatchBusLineId} assignment={a} date={displayDate} readOnly={readOnly} />
                   </td>
                   <td className={cellClass}>{formatTimeHHMM(a.endTime)}</td>
                   <td className={cellClass}>{isChecked ? "✅ Вышел" : "—"}</td>

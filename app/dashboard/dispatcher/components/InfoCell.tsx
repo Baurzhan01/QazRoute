@@ -18,6 +18,7 @@ interface InfoCellProps {
   driverId?: string | null
   readOnly?: boolean
   textClassName?: string
+  onUpdateLocalValue?: (value: string) => void
 }
 
 export function InfoCell({
@@ -29,6 +30,7 @@ export function InfoCell({
   driverId = null,
   readOnly = false,
   textClassName,
+  onUpdateLocalValue,
 }: InfoCellProps) {
   const [value, setValue] = useState(initialValue ?? "")
   const [editing, setEditing] = useState(false)
@@ -46,26 +48,19 @@ export function InfoCell({
     return null
   }
 
-  const isValid = (val: string) => {
-    const trimmed = val.trim()
-    return (
-      trimmed.length > 0 &&
-      trimmed.length <= 150 &&
-      !emojiRegex.test(trimmed[0])
-    )
-  }
-
   const handleSave = async () => {
     const trimmed = value.trim()
-    if (!assignmentId) {
-      toast({ title: "Ошибка", description: "Не указан ID назначения" })
+    const isSystemNote =
+      trimmed.startsWith("🔁") || trimmed.startsWith("🔄") || trimmed.startsWith("❌")
+
+    if (!assignmentId || trimmed === initialValue?.trim()) {
       return
     }
 
-    if (!isValid(trimmed)) {
+    if (isSystemNote) {
       toast({
-        title: "Невалидное описание",
-        description: "Описание должно начинаться с текста, а не emoji, и содержать осмысленную информацию",
+        title: "Редактирование запрещено",
+        description: "Это поле заполняется автоматически при замене",
         variant: "destructive",
       })
       setValue(initialValue)
@@ -80,15 +75,25 @@ export function InfoCell({
           description: trimmed,
         })
       } else {
-        await releasePlanService.updateBusLineDescription(assignmentId, formatDate(date), trimmed)
+        await releasePlanService.updateBusLineDescription(
+          assignmentId,
+          formatDate(date),
+          trimmed
+        )
       }
 
       toast({ title: "Сохранено", description: "Доп. информация обновлена" })
       router.refresh()
+      onUpdateLocalValue?.(trimmed)
     } catch {
       toast({ title: "Ошибка", description: "Не удалось сохранить" })
     }
   }
+
+  useEffect(() => {
+    setValue(initialValue ?? "")
+  }, [initialValue])
+  
 
   useEffect(() => {
     const val = value.toLowerCase()
@@ -104,13 +109,14 @@ export function InfoCell({
   if (readOnly && !editing) {
     return (
       <span
-        className={`block px-1 py-0.5 rounded ${textClassName ?? "text-red-600 font-bold text-[16px]"}`}
-      >
-        {getIcon()}
-        {value || "—"}
-      </span>
+      className="block px-1 py-0.5 rounded text-sm"
+      style={{ color: textColor, fontWeight: "bold" }}
+    >
+      {getIcon()}
+      {value || "—"}
+    </span>    
     )
-  }  
+  }
 
   return (
     <div
