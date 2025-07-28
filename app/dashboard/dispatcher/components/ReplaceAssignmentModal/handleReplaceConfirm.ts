@@ -119,10 +119,37 @@ export async function handleReplaceConfirm({
           }
           
           // 2. Описание (для текстового поля без иконок)
+          // 2. Описание (для текстового поля без иконок)
+          let description = ""
+
           const prevDriver = selectedAssignment.driver
           const prevBus = selectedAssignment.bus
-          const description = `Снят: ${formatShortFIO(prevDriver?.fullName ?? "")} (таб. №${prevDriver?.serviceNumber ?? "—"}), автобус ${prevBus?.garageNumber ?? "—"}`
-          
+
+          if (replacementType === "Replaced") {
+            // 🔁 Замена с резерва
+            description = `Снят: ${formatShortFIO(prevDriver?.fullName ?? "")} (таб. №${prevDriver?.serviceNumber ?? "—"}), автобус ${prevBus?.garageNumber ?? "—"}`
+          } else if (replacementType === "Permutation") {
+            const oldDriver = selectedAssignment.driver?.fullName || ""
+            const newDriver = selectedDriver?.fullName || ""
+            const oldBus = selectedAssignment.bus?.garageNumber || ""
+            const newBus = selectedBus?.garageNumber || ""
+
+            const isBusChanged = selectedBus && selectedBus.id !== selectedAssignment.bus?.id
+            const isDriverChanged = selectedDriver && selectedDriver.id !== selectedAssignment.driver?.id
+
+            if (isBusChanged && !isDriverChanged) {
+              description = `Перестановка автобусов: ${oldBus} → ${newBus}`
+            } else if (isDriverChanged && !isBusChanged) {
+              description = `Перестановка водителя: ${formatShortFIO(oldDriver)} → ${formatShortFIO(newDriver)}`
+            } else {
+              description = `Перестановка: ${formatShortFIO(prevDriver?.fullName ?? "")} (таб. №${prevDriver?.serviceNumber ?? "—"}), автобус ${prevBus?.garageNumber ?? "—"}`
+            }
+          } else if (replacementType === "RearrangingRoute") {
+            // 🔄 Перестановка по маршруту
+            description = `Перестановка: ${formatShortFIO(prevDriver?.fullName ?? "")} (таб. №${prevDriver?.serviceNumber ?? "—"}), автобус ${prevBus?.garageNumber ?? "—"}`
+          }
+
+ 
       await releasePlanService.updateBusLineDescription(
         selectedAssignment.dispatchBusLineId,
         date,

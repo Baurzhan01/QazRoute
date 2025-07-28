@@ -281,8 +281,10 @@ export default function ReplaceAssignmentModal({
               selectedBus={selectedBus}
               onSelect={setSelectedBus}
               search={searchText}
+              reserveAssignments={reserve} // ✅ ← это добавь
             />
           </TabsContent>
+
 
           <TabsContent value="drivers">
             <FreeDriversGrid

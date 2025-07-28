@@ -24,6 +24,7 @@ const statusMap: Record<string, number> = {
   Replaced: 2,
   Permutation: 3,
   Removed: 4,
+  RearrangingRoute: 5, // ✅ добавь это
 }
 
 export function useConvoyReleasePlan(

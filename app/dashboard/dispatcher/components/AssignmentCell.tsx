@@ -2,6 +2,8 @@
 
 import { InfoCell } from "@/app/dashboard/fleet-manager/release-plan/components/InfoCell"
 import type { RouteAssignment } from "@/types/releasePlanTypes"
+import { DispatchBusLineStatus } from "@/types/releasePlanTypes"
+
 
 interface AssignmentCellProps {
   assignment: RouteAssignment
@@ -34,7 +36,9 @@ export default function AssignmentCell({ assignment, date, readOnly, textClassNa
 
     const showReplacement = status === 2 || replacementType === "Replaced"
     const showPermutation = status === 3 || replacementType === "Permutation"
-    const showRearrangingRoute = status === 5 || replacementType === "RearrangingRoute"    
+    const showRearrangingRoute = status === DispatchBusLineStatus.RearrangingRoute
+
+  
 
   const formatInitials = (fullName?: string) => {
     if (!fullName) return ""

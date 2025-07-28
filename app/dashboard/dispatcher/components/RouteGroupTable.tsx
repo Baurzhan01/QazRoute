@@ -162,7 +162,6 @@ export default function RouteGroupTable({
             <th className={headerClass}>Таб. номер</th>
             <th className={headerClass}>Норма (л)</th>
             <th className={headerClass}>Время выхода</th>
-            <th className={headerClass}>По графику</th>
             <th className={headerClass}>Доп. информация</th>
             <th className={headerClass}>Конец</th>
             <th className={headerClass}>Отметка</th>
@@ -239,7 +238,6 @@ export default function RouteGroupTable({
                     </div>
                     )}
                   </td>
-                  <td className={cellClass}>{a.scheduleTime}</td>
                   <td className={cellClass}>
                   <AssignmentCell key={a.dispatchBusLineId} assignment={a} date={displayDate} readOnly={readOnly} />
                   </td>
