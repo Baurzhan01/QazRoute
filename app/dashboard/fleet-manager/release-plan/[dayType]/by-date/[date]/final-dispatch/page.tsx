@@ -8,9 +8,10 @@ import { getAuthData } from "@/lib/auth-utils"
 import { formatDateLabel, formatDayOfWeek, parseDate } from "../../../../utils/dateUtils"
 import { telegramService } from "@/service/telegramService"
 import { useFinalDispatch } from "../../../../hooks/useFinalDispatch"
-import FinalDispatchExport from "./components/FinalDispatchExport"
 import SkeletonBlock from "../../../../components/SkeletonBlock"
 import FinalDispatchTable from "../../../../components/FinalDispatchTable"
+import { exportFinalDispatchToExcel } from "../../../../utils/exportFinalDispatchToExcel"
+
 import {
   Dialog,
   DialogContent,
@@ -148,13 +149,29 @@ export default function FinalDispatchPage() {
           <Button variant="outline" onClick={handleSaveAsImage}>
             📷 Файл на печать
           </Button>
-          {finalDispatch && (
-            <FinalDispatchExport
-              date={displayDate}
-              data={finalDispatch}
-              depotName={depotName}
-            />
-          )}
+          <Button
+            variant="outline"
+            onClick={async () => {
+              if (!finalDispatch || !dateParam || convoyNumber === undefined) return
+
+              try {
+                await exportFinalDispatchToExcel(
+                  dateParam,
+                  convoyNumber,
+                  finalDispatch,
+                  orderAssignments
+                )
+              } catch (error) {
+                toast({
+                  title: "Ошибка",
+                  description: "Не удалось сохранить Excel-файл",
+                  variant: "destructive",
+                })
+              }
+            }}
+          >
+            📥 Скачать Excel
+          </Button>
           <Button variant="secondary" onClick={handleGoBack}>
             ← Назад к маршрутам
           </Button>
