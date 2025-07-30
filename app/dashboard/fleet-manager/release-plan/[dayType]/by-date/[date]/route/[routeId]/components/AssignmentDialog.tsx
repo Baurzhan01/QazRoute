@@ -77,7 +77,7 @@ export default function AssignmentDialog({
       .then((res) => {
         const buses = (res ?? []).map((bus) => ({
           ...bus,
-          isAssigned: bus.isAssigned ?? false,
+          isAssigned: bus.isBusy ?? false,
         }))
         setAvailableBuses(buses)
       })
@@ -164,26 +164,13 @@ export default function AssignmentDialog({
                 }}
                 labelKey="garageNumber"
                 subLabelKey={(bus) => bus.govNumber}
-                status={(bus) => {
-                  const assigned = assignedBusesMap[bus.id];
-                  if (
-                    assigned?.routeNumber === routeId &&
-                    assigned?.departureNumber === selectedDeparture.departureNumber
-                  ) {
-                    return { label: "ТЕКУЩИЙ", color: "gray" };
-                  }
-                  return assigned
+                status={(bus) =>
+                  bus.isBusy
                     ? { label: "НАЗНАЧЕН", color: "red" }
-                    : { label: "НЕ назначен", color: "green" };
-                }}
-                disableItem={(bus) =>
-                  !!assignedBusesMap[bus.id] &&
-                  (
-                    assignedBusesMap[bus.id].routeNumber !== routeId ||
-                    assignedBusesMap[bus.id].departureNumber !== selectedDeparture.departureNumber
-                  ) ||
-                  ["UnderRepair", "LongTermRepair", "Decommissioned"].includes(bus.status ?? "")
+                    : { label: "НЕ назначен", color: "green" }
                 }
+                
+                disableItem={(bus) => !!bus.isBusy}                
               />
             </div>
 

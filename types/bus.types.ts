@@ -33,6 +33,7 @@ export interface DisplayBus {
   garageNumber: string
   status?: string   // ← добавь это
   isAssigned?: boolean
+  isBusy?: boolean     
   assignedRoute?: string
   stateNumber?: string // ← см. ниже
 }
