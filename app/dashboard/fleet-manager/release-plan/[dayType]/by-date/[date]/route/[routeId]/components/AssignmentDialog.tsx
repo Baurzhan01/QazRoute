@@ -164,14 +164,24 @@ export default function AssignmentDialog({
                 }}
                 labelKey="garageNumber"
                 subLabelKey={(bus) => bus.govNumber}
-                status={(bus) =>
-                  bus.isAssigned
+                status={(bus) => {
+                  const assigned = assignedBusesMap[bus.id];
+                  if (
+                    assigned?.routeNumber === routeId &&
+                    assigned?.departureNumber === selectedDeparture.departureNumber
+                  ) {
+                    return { label: "ТЕКУЩИЙ", color: "gray" };
+                  }
+                  return assigned
                     ? { label: "НАЗНАЧЕН", color: "red" }
-                    : { label: "НЕ назначен", color: "green" }
-                }
+                    : { label: "НЕ назначен", color: "green" };
+                }}
                 disableItem={(bus) =>
-                  bus.isAssigned ||
-                  !!assignedBusesMap[bus.id] ||
+                  !!assignedBusesMap[bus.id] &&
+                  (
+                    assignedBusesMap[bus.id].routeNumber !== routeId ||
+                    assignedBusesMap[bus.id].departureNumber !== selectedDeparture.departureNumber
+                  ) ||
                   ["UnderRepair", "LongTermRepair", "Decommissioned"].includes(bus.status ?? "")
                 }
               />
