@@ -12,6 +12,7 @@ export interface CreateRouteExitRepairDto {
   mileage: number
   isLongRepair: boolean
   repairType: RouteExitRepairStatus
+  isLaunchedFromGarage: boolean; // ← новое поле
 }
 
 export interface BusRepairStatsResponse {
@@ -43,6 +44,7 @@ export interface RouteExitRepairDto {
   repairId?: string | null
   reserveId: string | null
   repairType: RouteExitRepairStatus
+  isLaunchedFromGarage: boolean;
 
   // новые поля:
   bus?: {

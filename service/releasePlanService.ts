@@ -16,7 +16,8 @@ import type {
   FinalDispatchData,
   ReserveReplacementCandidate,
   AssignUnplannedDispatchResponse,
-  AssignmentReplacement
+  AssignmentReplacement,
+  DispatchReplacementHistoryDto
 } from "@/types/releasePlanTypes"
 
 
@@ -29,6 +30,8 @@ export const statusEnumMap: Record<DispatchBusLineStatus, string> = {
   [DispatchBusLineStatus.RearrangingRoute]: "RearrangingRoute",
   [DispatchBusLineStatus.RearrangementRenovation]: "RearrangementRenovation",
   [DispatchBusLineStatus.Oder]: "Oder", // ✅ если на сервере именно так, оставить
+  [DispatchBusLineStatus.LaunchedFromGarage]: "LaunchedFromGarage",
+
 }
 
 
@@ -167,6 +170,11 @@ export const releasePlanService = {
       throw new Error(error.response?.data?.error || "Не удалось получить разнарядку")
     }
   },
+
+  getDispatchHistory: async (dispatchBusLineId: string): Promise<ApiResponse<DispatchReplacementHistoryDto[]>> => {
+    const res = await apiClient.get(`/dispatches/history/${dispatchBusLineId}`);
+    return res.data;
+  },  
 
   assignToReserve: async (
     date: string,

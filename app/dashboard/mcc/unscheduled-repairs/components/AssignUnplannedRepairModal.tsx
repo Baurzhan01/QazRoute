@@ -72,6 +72,7 @@ export default function AssignUnplannedRepairModal({
   const searchRef = useRef<HTMLInputElement>(null)
   const [replaceDialogOpen, setReplaceDialogOpen] = useState(false)
   const [scheduledRepairs, setScheduledRepairs] = useState<RepairDto[]>([])
+  const [isLaunchedFromGarage, setIsLaunchedFromGarage] = useState(false);
 
   const auth = getAuthData()
   const depotId = auth?.busDepotId ?? ""
@@ -254,6 +255,9 @@ export default function AssignUnplannedRepairModal({
     if (!mileage) {
       return toast({ title: "Укажите пробег", variant: "destructive" })
     }
+    
+    const finalReason = `<b style='color:red;'>${isLaunchedFromGarage ? "Сход с гаража." : "Сход с линии."}</b><br>${reason.trim()}`;
+    
 
     const result = await routeExitRepairService.create({
       startDate: formattedDate,
@@ -262,12 +266,13 @@ export default function AssignUnplannedRepairModal({
       andTime: null,
       dispatchBusLineId: isScheduledRepairItem ? null : (selected.isReserve ? null : selectedItemId),
       reserveId: isScheduledRepairItem ? null : (selected.isReserve ? selectedItemId : null),
-      repairId: repairId, // <-- плановый ремонт сюда
+      repairId: repairId,
       isExist: true,
-      text: reason,
+      text: finalReason, // ✅ вот здесь используем отформатированную строку
       mileage: parseInt(mileage, 10),
       isLongRepair: false,
       repairType: "Unscheduled",
+      isLaunchedFromGarage: isLaunchedFromGarage,
     })
 
     if (result.isSuccess) {
@@ -394,7 +399,17 @@ export default function AssignUnplannedRepairModal({
               )}
             </>
           )}
-
+          <div className="flex items-center gap-2">
+          <Label>Тип схода</Label>
+          <select
+            className="w-full border rounded px-3 py-2"
+            value={isLaunchedFromGarage ? "garage" : "line"}
+            onChange={(e) => setIsLaunchedFromGarage(e.target.value === "garage")}
+          >
+            <option value="line">Сход с линии</option>
+            <option value="garage">Сход с гаража</option>
+          </select>
+        </div>
           <div>
             <Label>Причина неисправности</Label>
             <Textarea
@@ -403,7 +418,6 @@ export default function AssignUnplannedRepairModal({
               placeholder="Например: Проблема с тормозами"
             />
           </div>
-
           <div>
             <Label>Пробег (в км)</Label>
             <Input

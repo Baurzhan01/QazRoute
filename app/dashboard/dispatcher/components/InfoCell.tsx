@@ -39,23 +39,24 @@ export function InfoCell({
   const [anchorPoint, setAnchorPoint] = useState({ x: 0, y: 0 })
   const router = useRouter()
 
-  const emojiRegex = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}]/u
+  const stripHtml = (str: string) => str.replace(/<[^>]+>/g, "")
 
   const getIcon = () => {
-    if (value.includes("❌")) return <XCircle className="w-4 h-4 text-red-600 inline-block mr-1" />
-    if (value.includes("🔄")) return <RefreshCcw className="w-4 h-4 text-blue-600 inline-block mr-1" />
-    if (value.includes("🔁")) return <AlertTriangle className="w-4 h-4 text-yellow-600 inline-block mr-1" />
+    const clean = stripHtml(value)
+    if (clean.includes("выехал на линию")) return null
+    if (clean.includes("❌")) return <XCircle className="w-4 h-4 text-red-600 inline-block mr-1" />
+    if (clean.includes("🔄")) return <RefreshCcw className="w-4 h-4 text-blue-600 inline-block mr-1" />
+    if (clean.includes("🔁")) return <AlertTriangle className="w-4 h-4 text-yellow-600 inline-block mr-1" />
     return null
   }
 
   const handleSave = async () => {
     const trimmed = value.trim()
+    const cleanText = stripHtml(trimmed)
     const isSystemNote =
-      trimmed.startsWith("🔁") || trimmed.startsWith("🔄") || trimmed.startsWith("❌")
+      cleanText.startsWith("🔁") || cleanText.startsWith("🔄") || cleanText.startsWith("❌")
 
-    if (!assignmentId || trimmed === initialValue?.trim()) {
-      return
-    }
+    if (!assignmentId || trimmed === initialValue?.trim()) return
 
     if (isSystemNote) {
       toast({
@@ -72,19 +73,19 @@ export function InfoCell({
         await releasePlanService.updateReserveAssignment(assignmentId, {
           busId,
           driverId,
-          description: trimmed,
+          description: cleanText,
         })
       } else {
         await releasePlanService.updateBusLineDescription(
           assignmentId,
           formatDate(date),
-          trimmed
+          cleanText
         )
       }
 
       toast({ title: "Сохранено", description: "Доп. информация обновлена" })
       router.refresh()
-      onUpdateLocalValue?.(trimmed)
+      onUpdateLocalValue?.(cleanText)
     } catch {
       toast({ title: "Ошибка", description: "Не удалось сохранить" })
     }
@@ -93,11 +94,12 @@ export function InfoCell({
   useEffect(() => {
     setValue(initialValue ?? "")
   }, [initialValue])
-  
 
   useEffect(() => {
-    const val = value.toLowerCase()
-    if (val.includes("снят с маршрута")) {
+    const val = stripHtml(value).toLowerCase()
+    if (val.includes("выехал на линию")) {
+      setTextColor("#28a745")
+    } else if (val.includes("снят с маршрута")) {
       setTextColor("#dc3545")
     } else if (val.includes("назначен на маршрут")) {
       setTextColor("#007bff")
@@ -107,14 +109,33 @@ export function InfoCell({
   }, [value])
 
   if (readOnly && !editing) {
+    const cleanValue = stripHtml(value || "")
+    const fallbackValue = stripHtml(initialValue || "")
+
+    const isExitText = cleanValue.includes("выехал на линию")
+    const isRemovedText = cleanValue.includes("снят с маршрута") || fallbackValue === "Сход с линии"
+    const isAssignedText = cleanValue.includes("назначен на маршрут")
+
+    const finalText = cleanValue || fallbackValue
+    const displayText = finalText || "—"
+
+    const icon = cleanValue === "Сход с линии" || fallbackValue === "Сход с линии"
+      ? <XCircle className="w-4 h-4 text-red-600 inline-block mr-1" />
+      : getIcon()
+
+    const textClass = isExitText
+      ? "text-green-600"
+      : isRemovedText
+      ? "text-red-600"
+      : isAssignedText
+      ? "text-blue-600"
+      : "text-black"
+
     return (
-      <span
-      className="block px-1 py-0.5 rounded text-sm"
-      style={{ color: textColor, fontWeight: "bold" }}
-    >
-      {getIcon()}
-      {value || "—"}
-    </span>    
+      <div className={`w-full text-center font-bold text-[15px] leading-tight py-1 ${textClass}`}>
+        {icon}
+        <span>{displayText}</span>
+      </div>
     )
   }
 

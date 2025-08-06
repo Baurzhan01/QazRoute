@@ -18,24 +18,35 @@ export default function EditRepairModal({ repair, onClose, onSave }: EditRepairM
   const [text, setText] = useState(repair.text || "")
   const [mileage, setMileage] = useState(repair.mileage ?? 0)
   const [saving, setSaving] = useState(false)
+  const [isGarage, setIsGarage] = useState(repair.isLaunchedFromGarage || false);
 
   const handleSave = async () => {
     setSaving(true)
+  
+    const updatedText = `<b style='color:red;'>${isGarage ? "Сход с гаража" : "Сход с линии"}</b><br>${text.trim()}`
+  
     const result = await routeExitRepairService.update(repair.id, {
       ...repair,
-      text,
+      text: updatedText,
       mileage,
+      isLaunchedFromGarage: isGarage,
     })
+  
     setSaving(false)
-
+  
     if (result.isSuccess) {
       toast({ title: "Успешно", description: "Запись обновлена" })
       onSave?.()
       onClose()
     } else {
-      toast({ title: "Ошибка", description: result.error || "Не удалось сохранить", variant: "destructive" })
+      toast({
+        title: "Ошибка",
+        description: result.error || "Не удалось сохранить",
+        variant: "destructive",
+      })
     }
   }
+  
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -44,6 +55,17 @@ export default function EditRepairModal({ repair, onClose, onSave }: EditRepairM
           <DialogTitle>Редактировать ремонт</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 mt-2">
+        <div className="flex items-center gap-2">
+          <label className="block text-sm font-medium mb-1">Тип схода</label>
+          <select
+            className="w-full border rounded px-3 py-2"
+            value={isGarage ? "garage" : "line"}
+            onChange={(e) => setIsGarage(e.target.value === "garage")}
+          >
+            <option value="line">Сход с линии</option>
+            <option value="garage">Сход с гаража</option>
+          </select>
+        </div>
           <div>
             <label className="block text-sm font-medium mb-1">Описание / причина</label>
             <Input value={text} onChange={(e) => setText(e.target.value)} />

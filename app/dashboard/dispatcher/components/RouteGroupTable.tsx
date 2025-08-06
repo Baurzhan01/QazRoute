@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { formatDate } from "../convoy/[id]/release-plan/utils/dateUtils"
 
 interface RouteGroupTableProps {
   group: RouteGroup
@@ -47,7 +48,6 @@ export default function RouteGroupTable({
 }: RouteGroupTableProps) {
   const { convoyId } = useConvoy()
   const [assignments, setAssignments] = useState<RouteAssignment[]>(group.assignments)
-  
 
   useEffect(() => {
     setAssignments(group.assignments)
@@ -61,8 +61,8 @@ export default function RouteGroupTable({
     }
   ) => {
     const isPermutation = updated.replacementType === "Permutation"
-    const isRearrangingRoute = updated.replacementType === "RearrangingRoute"    
-  
+    const isRearrangingRoute = updated.replacementType === "RearrangingRoute"
+
     setAssignments((prev) =>
       prev.map((a) =>
         a.dispatchBusLineId === updated.dispatchBusLineId
@@ -75,76 +75,104 @@ export default function RouteGroupTable({
               status: updated.status,
               oldBus: updated.oldBus,
               oldDriver: updated.oldDriver,
-              description: updated.description ?? a.description, // ⬅️ ДОБАВЬ ЭТО
+              description: updated.description ?? a.description,
               additionalInfo: isPermutation
-              ? "🔁 Перестановка с маршрута"
-              : isRearrangingRoute
-              ? "🔄 Перестановка по маршруту"
-              : updated.additionalInfo ?? a.additionalInfo,
+                ? "🔁 Перестановка с маршрута"
+                : isRearrangingRoute
+                ? "🔄 Перестановка по маршруту"
+                : updated.additionalInfo ?? a.additionalInfo,
             }
           : a
       )
     )
-  
+
     onReplaceSuccess?.(updated)
-  }  
+  }
 
-  const handleCheckboxChange = async (assignment: RouteAssignment, checked: boolean) => {
-    const dispatchId = assignment.dispatchBusLineId
-    const currentStatus = assignment.status
+  const handleInfoFromHistory = (updatedValue: string) => {
+    setAssignments((prev) =>
+      prev.map((a) =>
+        updatedValue.includes("выехал на линию") && a.additionalInfo !== updatedValue
+          ? { ...a, additionalInfo: updatedValue }
+          : a
+      )
+    )
+  }
 
-    let newStatus = currentStatus
-    let newIsRealsed = checked
-    let newReleasedTime = checked
-  ? new Date().toLocaleTimeString("ru-RU", { hour12: false }).slice(0, 5) + ":00"
-  : ""
+  // ✅ FINAL: handleCheckboxChange from RouteGroupTable.tsx
 
+const handleCheckboxChange = async (assignment: RouteAssignment, checked: boolean) => {
+  const dispatchId = assignment.dispatchBusLineId
+  const currentStatus = assignment.status
 
-    if (checked) {
-      if (currentStatus === DispatchBusLineStatus.Undefined) {
-        newStatus = DispatchBusLineStatus.Released
-      }
-    } else {
-      newIsRealsed = false
-      newReleasedTime = ""
+  let newStatus = currentStatus
+  let newIsRealsed = checked
+  let newReleasedTime = checked
+    ? new Date().toLocaleTimeString("ru-RU", { hour12: false }).slice(0, 5) + ":00"
+    : ""
 
-      if (currentStatus === DispatchBusLineStatus.Released) {
-        newStatus = DispatchBusLineStatus.Undefined
-      } else if (
-        currentStatus === DispatchBusLineStatus.Replaced ||
-        currentStatus === DispatchBusLineStatus.Permutation ||
-        currentStatus === DispatchBusLineStatus.RearrangingRoute
-      ) {      
-        newStatus = currentStatus
-      }
+  if (checked) {
+    if (currentStatus === DispatchBusLineStatus.Undefined) {
+      newStatus = DispatchBusLineStatus.Released
+    }
+  } else {
+    newIsRealsed = false
+    newReleasedTime = ""
+
+    if (newStatus === DispatchBusLineStatus.LaunchedFromGarage) {
+      // ✅ Обновляем описание при сходе с линии
+      await releasePlanService.updateBusLineDescription(
+        dispatchId,
+        formatDate(displayDate),
+        "Сход с линии"
+      )
     }
 
-    setCheckedDepartures((prev) => ({ ...prev, [dispatchId]: checked }))
-
-    try {
-      await releasePlanService.updateDispatchStatus(dispatchId, Number(newStatus), newIsRealsed)
-
-      setAssignments((prev) =>
-        prev.map((a) =>
-          a.dispatchBusLineId === dispatchId
-            ? {
-                ...a,
-                status: newStatus,
-                isRealsed: newIsRealsed,
-                releasedTime: newReleasedTime,
-              }
-            : a
-        )
-      )
-    } catch (err) {
-      console.error("Ошибка обновления статуса:", err)
-      setCheckedDepartures((prev) => ({ ...prev, [dispatchId]: !checked }))
+    if (currentStatus === DispatchBusLineStatus.Released) {
+      newStatus = DispatchBusLineStatus.Undefined
+    } else if (
+      currentStatus === DispatchBusLineStatus.Replaced ||
+      currentStatus === DispatchBusLineStatus.Permutation ||
+      currentStatus === DispatchBusLineStatus.RearrangingRoute
+    ) {
+      newStatus = currentStatus
     }
   }
 
+  setCheckedDepartures((prev) => ({ ...prev, [dispatchId]: checked }))
+
+  try {
+    await releasePlanService.updateDispatchStatus(dispatchId, Number(newStatus), newIsRealsed)
+
+    setAssignments((prev) =>
+      prev.map((a) =>
+        a.dispatchBusLineId === dispatchId
+          ? {
+              ...a,
+              status: newStatus,
+              isRealsed: newIsRealsed,
+              releasedTime: newReleasedTime,
+              additionalInfo:
+                newStatus === DispatchBusLineStatus.LaunchedFromGarage
+                  ? "Сход с линии"
+                  : a.additionalInfo,
+              description:
+                newStatus === DispatchBusLineStatus.LaunchedFromGarage
+                  ? "Сход с линии"
+                  : a.description,
+            }
+          : a
+      )
+    )
+  } catch (err) {
+    console.error("Ошибка обновления статуса:", err)
+    setCheckedDepartures((prev) => ({ ...prev, [dispatchId]: !checked }))
+  }
+}
+
   const formatTimeHHMM = (time?: string) => {
     return time?.length === 8 ? time.slice(0, 5) : time || "—"
-  }  
+  }
 
   const headerClass = "p-2 border text-center bg-sky-100 text-sky-900 text-sm font-semibold"
   const cellClass = "p-2 border text-center text-sm"
@@ -180,25 +208,31 @@ export default function RouteGroupTable({
               const isPermutation = a.status === DispatchBusLineStatus.Permutation
               const isRearrangingRoute = a.status === DispatchBusLineStatus.RearrangingRoute
               const isReleased = a.status === DispatchBusLineStatus.Released
+              const isGarageLaunch = a.status === DispatchBusLineStatus.LaunchedFromGarage
+              const isHistory = a.additionalInfo?.includes("Автобус выехал на линию")
 
-              const rowColor = isReplaced
+              const rowColor = isHistory
+                ? "bg-green-50"
+                : isReplaced
                 ? "bg-yellow-50"
                 : isPermutation || isRearrangingRoute
                 ? "bg-blue-50"
                 : isReleased
                 ? "bg-green-50"
+                : isGarageLaunch
+                ? "bg-red-50"
                 : ""
 
               return (
                 <tr key={dispatchId} className={rowColor}>
                   {showRouteNumber ? (
                     <td
-                    className="p-2 border text-center text-sm font-bold align-middle bg-[#e0f2fe] special-route-bg"
-                    rowSpan={assignments.length}
-                    style={{ minWidth: '120px', verticalAlign: 'middle' }}
-                  >
-                    {group.routeNumber}
-                  </td>                  
+                      className="p-2 border text-center text-sm font-bold align-middle bg-[#e0f2fe] special-route-bg"
+                      rowSpan={assignments.length}
+                      style={{ minWidth: "120px", verticalAlign: "middle" }}
+                    >
+                      {group.routeNumber}
+                    </td>
                   ) : null}
 
                   <td className={cellClass}>{a.busLineNumber}</td>
@@ -234,12 +268,18 @@ export default function RouteGroupTable({
                     <div>{formatTimeHHMM(a.departureTime)}</div>
                     {a.releasedTime && a.releasedTime !== "00:00:00" && (
                       <div className="text-[11px] text-green-600 mt-0.5">
-                      {a.releasedTime.slice(0, 5)} — путевой лист
-                    </div>
+                        {a.releasedTime.slice(0, 5)} — путевой лист
+                      </div>
                     )}
                   </td>
                   <td className={cellClass}>
-                  <AssignmentCell key={a.dispatchBusLineId} assignment={a} date={displayDate} readOnly={readOnly} />
+                    <AssignmentCell
+                      key={a.dispatchBusLineId}
+                      assignment={a}
+                      date={displayDate}
+                      readOnly={readOnly}
+                      onUpdateLocalValue={handleInfoFromHistory}
+                    />
                   </td>
                   <td className={cellClass}>{formatTimeHHMM(a.endTime)}</td>
                   <td className={cellClass}>{isChecked ? "✅ Вышел" : "—"}</td>

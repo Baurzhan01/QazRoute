@@ -32,6 +32,28 @@ export interface OrderAssignment {
   
 }
 
+export interface DispatchReplacementHistoryDto {
+  type: "REPAIR" | "REPLACEMENT"
+  status?: string
+  oldDriverName?: string
+  newDriverName?: string
+  oldBusNumber?: string
+  newBusNumber?: string
+  isFirstShift?: boolean
+  replacedAt: string
+
+  // REPAIR-specific:
+  startDate?: string
+  startTime?: string
+  andTime?: string
+  startRepairTime?: string
+  endRepairDate?: string
+  endRepairTime?: string
+  repairText?: string
+  repairType?: string
+}
+
+
 // 📋 Общая дьюти разнарядка (Duty)
 export interface DispatchDutyRecord {
   routeNumber: string
@@ -60,6 +82,7 @@ export interface DutyApiResponse {
 export interface AssignmentReplacement {
   exitNumber: string
   routeNumber: string
+  serviceNumber: string
   dispatchBusLineId: string
   bus: {
     id?: string
@@ -303,6 +326,7 @@ export interface FinalDispatchData {
 
 export interface ReserveReplacementCandidate {
   id: string
+  dispatchBusLineId: string
   busId: string
   driverId: string
   driverFullName: string
@@ -323,7 +347,8 @@ export enum DispatchBusLineStatus {
 
   RearrangingRoute = 5,            // Перестановка по маршруту
   RearrangementRenovation = 6,     // Перестановка с ремонта
-  Oder = 7                         // С заказа (возможно Order?)
+  Oder = 7,                         // С заказа (возможно Order?)
+  LaunchedFromGarage = 8,           // Сход с гаража
 }
 
 export interface RouteGroup {
