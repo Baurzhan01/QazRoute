@@ -64,11 +64,11 @@ export const releasePlanService = {
     isFirstShift: boolean,
     replacementType: string,
     newDriverId: string,
-    newBusId: string
+    newBusId: string,
+    isSwap: boolean = false // добавлено
   ): Promise<ApiResponse<boolean>> => {
-    const date = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const date = new Date().toISOString().split("T")[0];
   
-    // Основной запрос на замену
     const { data } = await apiClient.put(
       `/dispatches/replace/${dispatchBusLineId}/${isFirstShift}/${replacementType}`,
       null,
@@ -76,25 +76,25 @@ export const releasePlanService = {
         params: {
           newDriverId,
           newBusId,
+          isSwap, // передаём флаг
         },
       }
-    );
+    )
   
-    // Если замена прошла успешно — добавим пометку "Снят с маршрута"
     if (data?.isSuccess) {
       try {
         await apiClient.put(`/dispatches/update-description`, {
           dispatchBusLineId,
           date,
           description: "Снят с маршрута",
-        });
+        })
       } catch (err) {
-        console.warn("⚠️ Ошибка при добавлении описания:", err);
+        console.warn("⚠️ Ошибка при добавлении описания:", err)
       }
     }
   
-    return data;
-  },
+    return data
+  },  
 
   getExtendedAssignmentsByDepot: async (
     date: string,

@@ -6,6 +6,7 @@ import type {
   PaginatedBusesResponse,
   ApiResponse
 } from "@/types/bus.types";
+import type { DepotBusWithAssignment } from "@/types/bus.types"
 
 export const busService = {
   getAll: async (): Promise<ApiResponse<Bus[]>> => {
@@ -27,6 +28,13 @@ export const busService = {
     const response = await apiClient.get(`/buses/with-drivers/${id}`);
     return response.data;
   },
+  getByDepotWithAssignments: async (
+    depotId: string,
+    date: string
+  ): Promise<ApiResponse<DepotBusWithAssignment[]>> => {
+    const response = await apiClient.get(`/buses/by-depot/${depotId}/${date}`)
+    return response.data
+  },  
 
   getFreeBuses: async (date: string, convoyId: string): Promise<DisplayBus[]> => {
     const response = await apiClient.get<ApiResponse<DisplayBus[]>>(`/buses/free-buses`, {

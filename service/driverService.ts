@@ -10,6 +10,8 @@ import type {
   DriverStatusCount,
   DisplayDriver,
 } from "@/types/driver.types"
+import type { DepotDriverWithAssignment } from "@/types/driver.types"
+
 
 export const driverService = {
   getAll: async (): Promise<ApiResponse<Driver[]>> => {
@@ -31,6 +33,14 @@ export const driverService = {
     const response = await apiClient.get<ApiResponse<Driver[]>>(`/drivers/by-depot/${depotId}`)
     return response.data
   },
+  getByDepotWithAssignments: async (
+    depotId: string,
+    date: string
+  ): Promise<ApiResponse<DepotDriverWithAssignment[]>> => {
+    const response = await apiClient.get(`/drivers/by-depot/${depotId}/${date}`)
+    return response.data
+  },
+  
 
   filter: async (
     filter: DriverFilterRequest

@@ -16,6 +16,7 @@ interface HandleReplaceConfirmParams {
   reserve: ReserveReplacementCandidate[]
   replacementType: string
   date: string
+  swap: boolean
   onReplaceSuccess?: (updated: RouteAssignment) => void
   onReload?: () => void
   onClose: () => void
@@ -29,6 +30,7 @@ export async function handleReplaceConfirm({
   reserve,
   replacementType,
   date,
+  swap,
   onReplaceSuccess,
   onReload,
   onClose,
@@ -60,7 +62,8 @@ export async function handleReplaceConfirm({
       isFirstShift,
       replacementType,
       driverId,
-      busId
+      busId,
+      swap // ⬅️ добавлено
     )
 
     if (replacementType === "Replaced") {
