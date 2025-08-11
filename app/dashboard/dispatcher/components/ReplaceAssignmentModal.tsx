@@ -1,18 +1,12 @@
-// ReplaceAssignmentModal.tsx
+// ReplaceAssignmentModal.tsx (замена всего файла)
 "use client"
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/components/ui/use-toast"
-import { useState, useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { handleReplaceConfirm } from "./ReplaceAssignmentModal/handleReplaceConfirm"
 import { busService } from "@/service/busService"
 import { driverService } from "@/service/driverService"
@@ -36,7 +30,6 @@ const typeColorMap: Record<string, string> = {
   RearrangingRoute: "bg-orange-100 text-orange-800",
   Permutation: "bg-green-100 text-green-800",
 }
-
 const typeLabelMap: Record<string, string> = {
   Replaced: "Замена с резерва",
   Order: "С заказа",
@@ -52,6 +45,17 @@ function formatShortFIO(fullName?: string) {
   return `${last} ${initials}.`
 }
 
+type DriverRaw = {
+  driverId: string; fullName: string; serviceNumber: string; status: string;
+  routeName: string | null; busLineNumber: string | null; convoyNumber: string
+}
+type BusRaw = {
+  busId: string; garageNumber: string; govNumber: string; status: string;
+  routeName: string | null; busLineNumber: string | null; convoyNumber: string
+}
+
+type Option<T> = { id: string; label: string; search: string; raw: T }
+
 export default function ReplaceAssignmentModal({
   open,
   onClose,
@@ -63,51 +67,88 @@ export default function ReplaceAssignmentModal({
 }: ReplaceAssignmentModalProps) {
   const depot = depotId || getAuthData()?.busDepotId
 
-  const [drivers, setDrivers] = useState<any[]>([])
-  const [buses, setBuses] = useState<any[]>([])
-  const [selectedDriverId, setSelectedDriverId] = useState<string>("")
-  const [selectedBusId, setSelectedBusId] = useState<string>("")
+  const [drivers, setDrivers] = useState<DriverRaw[]>([])
+  const [buses, setBuses] = useState<BusRaw[]>([])
+  const [selectedDriverId, setSelectedDriverId] = useState("")
+  const [selectedBusId, setSelectedBusId] = useState("")
   const [replacementType, setReplacementType] = useState<string>("Replaced")
   const [isSwap, setIsSwap] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
+  // load candidates
   useEffect(() => {
     const loadData = async () => {
       if (!depot || !date) return
-
       try {
-        const [driversRes, busesRes] = await Promise.all([
+        const [dRes, bRes] = await Promise.all([
           driverService.getByDepotWithAssignments(depot, date),
           busService.getByDepotWithAssignments(depot, date),
         ])
-        if (driversRes?.isSuccess) setDrivers(driversRes.value || [])
-        if (busesRes?.isSuccess) setBuses(busesRes.value || [])
-      } catch (err) {
-        console.error("Ошибка загрузки данных:", err)
+        if (dRes?.isSuccess) setDrivers(dRes.value || [])
+        if (bRes?.isSuccess) setBuses(bRes.value || [])
+      } catch (e) {
+        console.error("Ошибка загрузки кандидатов:", e)
         toast({ title: "Ошибка загрузки кандидатов", variant: "destructive" })
       }
     }
     if (open) loadData()
   }, [open, depot, date])
 
-  const selectedDriver = useMemo(() => drivers.find((d) => d.driverId === selectedDriverId), [selectedDriverId, drivers])
-  const selectedBus = useMemo(() => buses.find((b) => b.busId === selectedBusId), [selectedBusId, buses])
+  // options prepared (fast)
+  const driverOptions: Option<DriverRaw>[] = useMemo(
+    () =>
+      drivers.map((d) => {
+        const fioParts = d.fullName.split(" ")
+        const fio = fioParts
+          .map((part, i) => (i === 0 ? part : (part[0] || "") + "."))
+          .join(" ")
+        const assign = d.routeName && d.busLineNumber ? ` · Назначен: ${d.routeName} / выход ${d.busLineNumber}` : " · Свободен"
+        const label = `${fio} ${d.serviceNumber ? `(${d.serviceNumber})` : ""} · Колонна ${d.convoyNumber}${assign}`
+        const search = `${d.fullName} ${d.serviceNumber || ""} ${d.routeName || ""} ${d.busLineNumber || ""} ${d.convoyNumber || ""}`.toLowerCase()
+        return { id: d.driverId, label, search, raw: d }
+      }),
+    [drivers]
+  )
 
+  const busOptions: Option<BusRaw>[] = useMemo(
+    () =>
+      buses.map((b) => {
+        const assign = b.routeName && b.busLineNumber ? ` · Назначен: ${b.routeName} / выход ${b.busLineNumber}` : " · Свободен"
+        const label = `${b.garageNumber} / ${b.govNumber} · Колонна ${b.convoyNumber}${assign}`
+        const search = `${b.garageNumber} ${b.govNumber} ${b.routeName || ""} ${b.busLineNumber || ""} ${b.convoyNumber || ""}`.toLowerCase()
+        return { id: b.busId, label, search, raw: b }
+      }),
+    [buses]
+  )
+
+  const selectedDriverOpt = useMemo(
+    () => driverOptions.find((o) => o.id === selectedDriverId),
+    [driverOptions, selectedDriverId]
+  )
+  const selectedBusOpt = useMemo(
+    () => busOptions.find((o) => o.id === selectedBusId),
+    [busOptions, selectedBusId]
+  )
+
+  const isDriverBusy = !!(selectedDriverOpt?.raw.routeName && selectedDriverOpt?.raw.busLineNumber)
+  const isBusBusy = !!(selectedBusOpt?.raw.routeName && selectedBusOpt?.raw.busLineNumber)
+
+  // auto-type suggestion (compute busy flags inside)
   useEffect(() => {
-    if (!selectedDriver && !selectedBus) return
+    if (!selectedDriverOpt && !selectedBusOpt) return
+    const dBusy = !!(selectedDriverOpt?.raw.routeName && selectedDriverOpt?.raw.busLineNumber)
+    const bBusy = !!(selectedBusOpt?.raw.routeName && selectedBusOpt?.raw.busLineNumber)
 
-    if (selectedDriver && selectedBus) {
-      if (isDriverBusy || isBusBusy) {
-        setReplacementType("Permutation")
-      } else {
-        setReplacementType("Replaced")
-      }
-    } else if (selectedDriver) {
-      setReplacementType(isDriverBusy ? "Permutation" : "Replaced")
-    } else if (selectedBus) {
-      setReplacementType(isBusBusy ? "Permutation" : "Replaced")
+    if (selectedDriverOpt && selectedBusOpt) {
+      setReplacementType(dBusy || bBusy ? "Permutation" : "Replaced")
+    } else if (selectedDriverOpt) {
+      setReplacementType(dBusy ? "Permutation" : "Replaced")
+    } else if (selectedBusOpt) {
+      setReplacementType(bBusy ? "Permutation" : "Replaced")
     }
-  }, [selectedDriver, selectedBus])
+  }, [selectedDriverOpt, selectedBusOpt])
 
+  // reset state on close
   useEffect(() => {
     if (!open) {
       setSelectedDriverId("")
@@ -117,60 +158,48 @@ export default function ReplaceAssignmentModal({
     }
   }, [open])
 
-
-  const isDriverBusy = !!(selectedDriver?.routeName && selectedDriver?.busLineNumber)
-  const isBusBusy = !!(selectedBus?.routeName && selectedBus?.busLineNumber)
-
-  const getDriverDisplay = (d: any) => {
-    const initials = d.fullName?.split(" ").map((part: string, i: number) => i === 0 ? part : part[0] + ".").join(" ")
-    const suffix = d.serviceNumber ? `(${d.serviceNumber})` : ""
-    const assignment = d.routeName && d.busLineNumber
-      ? ` · Назначен: ${d.routeName} / выход ${d.busLineNumber}`
-      : " · Свободен"
-    return `${initials} ${suffix} · Колонна ${d.convoyNumber}${assignment}`
-  }
-
-  const getBusDisplay = (b: any) => {
-    const assignment = b.routeName && b.busLineNumber
-      ? ` · Назначен: ${b.routeName} / выход ${b.busLineNumber}`
-      : " · Свободен"
-    return `${b.garageNumber} / ${b.govNumber} · Колонна ${b.convoyNumber}${assignment}`
-  }
-
   const handleConfirm = async () => {
-    if (!selectedDriver && !selectedBus) {
+    if (!selectedDriverOpt && !selectedBusOpt) {
       toast({ title: "Выберите водителя или автобус", variant: "destructive" })
       return
     }
-
-    if (replacementType === "RearrangingRoute" && (!selectedDriver || !selectedBus)) {
+    if (replacementType === "RearrangingRoute" && (!selectedDriverOpt || !selectedBusOpt)) {
       toast({ title: "Для перестановки по маршруту выберите и водителя, и автобус", variant: "destructive" })
       return
     }
 
-    await handleReplaceConfirm({
-      selectedAssignment,
-      isFirstShift: true,
-      selectedDriver: selectedDriver ? {
-        id: selectedDriver.driverId,
-        fullName: selectedDriver.fullName,
-        serviceNumber: selectedDriver.serviceNumber,
-        driverStatus: selectedDriver.status as any,
-      } : null,
-      selectedBus: selectedBus ? {
-        id: selectedBus.busId,
-        garageNumber: selectedBus.garageNumber,
-        govNumber: selectedBus.govNumber,
-        status: selectedBus.status,
-      } : null,
-      reserve: [],
-      replacementType,
-      date,
-      onReplaceSuccess,
-      onReload,
-      onClose,
-      swap: isSwap,
-    })
+    setSubmitting(true)
+    try {
+      await handleReplaceConfirm({
+        selectedAssignment,
+        isFirstShift: true,
+        selectedDriver: selectedDriverOpt
+          ? {
+              id: selectedDriverOpt.raw.driverId,
+              fullName: selectedDriverOpt.raw.fullName,
+              serviceNumber: selectedDriverOpt.raw.serviceNumber,
+              driverStatus: selectedDriverOpt.raw.status as any,
+            }
+          : null,
+        selectedBus: selectedBusOpt
+          ? {
+              id: selectedBusOpt.raw.busId,
+              garageNumber: selectedBusOpt.raw.garageNumber,
+              govNumber: selectedBusOpt.raw.govNumber,
+              status: selectedBusOpt.raw.status,
+            }
+          : null,
+        reserve: [],
+        replacementType,
+        date,
+        onReplaceSuccess,
+        onReload,
+        onClose,
+        swap: isSwap,
+      })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -180,7 +209,7 @@ export default function ReplaceAssignmentModal({
           <DialogTitle>Замена на выходе</DialogTitle>
         </DialogHeader>
 
-        {/* 🔎 Блок текущего назначения */}
+        {/* Инфо о текущем назначении */}
         <div className="bg-muted p-3 rounded mb-4 text-sm space-y-1">
           <p>📍 <b>Маршрут:</b> {selectedAssignment.route?.name || selectedAssignment.routeName || "—"}</p>
           <p>🚌 <b>Выход:</b> {selectedAssignment.busLineNumber || "—"}</p>
@@ -188,48 +217,53 @@ export default function ReplaceAssignmentModal({
           <p>🚍 <b>Автобус:</b> {selectedAssignment.bus?.garageNumber} / {selectedAssignment.bus?.govNumber}</p>
         </div>
 
+        {/* Водитель */}
         <div className="mb-4">
-          <AutocompleteInput
+          <AutocompleteInput<Option<DriverRaw>>
             label="Водитель"
-            items={drivers}
+            items={driverOptions}
             selectedId={selectedDriverId}
             onSelect={setSelectedDriverId}
-            idKey="driverId"
-            displayValue={getDriverDisplay}
+            idKey="id"
+            minChars={2}
+            displayValue={(o) => o.label}
+            searchValue={(o) => o.search}
           />
-          {selectedDriver && (
+          {selectedDriverOpt && (
             <p className="text-xs mt-1 text-gray-500">
               {isDriverBusy
-                ? `🛣 Назначен на маршрут: ${selectedDriver.routeName} · выход: ${selectedDriver.busLineNumber}`
+                ? `🛣 Назначен: ${selectedDriverOpt.raw.routeName} · выход: ${selectedDriverOpt.raw.busLineNumber}`
                 : "✅ Свободен"}
             </p>
           )}
         </div>
 
+        {/* Автобус */}
         <div className="mb-4">
-          <AutocompleteInput
+          <AutocompleteInput<Option<BusRaw>>
             label="Автобус"
-            items={buses}
+            items={busOptions}
             selectedId={selectedBusId}
             onSelect={setSelectedBusId}
-            idKey="busId"
-            displayValue={getBusDisplay}
+            idKey="id"
+            minChars={2}
+            displayValue={(o) => o.label}
+            searchValue={(o) => o.search}
           />
-          {selectedBus && (
+          {selectedBusOpt && (
             <p className="text-xs mt-1 text-gray-500">
               {isBusBusy
-                ? `🛣 Назначен на маршрут: ${selectedBus.routeName} · выход: ${selectedBus.busLineNumber}`
+                ? `🛣 Назначен: ${selectedBusOpt.raw.routeName} · выход: ${selectedBusOpt.raw.busLineNumber}`
                 : "✅ Свободен"}
             </p>
           )}
         </div>
 
+        {/* Тип замены */}
         <div className="mb-4">
           <label className="block text-sm font-medium mb-1">Тип замены</label>
           <Select value={replacementType} onValueChange={setReplacementType}>
-            <SelectTrigger>
-              <SelectValue placeholder="Выберите тип замены" />
-            </SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Выберите тип замены" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="Replaced">Замена с резерва</SelectItem>
               <SelectItem value="Order">С заказа</SelectItem>
@@ -245,14 +279,14 @@ export default function ReplaceAssignmentModal({
 
         {replacementType === "RearrangingRoute" && (
           <div className="mb-4 flex items-center gap-2">
-            <Checkbox checked={isSwap} onCheckedChange={(v) => setIsSwap(!!v)} disabled={!selectedDriver || !selectedBus} />
+            <Checkbox checked={isSwap} onCheckedChange={(v) => setIsSwap(!!v)} disabled={!selectedDriverOpt || !selectedBusOpt} />
             <span className="text-sm text-muted-foreground">Поменять местами</span>
           </div>
         )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Отмена</Button>
-          <Button onClick={handleConfirm}>Заменить</Button>
+          <Button onClick={handleConfirm} disabled={submitting}>{submitting ? "Сохраняю..." : "Заменить"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -12,9 +12,13 @@ interface AutocompleteInputProps<T> {
   items: T[]
   selectedId: string
   onSelect: (id: string) => void
-  placeholder?: string
-  displayValue: (item: T) => string
   idKey: keyof T
+  displayValue: (item: T) => string
+  /** быстрый поиск по отдельному ключу, чтобы не вызывать displayValue() на каждый символ */
+  searchValue?: (item: T) => string
+  /** минимальное количество символов, после которых начинаем показывать список */
+  minChars?: number
+  placeholder?: string
   disabled?: boolean
   label?: string
 }
@@ -23,9 +27,11 @@ export default function AutocompleteInput<T>({
   items,
   selectedId,
   onSelect,
-  placeholder = "Поиск...",
-  displayValue,
   idKey,
+  displayValue,
+  searchValue,
+  minChars = 2,
+  placeholder = "Поиск...",
   disabled = false,
   label,
 }: AutocompleteInputProps<T>) {
@@ -33,12 +39,16 @@ export default function AutocompleteInput<T>({
   const [search, setSearch] = useState("")
 
   const filteredItems = useMemo(() => {
-    return items
-      .filter((item) => displayValue(item).toLowerCase().includes(search.toLowerCase()))
-      .slice(0, 10)
-  }, [search, items, displayValue])
+    const s = search.trim().toLowerCase()
+    if (s.length < minChars) return [] as T[]
+    const getText = (it: T) => (searchValue ? searchValue(it) : displayValue(it)).toLowerCase()
+    return items.filter((it) => getText(it).includes(s)).slice(0, 10)
+  }, [items, search, minChars, searchValue, displayValue])
 
-  const selected = items.find((i) => i[idKey] === selectedId)
+  const selected = useMemo(
+    () => items.find((i) => String(i[idKey]) === String(selectedId)),
+    [items, idKey, selectedId]
+  )
 
   return (
     <div className="w-full">
@@ -46,21 +56,15 @@ export default function AutocompleteInput<T>({
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between"
-            disabled={disabled}
-          >
+          <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between" disabled={disabled}>
             {selected ? displayValue(selected) : placeholder}
             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-full p-0">
           <Command shouldFilter={false}>
-            <CommandInput placeholder="Поиск..." value={search} onValueChange={setSearch} />
-            <CommandEmpty>Не найдено</CommandEmpty>
+            <CommandInput placeholder={`${placeholder} (минимум ${minChars})`} value={search} onValueChange={setSearch} />
+            <CommandEmpty>Ничего не найдено</CommandEmpty>
             <CommandGroup>
               {filteredItems.map((item) => (
                 <CommandItem
@@ -70,12 +74,7 @@ export default function AutocompleteInput<T>({
                     setOpen(false)
                   }}
                 >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      selectedId === item[idKey] ? "opacity-100" : "opacity-0"
-                    )}
-                  />
+                  <Check className={cn("mr-2 h-4 w-4", String(selectedId) === String(item[idKey]) ? "opacity-100" : "opacity-0")} />
                   {displayValue(item)}
                 </CommandItem>
               ))}
