@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import SearchInput from "@/app/dashboard/fleet-manager/release-plan/components/SearchInput";
 import SelectableList from "../components/SelectableList";
+import DriverWorkHistory from "../components/driver/DriverWorkHistory";
+
 
 import type { Departure } from "@/types/dispatch.types";
 import type { DisplayBus } from "@/types/bus.types";
@@ -188,6 +190,15 @@ export default function EditAssignmentModal({
                   ["OnVacation", "OnSickLeave", "Fired", "Intern"].includes(d.driverStatus)
                 }
               />
+              {/* ⬇️ История работы выбранного водителя */}
+              {selectedDriver && (
+                  <DriverWorkHistory
+                    driverId={selectedDriver.id}
+                    defaultStartDate={date}   // дата разнарядки из пропсов диалога
+                    defaultDays={7}
+                    className="mt-4"
+                  />
+                )}
             </div>
           )}
 

@@ -12,10 +12,27 @@ import type {
 } from "@/types/driver.types"
 import type { DepotDriverWithAssignment } from "@/types/driver.types"
 
+export interface DriverWorkHistoryItem {
+  date: string // "YYYY-MM-DD"
+  routeAndExit: string | null // например "4А/16"
+  status: "Работал" | "Выходной"
+}
 
 export const driverService = {
   getAll: async (): Promise<ApiResponse<Driver[]>> => {
     const response = await apiClient.get<ApiResponse<Driver[]>>("/drivers")
+    return response.data
+  },
+   // 🔹 Новый метод получения истории работы водителя
+   getWorkHistory: async (
+    driverId: string,
+    startDate: string,
+    days: number
+  ): Promise<ApiResponse<DriverWorkHistoryItem[]>> => {
+    const response = await apiClient.get<ApiResponse<DriverWorkHistoryItem[]>>(
+      `/drivers/work-history/${driverId}`,
+      { params: { startDate, days } }
+    )
     return response.data
   },
 

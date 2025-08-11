@@ -89,92 +89,91 @@ export default function RouteGroupTable({
     onReplaceSuccess?.(updated)
   }
 
-  const handleInfoFromHistory = (updatedValue: string) => {
+  // ⬇️ ВАЖНО: теперь обновляем только конкретную строку, а не все
+  const handleInfoFromHistory = (dispatchId: string, updatedValue: string) => {
     setAssignments((prev) =>
       prev.map((a) =>
-        updatedValue.includes("выехал на линию") && a.additionalInfo !== updatedValue
-          ? { ...a, additionalInfo: updatedValue }
-          : a
+        a.dispatchBusLineId === dispatchId ? { ...a, additionalInfo: updatedValue } : a
       )
     )
   }
 
-  // ✅ FINAL: handleCheckboxChange from RouteGroupTable.tsx
+  // ✅ FINAL: handleCheckboxChange
+  const handleCheckboxChange = async (assignment: RouteAssignment, checked: boolean) => {
+    const dispatchId = assignment.dispatchBusLineId
+    const currentStatus = assignment.status
 
-const handleCheckboxChange = async (assignment: RouteAssignment, checked: boolean) => {
-  const dispatchId = assignment.dispatchBusLineId
-  const currentStatus = assignment.status
+    let newStatus = currentStatus
+    let newIsRealsed = checked
+    let newReleasedTime = checked
+      ? new Date().toLocaleTimeString("ru-RU", { hour12: false }).slice(0, 5) + ":00"
+      : ""
 
-  let newStatus = currentStatus
-  let newIsRealsed = checked
-  let newReleasedTime = checked
-    ? new Date().toLocaleTimeString("ru-RU", { hour12: false }).slice(0, 5) + ":00"
-    : ""
+    if (checked) {
+      if (currentStatus === DispatchBusLineStatus.Undefined) {
+        newStatus = DispatchBusLineStatus.Released
+      }
+    } else {
+      newIsRealsed = false
+      newReleasedTime = ""
 
-  if (checked) {
-    if (currentStatus === DispatchBusLineStatus.Undefined) {
-      newStatus = DispatchBusLineStatus.Released
+      if (newStatus === DispatchBusLineStatus.LaunchedFromGarage) {
+        // при сходе фиксируем понятный текст
+        await releasePlanService.updateBusLineDescription(
+          dispatchId,
+          formatDate(displayDate),
+          "Сход с линии"
+        )
+      }
+
+      if (currentStatus === DispatchBusLineStatus.Released) {
+        newStatus = DispatchBusLineStatus.Undefined
+      } else if (
+        currentStatus === DispatchBusLineStatus.Replaced ||
+        currentStatus === DispatchBusLineStatus.Permutation ||
+        currentStatus === DispatchBusLineStatus.RearrangingRoute
+      ) {
+        newStatus = currentStatus
+      }
     }
-  } else {
-    newIsRealsed = false
-    newReleasedTime = ""
 
-    if (newStatus === DispatchBusLineStatus.LaunchedFromGarage) {
-      // ✅ Обновляем описание при сходе с линии
-      await releasePlanService.updateBusLineDescription(
-        dispatchId,
-        formatDate(displayDate),
-        "Сход с линии"
+    setCheckedDepartures((prev) => ({ ...prev, [dispatchId]: checked }))
+
+    try {
+      await releasePlanService.updateDispatchStatus(dispatchId, Number(newStatus), newIsRealsed)
+
+      setAssignments((prev) =>
+        prev.map((a) =>
+          a.dispatchBusLineId === dispatchId
+            ? {
+                ...a,
+                status: newStatus,
+                isRealsed: newIsRealsed,
+                releasedTime: newReleasedTime,
+                additionalInfo:
+                  newStatus === DispatchBusLineStatus.LaunchedFromGarage
+                    ? "Сход с линии"
+                    : a.additionalInfo,
+                description:
+                  newStatus === DispatchBusLineStatus.LaunchedFromGarage
+                    ? "Сход с линии"
+                    : a.description,
+              }
+            : a
+        )
       )
-    }
-
-    if (currentStatus === DispatchBusLineStatus.Released) {
-      newStatus = DispatchBusLineStatus.Undefined
-    } else if (
-      currentStatus === DispatchBusLineStatus.Replaced ||
-      currentStatus === DispatchBusLineStatus.Permutation ||
-      currentStatus === DispatchBusLineStatus.RearrangingRoute
-    ) {
-      newStatus = currentStatus
+    } catch (err) {
+      console.error("Ошибка обновления статуса:", err)
+      setCheckedDepartures((prev) => ({ ...prev, [dispatchId]: !checked }))
     }
   }
-
-  setCheckedDepartures((prev) => ({ ...prev, [dispatchId]: checked }))
-
-  try {
-    await releasePlanService.updateDispatchStatus(dispatchId, Number(newStatus), newIsRealsed)
-
-    setAssignments((prev) =>
-      prev.map((a) =>
-        a.dispatchBusLineId === dispatchId
-          ? {
-              ...a,
-              status: newStatus,
-              isRealsed: newIsRealsed,
-              releasedTime: newReleasedTime,
-              additionalInfo:
-                newStatus === DispatchBusLineStatus.LaunchedFromGarage
-                  ? "Сход с линии"
-                  : a.additionalInfo,
-              description:
-                newStatus === DispatchBusLineStatus.LaunchedFromGarage
-                  ? "Сход с линии"
-                  : a.description,
-            }
-          : a
-      )
-    )
-  } catch (err) {
-    console.error("Ошибка обновления статуса:", err)
-    setCheckedDepartures((prev) => ({ ...prev, [dispatchId]: !checked }))
-  }
-}
 
   const formatTimeHHMM = (time?: string) => {
     return time?.length === 8 ? time.slice(0, 5) : time || "—"
   }
 
-  const headerClass = "p-2 border text-center bg-sky-100 text-sky-900 text-sm font-semibold"
+  const headerClass =
+    "p-2 border text-center bg-sky-100 text-sky-900 text-sm font-semibold"
   const cellClass = "p-2 border text-center text-sm"
 
   return (
@@ -278,7 +277,8 @@ const handleCheckboxChange = async (assignment: RouteAssignment, checked: boolea
                       assignment={a}
                       date={displayDate}
                       readOnly={readOnly}
-                      onUpdateLocalValue={handleInfoFromHistory}
+                      // ⬇️ оборачиваем, чтобы апдейт шёл только в свою строку
+                      onUpdateLocalValue={(text) => handleInfoFromHistory(a.dispatchBusLineId, text)}
                     />
                   </td>
                   <td className={cellClass}>{formatTimeHHMM(a.endTime)}</td>

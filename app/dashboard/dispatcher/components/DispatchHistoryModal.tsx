@@ -9,9 +9,12 @@ interface Props {
   open: boolean
   onClose: () => void
   dispatchId: string
-  onSetInfo?: (payload: { text: string; exited: boolean; historyCount: number }) => void
+  onSetInfo?: (payload: { dispatchId: string; text: string; exited: boolean; historyCount: number }) => void
   setHistoryLength: (count: number) => void
 }
+
+const stripHtml = (s?: string) => (s ? s.replace(/<[^>]+>/g, "").trim() : "")
+const formatTime = (t?: string) => (t ? t.slice(0, 5) : "—")
 
 export default function DispatchHistoryModal({
   open,
@@ -34,9 +37,10 @@ export default function DispatchHistoryModal({
           setHistory(res.value)
           setHistoryLength(res.value.length)
 
+          // если в последнем «ремонте» есть andTime — это выезд на линию: фиксируем это на сервере
           const latestRepair = res.value.find((h) => h.type === "REPAIR" && h.andTime)
           if (latestRepair) {
-            const dateStr = latestRepair.startDate || new Date().toISOString().split('T')[0]
+            const dateStr = latestRepair.startDate || new Date().toISOString().split("T")[0]
 
             await releasePlanService.updateBusLineDescription(
               dispatchId,
@@ -45,6 +49,7 @@ export default function DispatchHistoryModal({
             )
 
             onSetInfo?.({
+              dispatchId,
               text: "Автобус выехал на линию",
               exited: true,
               historyCount: res.value.length,
@@ -61,8 +66,6 @@ export default function DispatchHistoryModal({
     fetchHistory()
   }, [open, dispatchId, onSetInfo, setHistoryLength])
 
-  const formatTime = (t?: string) => (t ? t.slice(0, 5) : "—")
-
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-xl">
@@ -71,53 +74,60 @@ export default function DispatchHistoryModal({
         </DialogHeader>
 
         {loading && <p>Загрузка...</p>}
-
         {!loading && history.length === 0 && (
           <p className="text-sm text-gray-500">История пуста</p>
         )}
 
         <div className="space-y-3 mt-2">
-          {history.map((item, i) => (
-            <div key={i} className="text-sm border-b pb-2">
-              {item.type === "REPAIR" ? (
-                <>
-                  <div>🛠️ Ремонт</div>
-                  <div>
-                    Время заезда: <b>{formatTime(item.startTime)}</b>
-                  </div>
-                  {item.andTime && (
-                    <div className="text-green-600">
-                      Выезд на линию: <b>{formatTime(item.andTime)}</b>
-                    </div>
-                  )}
-                  {item.startRepairTime && (
+          {history.map((item, i) => {
+            const cleanRepairText = stripHtml(item.repairText)
+            const cleanOldDriver = stripHtml(item.oldDriverName)
+            const cleanNewDriver = stripHtml(item.newDriverName)
+            const cleanOldBus = stripHtml(item.oldBusNumber)
+            const cleanNewBus = stripHtml(item.newBusNumber)
+
+            return (
+              <div key={i} className="text-sm border-b pb-2">
+                {item.type === "REPAIR" ? (
+                  <>
+                    <div>🛠️ Ремонт</div>
                     <div>
-                      Начало ремонта: <b>{formatTime(item.startRepairTime)}</b>
+                      Время заезда: <b>{formatTime(item.startTime)}</b>
                     </div>
-                  )}
-                  {item.endRepairTime && (
+                    {item.andTime && (
+                      <div className="text-green-600">
+                        Выезд на линию: <b>{formatTime(item.andTime)}</b>
+                      </div>
+                    )}
+                    {item.startRepairTime && (
+                      <div>
+                        Начало ремонта: <b>{formatTime(item.startRepairTime)}</b>
+                      </div>
+                    )}
+                    {item.endRepairTime && (
+                      <div>
+                        Окончание ремонта: <b>{formatTime(item.endRepairTime)}</b>
+                      </div>
+                    )}
+                    {cleanRepairText && (
+                      <div className="mt-1 italic">Причина: {cleanRepairText}</div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div>🔁 Замена</div>
                     <div>
-                      Окончание ремонта: <b>{formatTime(item.endRepairTime)}</b>
+                      {cleanOldDriver} → {cleanNewDriver}
                     </div>
-                  )}
-                  {item.repairText && (
-                    <div className="mt-1 italic">Причина: {item.repairText}</div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div>🔁 Замена</div>
-                  <div>
-                    {item.oldDriverName} → {item.newDriverName}
-                  </div>
-                  <div>
-                    {item.oldBusNumber} → {item.newBusNumber}
-                  </div>
-                  <div>Время: {new Date(item.replacedAt).toLocaleString("ru-RU")}</div>
-                </>
-              )}
-            </div>
-          ))}
+                    <div>
+                      {cleanOldBus} → {cleanNewBus}
+                    </div>
+                    <div>Время: {new Date(item.replacedAt).toLocaleString("ru-RU")}</div>
+                  </>
+                )}
+              </div>
+            )
+          })}
         </div>
       </DialogContent>
     </Dialog>

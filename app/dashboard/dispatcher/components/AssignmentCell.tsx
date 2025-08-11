@@ -4,7 +4,7 @@ import { InfoCell } from "./InfoCell"
 import type { RouteAssignment } from "@/types/releasePlanTypes"
 import { DispatchBusLineStatus } from "@/types/releasePlanTypes"
 import DispatchHistoryModal from "./DispatchHistoryModal"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 
 interface AssignmentCellProps {
   assignment: RouteAssignment
@@ -14,7 +14,13 @@ interface AssignmentCellProps {
   onUpdateLocalValue?: (value: string) => void
 }
 
-export default function AssignmentCell({ assignment, date, readOnly, textClassName, onUpdateLocalValue }: AssignmentCellProps) {
+export default function AssignmentCell({
+  assignment,
+  date,
+  readOnly,
+  textClassName,
+  onUpdateLocalValue,
+}: AssignmentCellProps) {
   const {
     additionalInfo,
     dispatchBusLineId,
@@ -39,7 +45,15 @@ export default function AssignmentCell({ assignment, date, readOnly, textClassNa
     onUpdateLocalValue?.(text)
   }
 
-  const handleInfoFromHistoryModal = ({ text, exited, historyCount }: { text: string; exited: boolean; historyCount: number }) => {
+  const handleInfoFromHistoryModal = ({
+    text,
+    exited,
+    historyCount,
+  }: {
+    text: string
+    exited: boolean
+    historyCount: number
+  }) => {
     onUpdateLocalValue?.(text)
     setHistoryLength(historyCount)
   }
@@ -93,9 +107,7 @@ export default function AssignmentCell({ assignment, date, readOnly, textClassNa
         )}
 
         {showReplacement && (
-          <span className="text-yellow-600 text-xs mt-1 italic">
-            🔁 Замена с резерва
-          </span>
+          <span className="text-yellow-600 text-xs mt-1 italic">🔁 Замена с резерва</span>
         )}
         {showPermutation && (
           <span className="text-blue-600 text-xs mt-1 italic">
@@ -108,11 +120,14 @@ export default function AssignmentCell({ assignment, date, readOnly, textClassNa
           </span>
         )}
       </div>
+
       <DispatchHistoryModal
         open={historyOpen}
         onClose={() => setHistoryOpen(false)}
         dispatchId={dispatchBusLineId}
-        onSetInfo={(payload) => handleInfoFromHistoryModal({ ...payload, historyCount: historyLength })}
+        onSetInfo={({ text, exited, historyCount }) =>
+          handleInfoFromHistoryModal({ text, exited, historyCount })
+        }
         setHistoryLength={setHistoryLength}
       />
     </>

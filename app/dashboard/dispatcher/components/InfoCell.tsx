@@ -5,7 +5,6 @@ import { toast } from "@/components/ui/use-toast"
 import { releasePlanService } from "@/service/releasePlanService"
 import { formatDate } from "../convoy/[id]/release-plan/utils/dateUtils"
 import { AlertTriangle, RefreshCcw, XCircle } from "lucide-react"
-import { useRouter } from "next/navigation"
 
 const colorOptions = ["#000000", "#dc3545", "#28a745", "#007bff", "#ffc107"]
 
@@ -37,12 +36,17 @@ export function InfoCell({
   const [textColor, setTextColor] = useState("#000000")
   const [showColorMenu, setShowColorMenu] = useState(false)
   const [anchorPoint, setAnchorPoint] = useState({ x: 0, y: 0 })
-  const router = useRouter()
 
-  const stripHtml = (str: string) => str.replace(/<[^>]+>/g, "")
+  // ——— helpers ———
+  const stripHtml = (str: string) => (str ? str.replace(/<[^>]+>/g, "") : "")
+  const normalize = (s: string) =>
+    stripHtml(s || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase()
 
   const getIcon = () => {
-    const clean = stripHtml(value)
+    const clean = normalize(value)
     if (clean.includes("выехал на линию")) return null
     if (clean.includes("❌")) return <XCircle className="w-4 h-4 text-red-600 inline-block mr-1" />
     if (clean.includes("🔄")) return <RefreshCcw className="w-4 h-4 text-blue-600 inline-block mr-1" />
@@ -53,10 +57,11 @@ export function InfoCell({
   const handleSave = async () => {
     const trimmed = value.trim()
     const cleanText = stripHtml(trimmed)
+    const norm = normalize(trimmed)
     const isSystemNote =
-      cleanText.startsWith("🔁") || cleanText.startsWith("🔄") || cleanText.startsWith("❌")
+      norm.startsWith("🔁") || norm.startsWith("🔄") || norm.startsWith("❌")
 
-    if (!assignmentId || trimmed === initialValue?.trim()) return
+    if (!assignmentId || trimmed === (initialValue ?? "").trim()) return
 
     if (isSystemNote) {
       toast({
@@ -84,7 +89,7 @@ export function InfoCell({
       }
 
       toast({ title: "Сохранено", description: "Доп. информация обновлена" })
-      router.refresh()
+      // router.refresh() — УДАЛЕНО, локально обновляем через onUpdateLocalValue
       onUpdateLocalValue?.(cleanText)
     } catch {
       toast({ title: "Ошибка", description: "Не удалось сохранить" })
@@ -96,10 +101,10 @@ export function InfoCell({
   }, [initialValue])
 
   useEffect(() => {
-    const val = stripHtml(value).toLowerCase()
+    const val = normalize(value)
     if (val.includes("выехал на линию")) {
       setTextColor("#28a745")
-    } else if (val.includes("снят с маршрута")) {
+    } else if (val.includes("снят с маршрута") || val === "сход с линии") {
       setTextColor("#dc3545")
     } else if (val.includes("назначен на маршрут")) {
       setTextColor("#007bff")
@@ -112,16 +117,23 @@ export function InfoCell({
     const cleanValue = stripHtml(value || "")
     const fallbackValue = stripHtml(initialValue || "")
 
-    const isExitText = cleanValue.includes("выехал на линию")
-    const isRemovedText = cleanValue.includes("снят с маршрута") || fallbackValue === "Сход с линии"
-    const isAssignedText = cleanValue.includes("назначен на маршрут")
+    const normClean = normalize(value || "")
+    const normFallback = normalize(initialValue || "")
+
+    const isExitText = normClean.includes("выехал на линию")
+    const isRemovedText =
+      normClean.includes("снят с маршрута") ||
+      normFallback === "сход с линии" ||
+      normClean === "сход с линии"
+    const isAssignedText = normClean.includes("назначен на маршрут")
 
     const finalText = cleanValue || fallbackValue
     const displayText = finalText || "—"
 
-    const icon = cleanValue === "Сход с линии" || fallbackValue === "Сход с линии"
-      ? <XCircle className="w-4 h-4 text-red-600 inline-block mr-1" />
-      : getIcon()
+    const icon =
+      normClean === "сход с линии" || normFallback === "сход с линии"
+        ? <XCircle className="w-4 h-4 text-red-600 inline-block mr-1" />
+        : getIcon()
 
     const textClass = isExitText
       ? "text-green-600"
@@ -156,7 +168,7 @@ export function InfoCell({
         placeholder="Причина замены..."
         onBlur={() => {
           setEditing(false)
-          if (value.trim() !== initialValue?.trim()) handleSave()
+          if ((value ?? "").trim() !== (initialValue ?? "").trim()) handleSave()
         }}
         onKeyDown={(e) => {
           if (e.ctrlKey && e.key === "Enter") {

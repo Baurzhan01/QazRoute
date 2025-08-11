@@ -26,6 +26,19 @@ export type DriverStatusCount = {
   total: number
 }
 
+export interface DepotDriverWithAssignment {
+  driverId: string
+  fullName: string
+  serviceNumber: string
+  status: "OnWork" | "DayOff" | "Sick" | string
+  routeName: string | null
+  busLineNumber: string | null
+  shiftType: string | null
+  busGarageNumber: string | null
+  busGovNumber: string | null
+  convoyNumber: string
+}
+
 
 export interface Driver {
   id?: string
