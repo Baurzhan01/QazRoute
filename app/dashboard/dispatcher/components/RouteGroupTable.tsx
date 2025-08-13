@@ -8,6 +8,7 @@ import { useConvoy } from "../context/ConvoyContext"
 import { formatShortName } from "../convoy/[id]/release-plan/utils/driverUtils"
 import type { RouteAssignment, RouteGroup } from "@/types/releasePlanTypes"
 import { DispatchBusLineStatus } from "@/types/releasePlanTypes"
+import ReferenceDialog from "../components/references/ReferenceDialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +50,17 @@ export default function RouteGroupTable({
   const { convoyId } = useConvoy()
   const [assignments, setAssignments] = useState<RouteAssignment[]>(group.assignments)
 
+  // Справки: модалка и целевое обновление строки
+  const [refOpen, setRefOpen] = useState(false)
+  const [refAssignment, setRefAssignment] = useState<RouteAssignment | null>(null)
+  const [refsBump, setRefsBump] = useState<Record<string, number>>({})
+
+  const openReference = (a: RouteAssignment) => {
+    // гарантируем, что в модалку попадёт routeNumber
+    setRefAssignment({ ...a, routeNumber: a.routeNumber ?? group.routeNumber })
+    setRefOpen(true)
+  }
+
   useEffect(() => {
     setAssignments(group.assignments)
   }, [group.assignments])
@@ -89,7 +101,6 @@ export default function RouteGroupTable({
     onReplaceSuccess?.(updated)
   }
 
-  // ⬇️ ВАЖНО: теперь обновляем только конкретную строку, а не все
   const handleInfoFromHistory = (dispatchId: string, updatedValue: string) => {
     setAssignments((prev) =>
       prev.map((a) =>
@@ -98,7 +109,6 @@ export default function RouteGroupTable({
     )
   }
 
-  // ✅ FINAL: handleCheckboxChange
   const handleCheckboxChange = async (assignment: RouteAssignment, checked: boolean) => {
     const dispatchId = assignment.dispatchBusLineId
     const currentStatus = assignment.status
@@ -118,7 +128,6 @@ export default function RouteGroupTable({
       newReleasedTime = ""
 
       if (newStatus === DispatchBusLineStatus.LaunchedFromGarage) {
-        // при сходе фиксируем понятный текст
         await releasePlanService.updateBusLineDescription(
           dispatchId,
           formatDate(displayDate),
@@ -177,140 +186,167 @@ export default function RouteGroupTable({
   const cellClass = "p-2 border text-center text-sm"
 
   return (
-    <div className="overflow-auto rounded-md border print-export mt-3">
-      <table className="w-full text-sm text-gray-800 border-collapse">
-        <thead>
-          <tr>
-            <th className={headerClass}>Маршрут</th>
-            <th className={headerClass}>№</th>
-            <th className={headerClass}>Гар. номер</th>
-            <th className={headerClass}>Гос. номер</th>
-            <th className={headerClass}>ФИО</th>
-            <th className={headerClass}>Таб. номер</th>
-            <th className={headerClass}>Норма (л)</th>
-            <th className={headerClass}>Время выхода</th>
-            <th className={headerClass}>Доп. информация</th>
-            <th className={headerClass}>Конец</th>
-            <th className={headerClass}>Отметка</th>
-            <th className={headerClass}>Действия</th>
-          </tr>
-        </thead>
-        <tbody>
-          {[...assignments]
-            .sort((a, b) => parseInt(a.busLineNumber) - parseInt(b.busLineNumber))
-            .map((a, index) => {
-              const dispatchId = a.dispatchBusLineId
-              const isChecked = checkedDepartures[dispatchId]
-              const showRouteNumber = index === 0
+    <>
+      <div className="overflow-auto rounded-md border print-export mt-3">
+        <table className="w-full text-sm text-gray-800 border-collapse">
+          <thead>
+            <tr>
+              <th className={headerClass}>Маршрут</th>
+              <th className={headerClass}>№</th>
+              <th className={headerClass}>Гар. номер</th>
+              <th className={headerClass}>Гос. номер</th>
+              <th className={headerClass}>ФИО</th>
+              <th className={headerClass}>Таб. номер</th>
+              <th className={headerClass}>Норма (л)</th>
+              <th className={headerClass}>Время выхода</th>
+              <th className={headerClass}>Доп. информация</th>
+              <th className={headerClass}>Конец</th>
+              <th className={headerClass}>Отметка</th>
+              <th className={headerClass}>Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...assignments]
+              .sort((a, b) => parseInt(a.busLineNumber) - parseInt(b.busLineNumber))
+              .map((a, index) => {
+                const dispatchId = a.dispatchBusLineId
+                const isChecked = checkedDepartures[dispatchId]
+                const showRouteNumber = index === 0
 
-              const isReplaced = a.status === DispatchBusLineStatus.Replaced
-              const isPermutation = a.status === DispatchBusLineStatus.Permutation
-              const isRearrangingRoute = a.status === DispatchBusLineStatus.RearrangingRoute
-              const isReleased = a.status === DispatchBusLineStatus.Released
-              const isGarageLaunch = a.status === DispatchBusLineStatus.LaunchedFromGarage
-              const isHistory = a.additionalInfo?.includes("Автобус выехал на линию")
+                const isReplaced = a.status === DispatchBusLineStatus.Replaced
+                const isPermutation = a.status === DispatchBusLineStatus.Permutation
+                const isRearrangingRoute = a.status === DispatchBusLineStatus.RearrangingRoute
+                const isReleased = a.status === DispatchBusLineStatus.Released
+                const isGarageLaunch = a.status === DispatchBusLineStatus.LaunchedFromGarage
+                const isHistory = a.additionalInfo?.includes("Автобус выехал на линию")
 
-              const rowColor = isHistory
-                ? "bg-green-50"
-                : isReplaced
-                ? "bg-yellow-50"
-                : isPermutation || isRearrangingRoute
-                ? "bg-blue-50"
-                : isReleased
-                ? "bg-green-50"
-                : isGarageLaunch
-                ? "bg-red-50"
-                : ""
+                const rowColor = isHistory
+                  ? "bg-green-50"
+                  : isReplaced
+                  ? "bg-yellow-50"
+                  : isPermutation || isRearrangingRoute
+                  ? "bg-blue-50"
+                  : isReleased
+                  ? "bg-green-50"
+                  : isGarageLaunch
+                  ? "bg-red-50"
+                  : ""
 
-              return (
-                <tr key={dispatchId} className={rowColor}>
-                  {showRouteNumber ? (
+                return (
+                  <tr key={dispatchId} className={rowColor}>
+                    {showRouteNumber ? (
+                      <td
+                        className="p-2 border text-center text-sm font-bold align-middle bg-[#e0f2fe] special-route-bg"
+                        rowSpan={assignments.length}
+                        style={{ minWidth: "120px", verticalAlign: "middle" }}
+                      >
+                        {group.routeNumber}
+                      </td>
+                    ) : null}
+
+                    <td className={cellClass}>{a.busLineNumber}</td>
+                    <td className={cellClass}>{a.garageNumber}</td>
+                    <td className={cellClass}>{a.stateNumber}</td>
+                    <td className={cellClass}>{formatShortName(a.driver?.fullName)}</td>
                     <td
-                      className="p-2 border text-center text-sm font-bold align-middle bg-[#e0f2fe] special-route-bg"
-                      rowSpan={assignments.length}
-                      style={{ minWidth: "120px", verticalAlign: "middle" }}
+                      className={`${cellClass} cursor-pointer hover:underline`}
+                      onClick={() => onDriverClick(a.driver)}
                     >
-                      {group.routeNumber}
+                      {a.driver?.serviceNumber ?? "—"}
                     </td>
-                  ) : null}
-
-                  <td className={cellClass}>{a.busLineNumber}</td>
-                  <td className={cellClass}>{a.garageNumber}</td>
-                  <td className={cellClass}>{a.stateNumber}</td>
-                  <td className={cellClass}>{formatShortName(a.driver?.fullName)}</td>
-                  <td
-                    className={`${cellClass} cursor-pointer hover:underline`}
-                    onClick={() => onDriverClick(a.driver)}
-                  >
-                    {a.driver?.serviceNumber ?? "—"}
-                  </td>
-                  <td className={cellClass}>
-                    <input
-                      type="text"
-                      value={fuelNorms[dispatchId] ?? a.fuelAmount ?? ""}
-                      onChange={(e) =>
-                        setFuelNorms((prev) => ({ ...prev, [dispatchId]: e.target.value }))
-                      }
-                      onBlur={async () => {
-                        const value = fuelNorms[dispatchId]
-                        try {
-                          await releasePlanService.updateSolarium(dispatchId, value)
-                        } catch (error) {
-                          console.error("Ошибка при обновлении солярки:", error)
+                    <td className={cellClass}>
+                      <input
+                        type="text"
+                        value={fuelNorms[dispatchId] ?? a.fuelAmount ?? ""}
+                        onChange={(e) =>
+                          setFuelNorms((prev) => ({ ...prev, [dispatchId]: e.target.value }))
                         }
-                      }}
-                      className="w-16 text-center text-red-600 font-semibold border border-red-300 rounded px-1 py-[2px] outline-none focus:ring-1 focus:ring-red-400"
-                      placeholder="—"
-                    />
-                  </td>
-                  <td className={cellClass}>
-                    <div>{formatTimeHHMM(a.departureTime)}</div>
-                    {a.releasedTime && a.releasedTime !== "00:00:00" && (
-                      <div className="text-[11px] text-green-600 mt-0.5">
-                        {a.releasedTime.slice(0, 5)} — путевой лист
-                      </div>
-                    )}
-                  </td>
-                  <td className={cellClass}>
-                    <AssignmentCell
-                      key={a.dispatchBusLineId}
-                      assignment={a}
-                      date={displayDate}
-                      readOnly={readOnly}
-                      // ⬇️ оборачиваем, чтобы апдейт шёл только в свою строку
-                      onUpdateLocalValue={(text) => handleInfoFromHistory(a.dispatchBusLineId, text)}
-                    />
-                  </td>
-                  <td className={cellClass}>{formatTimeHHMM(a.endTime)}</td>
-                  <td className={cellClass}>{isChecked ? "✅ Вышел" : "—"}</td>
-                  <td className={cellClass}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="p-1 rounded hover:bg-gray-100" title="Действия">
-                          <MoreHorizontal className="h-5 w-5 text-gray-600" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => onReplaceClick(a, handleReplaceSuccess)}
-                          className="cursor-pointer"
-                        >
-                          🔁 Заменить
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleCheckboxChange(a, !isChecked)}
-                          className="cursor-pointer"
-                        >
-                          {isChecked ? "❎ Отменить выход" : "✅ Отметить как вышедший"}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              )
-            })}
-        </tbody>
-      </table>
-    </div>
+                        onBlur={async () => {
+                          const value = fuelNorms[dispatchId]
+                          try {
+                            await releasePlanService.updateSolarium(dispatchId, value)
+                          } catch (error) {
+                            console.error("Ошибка при обновлении солярки:", error)
+                          }
+                        }}
+                        className="w-16 text-center text-red-600 font-semibold border border-red-300 rounded px-1 py-[2px] outline-none focus:ring-1 focus:ring-red-400"
+                        placeholder="—"
+                      />
+                    </td>
+                    <td className={cellClass}>
+                      <div>{formatTimeHHMM(a.departureTime)}</div>
+                      {a.releasedTime && a.releasedTime !== "00:00:00" && (
+                        <div className="text-[11px] text-green-600 mt-0.5">
+                          {a.releasedTime.slice(0, 5)} — путевой лист
+                        </div>
+                      )}
+                    </td>
+                    <td className={cellClass}>
+                      <AssignmentCell
+                        key={`${a.dispatchBusLineId}-${(refsBump[a.dispatchBusLineId] ?? 0)}`}
+                        assignment={a}
+                        date={displayDate}
+                        readOnly={readOnly}
+                        onUpdateLocalValue={(text) => handleInfoFromHistory(a.dispatchBusLineId, text)}
+                        refsVersion={refsBump[a.dispatchBusLineId] ?? 0}
+                      />
+                    </td>
+                    <td className={cellClass}>{formatTimeHHMM(a.endTime)}</td>
+                    <td className={cellClass}>{isChecked ? "✅" : "—"}</td>
+                    <td className={cellClass}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1 rounded hover:bg-gray-100" title="Действия">
+                            <MoreHorizontal className="h-5 w-5 text-gray-600" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => onReplaceClick(a, handleReplaceSuccess)}
+                            className="cursor-pointer"
+                          >
+                            🔁 Заменить
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleCheckboxChange(a, !isChecked)}
+                            className="cursor-pointer"
+                          >
+                            {isChecked ? "❎ Вернул ПЛ" : "✅ Выдать ПЛ"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => openReference(a)}
+                            className="cursor-pointer"
+                          >
+                            🧾 Справка
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                )
+              })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Единственная модалка "Справка" вне map */}
+      <ReferenceDialog
+        open={refOpen}
+        onOpenChange={(open) => {
+          setRefOpen(open)
+          if (!open) setRefAssignment(null)
+        }}
+        assignment={refAssignment}
+        onCreated={() => {
+          // 1) подтянуть свежие данные с сервера (если прокинут refetch из родителя)
+          onReload?.()
+          // 2) мгновенно перерисовать конкретную строку (бэйджи/summary)
+          if (refAssignment) {
+            const id = refAssignment.dispatchBusLineId
+            setRefsBump(prev => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))
+          }
+        }}
+      />
+    </>
   )
 }

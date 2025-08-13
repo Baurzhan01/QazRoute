@@ -18,6 +18,8 @@ interface InfoCellProps {
   readOnly?: boolean
   textClassName?: string
   onUpdateLocalValue?: (value: string) => void
+  /** Текст, который ДОБАВЛЯЕМ к отображению (не сохраняется в БД). Например, резюме справок. */
+  externalNote?: string
 }
 
 export function InfoCell({
@@ -30,6 +32,7 @@ export function InfoCell({
   readOnly = false,
   textClassName,
   onUpdateLocalValue,
+  externalNote = "",
 }: InfoCellProps) {
   const [value, setValue] = useState(initialValue ?? "")
   const [editing, setEditing] = useState(false)
@@ -89,7 +92,6 @@ export function InfoCell({
       }
 
       toast({ title: "Сохранено", description: "Доп. информация обновлена" })
-      // router.refresh() — УДАЛЕНО, локально обновляем через onUpdateLocalValue
       onUpdateLocalValue?.(cleanText)
     } catch {
       toast({ title: "Ошибка", description: "Не удалось сохранить" })
@@ -127,8 +129,13 @@ export function InfoCell({
       normClean === "сход с линии"
     const isAssignedText = normClean.includes("назначен на маршрут")
 
-    const finalText = cleanValue || fallbackValue
-    const displayText = finalText || "—"
+    const baseText = cleanValue || fallbackValue // основной текст из БД/локального стейта
+    const combinedText =
+      externalNote && externalNote.trim().length > 0
+        ? baseText
+          ? `${baseText} · ${externalNote}` // оба есть
+          : externalNote                        // только примечание (например, только справки)
+        : baseText || "—"
 
     const icon =
       normClean === "сход с линии" || normFallback === "сход с линии"
@@ -146,7 +153,7 @@ export function InfoCell({
     return (
       <div className={`w-full text-center font-bold text-[15px] leading-tight py-1 ${textClass}`}>
         {icon}
-        <span>{displayText}</span>
+        <span>{combinedText}</span>
       </div>
     )
   }

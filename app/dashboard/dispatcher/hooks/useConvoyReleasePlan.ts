@@ -5,7 +5,7 @@ import { busService } from "@/service/busService"
 import { driverService } from "@/service/driverService"
 import { repairService } from "@/service/repairService"
 import { format } from "date-fns"
-import type { DriverStatus } from "@/types/driver.types" // путь может отличаться
+import type { DriverStatus } from "@/types/driver.types"
 import type { FinalDispatchData, RouteGroup, ValidDayType, OrderAssignment } from "@/types/releasePlanTypes"
 import type { ConvoySummary } from "@/types/convoy.types"
 import type { RepairRecord } from "@/app/dashboard/repairs/planned/hooks/usePlannedRepairs"
@@ -24,7 +24,7 @@ const statusMap: Record<string, number> = {
   Replaced: 2,
   Permutation: 3,
   Removed: 4,
-  RearrangingRoute: 5, // ✅ добавь это
+  RearrangingRoute: 5,
   LaunchedFromGarage: 8,
 }
 
@@ -128,6 +128,9 @@ export function useConvoyReleasePlan(
           releasedTime: bl.releasedTime ?? "",
           fuelAmount: bl.normSolarium ?? "",
           bus: bl.bus ?? undefined,
+
+          // ➕ добавлено: чтобы ReferenceDialog видел номер маршрута
+          routeNumber: route.routeNumber,
         }))
       }))
 
@@ -224,10 +227,19 @@ export function useConvoyReleasePlan(
     } finally {
       setLoading(false)
     }
-  }, [date, convoyId, dayType]) // ⛔️ search убран отсюда
+  }, [date, convoyId, dayType])
 
   useEffect(() => {
     load()
+  }, [load])
+
+  // ➕ МИНИ-ДОБАВКА: авто-рефетч после создания Справки
+  useEffect(() => {
+    const handler = () => {
+      load()
+    }
+    window.addEventListener("reference:created", handler as EventListener)
+    return () => window.removeEventListener("reference:created", handler as EventListener)
   }, [load])
 
   return {

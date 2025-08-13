@@ -360,6 +360,7 @@ export interface RouteGroup {
 export interface RouteAssignment {
   dispatchBusLineId: string;
   busLineNumber: string;
+  routeNumber?: string;
   description?: string // 👈 Добавь эту строку
   garageNumber: string
   stateNumber: string
