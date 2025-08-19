@@ -16,14 +16,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { referenceService } from "@/service/referenceService";
+import { releasePlanService } from "@/service/releasePlanService";
+import { formatDate } from "@/app/dashboard/dispatcher/convoy/[id]/release-plan/utils/dateUtils";
 import type { ReferenceType } from "@/types/reference.types";
 import type { RouteAssignment } from "@/types/releasePlanTypes";
 
 interface ReferenceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  assignment: RouteAssignment | null;
-  onCreated?: (referenceId: string) => void;
+  assignment: RouteAssignment | null;         // текущая строка
+  displayDate: Date;                          // ⬅️ добавили дату, чтобы апдейтить описание
+  onCreated?: (referenceId: string, textForDescription: string) => void; // ⬅️ вернём текст наверх
 }
 
 const OPTIONS: { value: ReferenceType; label: string }[] = [
@@ -41,26 +44,41 @@ const OPTIONS: { value: ReferenceType; label: string }[] = [
   { value: "Other", label: "Другое (указать причину)" },
 ];
 
+const REF_LABEL: Record<ReferenceType, string> = {
+  FamilyReason: "По семейным обстоятельствам",
+  SickByCall: "Болезнь по звонку (утром)",
+  PoliceCallBeforeDeparture: "102 (до выезда на линию)",
+  GasStationIssue: "АЗС (пробки/колонка)",
+  PoliceOperation: "ОПМ (проверка ГАИ)",
+  AccidentInDepot: "ДТП в парке",
+  DriverLate: "Опоздание водителя",
+  TechnicalIssue: "Техническая неисправность",
+  AlcoholIntoxication: "Алкогольная интоксикация",
+  NoCharge: "Нет зарядки",
+  EmergencyInDepot: "ЧС в парке",
+  Other: "Другое",
+};
+
 export default function ReferenceDialog({
   open,
   onOpenChange,
   assignment,
+  displayDate,
   onCreated,
 }: ReferenceDialogProps) {
   const [type, setType] = useState<ReferenceType | "">("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 👇 Описание доступно для Other И TechnicalIssue
+  // описание доступно для Other (обязательно) и TechnicalIssue (опционально)
   const canDescribe = type === "Other" || type === "TechnicalIssue";
-  // 👇 Обязательное только для Other
   const mustDescribe = type === "Other";
   const isValid = !!assignment && !!type && (!mustDescribe || description.trim().length > 0);
 
   const info = useMemo(() => {
     if (!assignment) return null;
     return {
-      routeNumber: assignment.routeNumber,
+      routeNumber: (assignment as any).routeNumber, // мы пробрасываем в модалку из таблицы
       busLineNumber: assignment.busLineNumber,
       garageNumber: assignment.garageNumber ?? assignment.bus?.garageNumber ?? "—",
       stateNumber: assignment.stateNumber ?? assignment.bus?.govNumber ?? "—",
@@ -75,21 +93,40 @@ export default function ReferenceDialog({
     onOpenChange(false);
   };
 
+  const buildDescriptionText = (t: ReferenceType, desc: string) => {
+    const base = `🧾 Справка: ${REF_LABEL[t]}`;
+    const extra =
+      t === "Other"
+        ? (desc?.trim() ? `. ${desc.trim()}` : "")
+        : t === "TechnicalIssue"
+        ? (desc?.trim() ? `. ${desc.trim()}` : "")
+        : "";
+    return `${base}${extra}`;
+  };
+
   const handleSubmit = async () => {
-    if (!assignment) return;
+    if (!assignment || !type) return;
 
     try {
       setLoading(true);
-      const body = {
+
+      // 1) создаём справку
+      const res = await referenceService.create({
         dispatchBusLineId: assignment.dispatchBusLineId,
         type: type as ReferenceType,
-        // Для Other — обязательно, для TechnicalIssue — опционально, для остальных — пусто
         description: canDescribe ? description.trim() : "",
-      };
-      const res = await referenceService.create(body);
+      });
       if (!res.isSuccess) throw new Error(res.error || "Не удалось создать справку");
 
-      // Событие для мгновенного обновления AssignmentCell и хука useConvoyReleasePlan
+      // 2) формируем текст и обновляем описание релиза (одно обращение к /dispatches/update-description)
+      const textForDescription = buildDescriptionText(type as ReferenceType, description);
+      await releasePlanService.updateBusLineDescription(
+        assignment.dispatchBusLineId,
+        formatDate(displayDate),
+        textForDescription
+      );
+
+      // 3) шлём событие — пусть слушатели обновятся (если подписаны)
       if (typeof window !== "undefined") {
         window.dispatchEvent(
           new CustomEvent("reference:created", {
@@ -98,13 +135,17 @@ export default function ReferenceDialog({
               referenceId: res.value,
               type,
               description: canDescribe ? description.trim() : "",
+              textForDescription,
             },
           })
         );
       }
 
-      toast({ title: "Справка создана", description: "Запись успешно сохранена." });
-      onCreated?.(res.value);
+      toast({ title: "Справка создана", description: "Запись сохранена и добавлена в доп. информацию." });
+
+      // 4) сообщаем родителю текст, чтобы обновить строку локально без лишних запросов
+      onCreated?.(res.value, textForDescription);
+
       handleClose();
     } catch (e: any) {
       toast({
@@ -117,18 +158,18 @@ export default function ReferenceDialog({
     }
   };
 
-  const labelHelp =
-    type === "Other"
-      ? "Обязательно заполнить для «Другое»"
-      : type === "TechnicalIssue"
-      ? "Можно дополнительно описать неисправность (необязательно)"
-      : "Недоступно для выбранного типа";
-
   const placeholder =
     type === "Other"
       ? "Укажите причину"
       : type === "TechnicalIssue"
-      ? "Опишите неисправность (при желании)"
+      ? "Опишите неисправность (по желанию)"
+      : "Недоступно для выбранного типа";
+
+  const hint =
+    type === "Other"
+      ? "Обязательно для «Другое»"
+      : type === "TechnicalIssue"
+      ? "Можно дополнительно описать неисправность"
       : "Недоступно для выбранного типа";
 
   return (
@@ -136,12 +177,10 @@ export default function ReferenceDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Справка по выходу</DialogTitle>
-          <DialogDescription>
-            Заполните причину по текущему выходу (DispatchBusLine)
-          </DialogDescription>
+          <DialogDescription>Заполните причину по текущему выходу (DispatchBusLine)</DialogDescription>
         </DialogHeader>
 
-        {/* Шапка с данными текущего выхода/водителя */}
+        {/* Шапка */}
         <div className="rounded-md border p-3 bg-gray-50 space-y-1">
           <div className="text-sm">
             <span className="text-gray-500">Маршрут: </span>
@@ -164,7 +203,7 @@ export default function ReferenceDialog({
           </div>
         </div>
 
-        {/* Выбор типа */}
+        {/* Тип */}
         <div className="grid gap-2">
           <Label>Тип справки</Label>
           <Select value={type} onValueChange={(v) => setType(v as ReferenceType)}>
@@ -181,7 +220,7 @@ export default function ReferenceDialog({
           </Select>
         </div>
 
-        {/* Описание — доступно для Other (обязательно) и TechnicalIssue (опционально) */}
+        {/* Описание */}
         <div className="grid gap-2">
           <Label htmlFor="ref-desc">
             Описание {type === "Other" ? "(обязательно)" : type === "TechnicalIssue" ? "(по желанию)" : "(недоступно)"}
@@ -195,7 +234,7 @@ export default function ReferenceDialog({
             className={!canDescribe ? "opacity-60 cursor-not-allowed" : ""}
           />
           <div className="text-xs text-gray-500">
-            {canDescribe ? `${description.trim().length} символов. ${labelHelp}` : labelHelp}
+            {canDescribe ? `${description.trim().length} символов. ${hint}` : hint}
           </div>
         </div>
 

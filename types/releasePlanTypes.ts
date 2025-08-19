@@ -324,6 +324,66 @@ export interface FinalDispatchData {
   scheduledRepairs: RepairRecord[]
 }
 
+// ——— Statement (итоговая ведомость) ———
+export type StatementStatusText =
+  | "Undefined"
+  | "Released"
+  | "Replaced"
+  | "Permutation"
+  | "Removed"
+  | "RearrangingRoute"
+  | "RearrangementRenovation"
+  | "Oder"
+  | "LaunchedFromGarage"
+
+export interface StatementBus {
+  id: string
+  garageNumber: string
+  govNumber: string
+  mileage: number | null
+}
+
+export interface StatementDriver {
+  id: string
+  fullName: string
+  serviceNumber: string
+}
+
+export interface StatementBusLine {
+  busLineId: string
+  dispatchBusLineId: string
+  busLineNumber: string
+  exitTime: string
+  endTime: string
+  scheduleStart: TimeObject | null
+  scheduleShiftChange: TimeObject | null
+  // сервер присылает строку ("Undefined", ...), но на всякий добавим и enum
+  status: StatementStatusText | DispatchBusLineStatus
+  description: string | null
+  bus: StatementBus | null
+  firstDriver: StatementDriver | null
+  secondDriver: StatementDriver | null
+  releasedTime: string | null
+  normSolarium: number | null
+  isRealsed: boolean
+  statementId: string
+  planRevolutions: number
+  revolutions: number
+  factRevolutions: number
+}
+
+export interface StatementRoute {
+  routeId: string
+  routeNumber: string
+  busLines: StatementBusLine[]
+}
+
+export interface FullStatementData {
+  id: string
+  date: string
+  routes: StatementRoute[]
+}
+
 export interface ReserveReplacementCandidate {
   id: string
   dispatchBusLineId: string

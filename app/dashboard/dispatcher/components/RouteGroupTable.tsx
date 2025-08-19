@@ -57,7 +57,7 @@ export default function RouteGroupTable({
 
   const openReference = (a: RouteAssignment) => {
     // гарантируем, что в модалку попадёт routeNumber
-    setRefAssignment({ ...a, routeNumber: a.routeNumber ?? group.routeNumber })
+    setRefAssignment({ ...a, routeNumber: (a as any).routeNumber ?? group.routeNumber })
     setRefOpen(true)
   }
 
@@ -109,70 +109,34 @@ export default function RouteGroupTable({
     )
   }
 
+  // Выдача/возврат ПЛ: меняем только isRealsed + releasedTime
   const handleCheckboxChange = async (assignment: RouteAssignment, checked: boolean) => {
     const dispatchId = assignment.dispatchBusLineId
     const currentStatus = assignment.status
 
-    let newStatus = currentStatus
-    let newIsRealsed = checked
-    let newReleasedTime = checked
+    const newIsRealsed = checked
+    const newReleasedTime = checked
       ? new Date().toLocaleTimeString("ru-RU", { hour12: false }).slice(0, 5) + ":00"
       : ""
-
-    if (checked) {
-      if (currentStatus === DispatchBusLineStatus.Undefined) {
-        newStatus = DispatchBusLineStatus.Released
-      }
-    } else {
-      newIsRealsed = false
-      newReleasedTime = ""
-
-      if (newStatus === DispatchBusLineStatus.LaunchedFromGarage) {
-        await releasePlanService.updateBusLineDescription(
-          dispatchId,
-          formatDate(displayDate),
-          "Сход с линии"
-        )
-      }
-
-      if (currentStatus === DispatchBusLineStatus.Released) {
-        newStatus = DispatchBusLineStatus.Undefined
-      } else if (
-        currentStatus === DispatchBusLineStatus.Replaced ||
-        currentStatus === DispatchBusLineStatus.Permutation ||
-        currentStatus === DispatchBusLineStatus.RearrangingRoute
-      ) {
-        newStatus = currentStatus
-      }
-    }
 
     setCheckedDepartures((prev) => ({ ...prev, [dispatchId]: checked }))
 
     try {
-      await releasePlanService.updateDispatchStatus(dispatchId, Number(newStatus), newIsRealsed)
+      await releasePlanService.updateDispatchStatus(dispatchId, Number(currentStatus), newIsRealsed)
 
       setAssignments((prev) =>
         prev.map((a) =>
           a.dispatchBusLineId === dispatchId
             ? {
                 ...a,
-                status: newStatus,
                 isRealsed: newIsRealsed,
                 releasedTime: newReleasedTime,
-                additionalInfo:
-                  newStatus === DispatchBusLineStatus.LaunchedFromGarage
-                    ? "Сход с линии"
-                    : a.additionalInfo,
-                description:
-                  newStatus === DispatchBusLineStatus.LaunchedFromGarage
-                    ? "Сход с линии"
-                    : a.description,
               }
             : a
         )
       )
     } catch (err) {
-      console.error("Ошибка обновления статуса:", err)
+      console.error("Ошибка обновления ПЛ:", err)
       setCheckedDepartures((prev) => ({ ...prev, [dispatchId]: !checked }))
     }
   }
@@ -337,14 +301,22 @@ export default function RouteGroupTable({
           if (!open) setRefAssignment(null)
         }}
         assignment={refAssignment}
-        onCreated={() => {
-          // 1) подтянуть свежие данные с сервера (если прокинут refetch из родителя)
-          onReload?.()
-          // 2) мгновенно перерисовать конкретную строку (бэйджи/summary)
+        displayDate={displayDate}           // ⬅️ передаём дату в модалку
+        onCreated={(_, textForDescription) => {
+          // 1) локально обновим только нужную строку, чтобы сразу показать запись
           if (refAssignment) {
             const id = refAssignment.dispatchBusLineId
+            setAssignments(prev =>
+              prev.map(a =>
+                a.dispatchBusLineId === id ? { ...a, additionalInfo: textForDescription } : a
+              )
+            )
+            // форс-рендер ячейки (если где-то используешь версионирование)
             setRefsBump(prev => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))
           }
+
+          // 2) опционально — подтянуть всё с бэка (если родитель пробросил refetch)
+          onReload?.()
         }}
       />
     </>

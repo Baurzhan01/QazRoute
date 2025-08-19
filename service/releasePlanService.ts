@@ -17,7 +17,8 @@ import type {
   ReserveReplacementCandidate,
   AssignUnplannedDispatchResponse,
   AssignmentReplacement,
-  DispatchReplacementHistoryDto
+  DispatchReplacementHistoryDto,
+  FullStatementData
 } from "@/types/releasePlanTypes"
 
 
@@ -294,6 +295,20 @@ export const releasePlanService = {
       params: { solarium },
     })
   },  
+
+  getFullStatementByDate: async (
+    date: string,
+    convoyId: string,
+    routeStatus?: string,
+    search?: string
+  ): Promise<ApiResponse<FullStatementData>> => {
+    const params: Record<string, string> = {}
+    if (routeStatus) params.routStatus = routeStatus // на сервере именно так
+    if (search) params.search = search
+  
+    const res = await apiClient.get(`/dispatches/${date}/full/statement/${convoyId}`, { params })
+    return res.data
+  },
 
   getFullDispatchByDate: async (
     date: string,

@@ -1,12 +1,10 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState } from "react"
 import { InfoCell } from "./InfoCell"
 import type { RouteAssignment } from "@/types/releasePlanTypes"
 import { DispatchBusLineStatus } from "@/types/releasePlanTypes"
 import DispatchHistoryModal from "./DispatchHistoryModal"
-import { referenceService } from "@/service/referenceService"
-import type { ReferenceDto } from "@/types/reference.types"
 
 interface AssignmentCellProps {
   assignment: RouteAssignment
@@ -14,7 +12,7 @@ interface AssignmentCellProps {
   readOnly: boolean
   textClassName?: string
   onUpdateLocalValue?: (value: string) => void
-  /** локальный bump из таблицы, чтобы целево перезагрузить справки */
+  /** локальный bump из таблицы, чтобы целево перерисовать ячейку */
   refsVersion?: number
 }
 
@@ -43,89 +41,6 @@ export default function AssignmentCell({
 
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyLength, setHistoryLength] = useState(0)
-
-  // ---- СПРАВКИ (Reference) ----
-  const [refs, setRefs] = useState<ReferenceDto[]>([])
-  const [refsLoading, setRefsLoading] = useState(false)
-
-  const fetchReferences = async () => {
-    try {
-      setRefsLoading(true)
-      const res = await referenceService.getByDispatchBusLine(dispatchBusLineId)
-      if (res.isSuccess && Array.isArray(res.value)) {
-        setRefs(res.value)
-      } else {
-        setRefs([])
-      }
-    } catch {
-      setRefs([])
-    } finally {
-      setRefsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchReferences()
-  }, [dispatchBusLineId, refsVersion])
-
-  // автообновление после ReferenceDialog через событие
-  useEffect(() => {
-    const handler = (e: any) => {
-      const id = e?.detail?.dispatchBusLineId
-      if (id && id === dispatchBusLineId) fetchReferences()
-    }
-    window.addEventListener("reference:created", handler as EventListener)
-    return () => window.removeEventListener("reference:created", handler as EventListener)
-  }, [dispatchBusLineId])
-
-  // лейблы/иконки
-  const REF_LABEL: Record<string, string> = {
-    FamilyReason: "По семейным обстоятельствам",
-    SickByCall: "Болезнь по звонку",
-    PoliceCallBeforeDeparture: "Звонок 102 (до выезда)",
-    GasStationIssue: "АЗС/пробки/колонка",
-    PoliceOperation: "ОПМ (проверка ГАИ)",
-    AccidentInDepot: "ДТП в парке",
-    DriverLate: "Опоздание водителя",
-    TechnicalIssue: "Тех. неисправность",
-    AlcoholIntoxication: "Алкоинтоксикация",
-    NoCharge: "Нет зарядки",
-    EmergencyInDepot: "ЧС в парке",
-    Other: "Другое",
-  }
-  const REF_ICON: Record<string, string> = {
-    FamilyReason: "👪",
-    SickByCall: "🤒",
-    PoliceCallBeforeDeparture: "🚓",
-    GasStationIssue: "⛽",
-    PoliceOperation: "🚨",
-    AccidentInDepot: "🚌💥",
-    DriverLate: "⏰",
-    TechnicalIssue: "🛠️",
-    AlcoholIntoxication: "🍺",
-    NoCharge: "🔋",
-    EmergencyInDepot: "🆘",
-    Other: "🧾",
-  }
-
-  const sortedRefs = useMemo(
-    () => [...refs].sort((a, b) => (b.id || "").localeCompare(a.id || "")),
-    [refs]
-  )
-
-  // Строим сводку справок для строки "Доп. информация"
-  const referenceSummary = useMemo(() => {
-    if (!sortedRefs.length) return ""
-    return sortedRefs
-      .map((r) => {
-        const label = REF_LABEL[r.type as keyof typeof REF_LABEL] || String(r.type)
-        const icon = REF_ICON[r.type as keyof typeof REF_ICON] || "🧾"
-        const isOther = (r.type as string) === "Other"
-        const desc = isOther && r.description ? `: ${r.description}` : ""
-        return `${icon} ${label}${desc}`
-      })
-      .join(" | ")
-  }, [sortedRefs])
 
   const handleInfoFromHistory = (text: string) => {
     onUpdateLocalValue?.(text)
@@ -167,9 +82,9 @@ export default function AssignmentCell({
   return (
     <>
       <div className="flex flex-col leading-tight">
-        {/* Основной текст + сводка Справок (externalNote) */}
+        {/* Основной текст. Всё, что касается «справок», теперь уже должно быть записано в additionalInfo */}
         <InfoCell
-          key={`${assignment.dispatchBusLineId}-${(refsVersion ?? 0)}-${assignment.additionalInfo ?? ""}`}
+          key={`${assignment.dispatchBusLineId}-${refsVersion}-${assignment.additionalInfo ?? ""}`}
           initialValue={additionalInfo ?? ""}
           assignmentId={dispatchBusLineId}
           date={date}
@@ -179,7 +94,6 @@ export default function AssignmentCell({
           textClassName={textClassName}
           readOnly={readOnly}
           onUpdateLocalValue={handleInfoFromHistory}
-          externalNote={referenceSummary}
         />
 
         {(historyLength > 0 || showGarageLaunch) && (
