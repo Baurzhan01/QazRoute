@@ -154,6 +154,8 @@ export interface BusLineDto {
   driver2Id: string | null
   departureTime: string
   endTime: string
+  scheduleStart?: string | null   // опционально
+  scheduleShiftChange?: string | null
 }
 
 // DTO для назначения водителей и автобусов на выход

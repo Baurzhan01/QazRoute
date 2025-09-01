@@ -5,9 +5,8 @@ import { releasePlanService } from "@/service/releasePlanService";
 import { getAuthData } from "@/lib/auth-utils";
 
 import type { Departure } from "@/types/releasePlanTypes";
-import type { DisplayBus } from "@/types/bus.types";
-import type { DisplayDriver } from "@/types/driver.types";
 import type { Schedule } from "@/types/schedule.types";
+import { toHHmm } from "@/app/dashboard/fleet-manager/release-plan/utils/timeUtils";
 
 interface UseRouteAssignmentsResult {
   departures: Departure[];
@@ -20,15 +19,7 @@ interface UseRouteAssignmentsResult {
   globalAssignedDriversMap: Record<string, { routeNumber: string; departureNumber: number }>;
 }
 
-function formatTime(timeObj: { hour: number; minute: number } | null | undefined): string {
-  if (!timeObj) return "";
-  const hours = String(timeObj.hour ?? 0).padStart(2, "0");
-  const minutes = String(timeObj.minute ?? 0).padStart(2, "0");
-  return `${hours}:${minutes}`;
-}
-
 export function useRouteAssignments(routeId: string, date: Date) {
-  
   const dateStr = date.toISOString().split("T")[0];
   const auth = getAuthData();
   const convoyId = auth?.convoyId;
@@ -57,7 +48,6 @@ export function useRouteAssignments(routeId: string, date: Date) {
       const globalAssignedBusesMap: Record<string, { routeNumber: string; departureNumber: number }> = {};
       const globalAssignedDriversMap: Record<string, { routeNumber: string; departureNumber: number }> = {};
 
-      // 🔁 Нормализация routeGroups
       const allAssignments = routeGroups.flatMap(group =>
         group.assignments.map((a, index) => ({
           ...a,
@@ -70,25 +60,25 @@ export function useRouteAssignments(routeId: string, date: Date) {
         const departureNumber = a.departureNumber ?? 0;
         if (a.garageNumber) {
           globalAssignedBusesMap[a.garageNumber] = {
-            routeNumber: a.routeNumber,
+            routeNumber: a.routeNumber!,
             departureNumber,
           };
         }
         if (a.driver?.serviceNumber) {
           globalAssignedDriversMap[a.driver.serviceNumber] = {
-            routeNumber: a.routeNumber,
+            routeNumber: a.routeNumber!,
             departureNumber,
           };
         }
         if (a.shift2Driver?.serviceNumber) {
           globalAssignedDriversMap[a.shift2Driver.serviceNumber] = {
-            routeNumber: a.routeNumber,
+            routeNumber: a.routeNumber!,
             departureNumber,
           };
         }
       });
 
-      (routeValue.busLines ?? []).forEach((line) => {
+      (routeValue.busLines ?? []).forEach((line: any) => {
         const departureNumber = parseInt(line.busLine.number, 10) || 0;
         if (line.bus) {
           assignedBusesMap[line.bus.id] = { routeNumber: routeValue.routeNumber, departureNumber };
@@ -101,28 +91,21 @@ export function useRouteAssignments(routeId: string, date: Date) {
         }
       });
 
-      const departures: Departure[] = (routeValue.busLines ?? []).map((line) => {
+      const departures: Departure[] = (routeValue.busLines ?? []).map((line: any) => {
         const busLineNumber = parseInt(line.busLine.number, 10) || 0;
+
+        const exitTimeUI = toHHmm(line.busLine.exitTime);
+        const endTimeUI = toHHmm(line.busLine.endTime);
+        const scheduleStartUI = toHHmm(line.scheduleStart ?? null);
+        const scheduleShiftChangeUI = toHHmm(line.scheduleShiftChange ?? (line.busLine?.shiftChangeTime ?? null));
 
         return {
           id: line.id,
           departureNumber: busLineNumber,
-          departureTime:
-            typeof line.busLine.exitTime === "string"
-              ? line.busLine.exitTime
-              : formatTime(line.busLine.exitTime),
-          scheduleTime:
-            line.scheduleStart && typeof line.scheduleStart === "object"
-              ? formatTime(line.scheduleStart)
-              : "",
-          shift2Time:
-            line.scheduleShiftChange && typeof line.scheduleShiftChange === "object"
-              ? formatTime(line.scheduleShiftChange)
-              : "",
-          endTime:
-            typeof line.busLine.endTime === "string"
-              ? line.busLine.endTime
-              : formatTime(line.busLine.endTime),
+          departureTime: exitTimeUI,
+          scheduleTime: scheduleStartUI,
+          shift2Time: scheduleShiftChangeUI || "",
+          endTime: endTimeUI,
           additionalInfo: "",
           shift2AdditionalInfo: "",
           isModified: false,
@@ -163,14 +146,9 @@ export function useRouteAssignments(routeId: string, date: Date) {
           busLine: {
             id: line.busLine.id,
             number: line.busLine.number,
-            exitTime:
-              typeof line.busLine.exitTime === "string"
-                ? line.busLine.exitTime
-                : formatTime(line.busLine.exitTime),
-            endTime:
-              typeof line.busLine.endTime === "string"
-                ? line.busLine.endTime
-                : formatTime(line.busLine.endTime),
+            exitTime: exitTimeUI,
+            endTime: endTimeUI,
+            shiftChangeTime: scheduleShiftChangeUI || null,
           },
         };
       });
