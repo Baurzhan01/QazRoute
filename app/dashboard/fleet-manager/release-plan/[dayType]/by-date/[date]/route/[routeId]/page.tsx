@@ -1,19 +1,18 @@
-// ✅ Финальная версия RouteDetailsPage.tsx с правильно размещёнными хуками
+// ✅ Финальная версия RouteDetailsPage.tsx
 
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { motion } from "framer-motion";
 import { ArrowLeft, Save, BusIcon } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 import { useRouteAssignments } from "../../../../../hooks/useRouteAssignments";
 import { releasePlanService } from "@/service/releasePlanService";
+import { driverService } from "@/service/driverService";
 import { getAuthData } from "@/lib/auth-utils";
 
 import DepartureTable from "./components/DepartureTable";
@@ -25,7 +24,6 @@ import EditAssignmentModal from "./components/EditAssignmentModal";
 import type { LocalDeparture } from "@/types/releasePlanTypes";
 import type { DisplayBus } from "@/types/bus.types";
 import type { DisplayDriver } from "@/types/driver.types";
-import { useSearchParams } from "next/navigation";
 
 export default function RouteDetailsPage() {
   const params = useParams();
@@ -39,18 +37,12 @@ export default function RouteDetailsPage() {
 
   const { data, isLoading, refetch } = useRouteAssignments(routeId, date);
 
-  const [busSearchQuery, setBusSearchQuery] = useState("");
-  const [driverSearchQuery, setDriverSearchQuery] = useState("");
-  const [selectedBus, setSelectedBus] = useState<DisplayBus | null>(null);
-  const [selectedDriver, setSelectedDriver] = useState<DisplayDriver | null>(null);
   const [assignedBusesInRoute, setAssignedBusesInRoute] = useState<Record<string, { routeNumber: string; departureNumber: number }>>({});
   const [assignedDriversInRoute, setAssignedDriversInRoute] = useState<Record<string, { routeNumber: string; departureNumber: number }>>({});
 
   const [departures, setDepartures] = useState<LocalDeparture[]>([]);
-  
   const [selectedDeparture, setSelectedDeparture] = useState<LocalDeparture | null>(null);
   const [timeEditType, setTimeEditType] = useState<"exitTime" | "endTime" | "shiftChangeTime" | null>(null);
-  const [currentTimeValue, setCurrentTimeValue] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isTimeEditModalOpen, setIsTimeEditModalOpen] = useState(false);
   const [isSecondShiftModalOpen, setIsSecondShiftModalOpen] = useState(false);
@@ -59,7 +51,6 @@ export default function RouteDetailsPage() {
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const fromFinalDispatch = searchParams.get("from") === "final-dispatch";
-  
 
   useEffect(() => {
     if (data?.departures) {
@@ -75,33 +66,32 @@ export default function RouteDetailsPage() {
           shift2Time: d.shift2Time ?? "",
           isModified: false,
         }));
-  
+
       setDepartures(sorted);
     }
-  }, [data?.departures]);  
+  }, [data?.departures]);
 
   const handleSaveAllAssignments = async () => {
     if (!data?.dispatchRouteId) {
       toast({ title: "Не найден ID разнарядки", variant: "destructive" });
       return;
     }
-  
+
     try {
       for (const dep of departures) {
         if (!dep.isModified) continue;
-  
+
         const payload = {
           dispatchBusLineId: dep.id,
           busId: dep.bus?.id ?? null,
           driver1Id: dep.driver?.id ?? null,
           driver2Id: dep.shift2Driver?.id ?? null,
         };
-  
+
         await releasePlanService.updateBusLineAssignment(dateString, payload);
       }
-  
-      await refetch(); // 🔄 получить актуальные данные
-  
+
+      await refetch();
       toast({ title: "Изменения успешно сохранены" });
       router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}`);
     } catch (error: any) {
@@ -112,18 +102,17 @@ export default function RouteDetailsPage() {
       });
     }
   };
-  
+
   const handleEditTime = (dep: LocalDeparture, type: "exitTime" | "endTime" | "shiftChangeTime") => {
     setSelectedDeparture(dep);
     setTimeEditType(type);
     setIsTimeEditModalOpen(true);
   };
-  
 
   const handleBack = () => {
     const base = `/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateString}`;
     const returnUrl = fromFinalDispatch ? `${base}/final-dispatch` : base;
-  
+
     if (departures.some((d) => d.isModified)) {
       setPendingNavigation(returnUrl);
       setIsConfirmDialogOpen(true);
@@ -131,7 +120,6 @@ export default function RouteDetailsPage() {
       router.push(returnUrl);
     }
   };
-  
 
   const handleRemoveAssignment = async (depId: string) => {
     const dep = departures.find((d) => d.id === depId);
@@ -145,7 +133,11 @@ export default function RouteDetailsPage() {
     });
 
     setDepartures((prev) =>
-      prev.map((d) => d.id === depId ? { ...d, bus: undefined, driver: undefined, shift2Driver: undefined, isModified: true } : d)
+      prev.map((d) =>
+        d.id === depId
+          ? { ...d, bus: undefined, driver: undefined, shift2Driver: undefined, isModified: true }
+          : d
+      )
     );
 
     toast({ title: "Назначение снято" });
@@ -165,8 +157,8 @@ export default function RouteDetailsPage() {
 
       {isLoading ? (
         <div className="h-64 animate-pulse bg-gray-200 rounded" />
-      ) : (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+      ) : data ? (
+        <div className="space-y-6">
           <Card>
             <CardHeader className="bg-blue-500 text-white">
               <CardTitle className="flex items-center gap-2">
@@ -174,18 +166,20 @@ export default function RouteDetailsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-            <DepartureTable
-              departures={departures}
-              date={dateString} // 🔧 добавлено
-              onAddBus={(dep) => { setSelectedDeparture(dep); setIsAddDialogOpen(true); }}
-              onEditTime={handleEditTime}
-              onEditAssignment={(dep) => { setSelectedDeparture(dep); setIsEditAssignmentModalOpen(true); }}
-              onAddSecondShift={(dep) => { setSelectedDeparture(dep); setIsSecondShiftModalOpen(true); }}
-              onRemoveAssignment={(depId) => handleRemoveAssignment(depId)} // 🔧 существующее
-              onRemoveLocally={(depId) => {
-                setDepartures(prev => prev.map(d => d.id === depId ? { ...d, bus: undefined, driver: undefined, isModified: true } : d));
-              }} // 🔧 добавлено
-            />
+              <DepartureTable
+                departures={departures}
+                date={dateString}
+                onAddBus={(dep) => { setSelectedDeparture(dep); setIsAddDialogOpen(true); }}
+                onEditTime={handleEditTime}
+                onEditAssignment={(dep) => { setSelectedDeparture(dep); setIsEditAssignmentModalOpen(true); }}
+                onAddSecondShift={(dep) => { setSelectedDeparture(dep); setIsSecondShiftModalOpen(true); }}
+                onRemoveAssignment={(depId) => handleRemoveAssignment(depId)}
+                onRemoveLocally={(depId) => {
+                  setDepartures(prev =>
+                    prev.map(d => d.id === depId ? { ...d, bus: undefined, driver: undefined, isModified: true } : d)
+                  );
+                }}
+              />
             </CardContent>
           </Card>
 
@@ -203,8 +197,8 @@ export default function RouteDetailsPage() {
                 setSelectedDeparture(null);
               }}
               selectedDeparture={selectedDeparture}
-              assignedBusesMap={assignedBusesInRoute}
-              assignedDriversMap={assignedDriversInRoute}
+              assignedBusesMap={{}}
+              assignedDriversMap={{}}
               globalAssignedDriversMap={data.globalAssignedDriversMap}
               date={dateString}
               routeId={routeId}
@@ -228,12 +222,11 @@ export default function RouteDetailsPage() {
                     },
                   }));
                 }
-            
-                // 💡 Сразу обновляем весь список маршрута
                 refetch();
               }}
             />
           )}
+
           {selectedDeparture?.busLine && timeEditType && (
             <TimeEditModal
               isOpen={isTimeEditModalOpen}
@@ -249,22 +242,53 @@ export default function RouteDetailsPage() {
               onSuccess={() => refetch()}
             />
           )}
+
           <SecondShiftModal
             isOpen={isSecondShiftModalOpen}
             onClose={() => { setIsSecondShiftModalOpen(false); setSelectedDeparture(null); }}
             departure={selectedDeparture}
             convoyId={auth?.convoyId ?? ""}
+            routeId={routeId}
             date={dateString}
-            onSave={(driverId: string, shiftTime: string) => {
+            onSave={async (driverId: string, shiftTime: string) => {
               if (!selectedDeparture) return;
-              setDepartures((prev) =>
-                prev.map((d) =>
-                  d.id === selectedDeparture.id
-                    ? { ...d, shift2Driver: { id: driverId, fullName: "", serviceNumber: "", driverStatus: "DayOff" }, shift2Time: shiftTime, isModified: true }
-                    : d
-                )
-              );
+              try {
+                const driverRes = await driverService.getById(driverId);
+                const driverInfo = driverRes.isSuccess && driverRes.value ? driverRes.value : null;
+
+                setDepartures((prev) =>
+                  prev.map((d) =>
+                    d.id === selectedDeparture.id
+                      ? {
+                          ...d,
+                          shift2Driver: driverInfo
+                            ? {
+                                id: driverInfo.id || driverId,
+                                fullName: driverInfo.fullName,
+                                serviceNumber: driverInfo.serviceNumber,
+                                driverStatus: driverInfo.driverStatus
+                              }
+                            : { id: driverId, fullName: "", serviceNumber: "", driverStatus: "DayOff" },
+                          shift2Time: shiftTime,
+                          isModified: true,
+                        }
+                      : d
+                  )
+                );
+              } catch {
+                setDepartures((prev) =>
+                  prev.map((d) =>
+                    d.id === selectedDeparture.id
+                      ? { ...d, shift2Driver: { id: driverId, fullName: "", serviceNumber: "", driverStatus: "DayOff" }, shift2Time: shiftTime, isModified: true }
+                      : d
+                  )
+                );
+              }
+            }}
+            onSuccess={() => {
               setIsSecondShiftModalOpen(false);
+              setSelectedDeparture(null);
+              refetch();
             }}
           />
 
@@ -277,16 +301,24 @@ export default function RouteDetailsPage() {
             onSave={(updated) => {
               if (!updated) return;
               setDepartures((prev) =>
-                prev.map((d) => d.id === updated.id ? {
-                  ...updated,
-                  shift2Time: updated.shift2Time ?? "",
-                  shift2AdditionalInfo: updated.shift2AdditionalInfo ?? "",
-                  isModified: true,
-                } : d)
+                prev.map((d) =>
+                  d.id === updated.id
+                    ? {
+                        ...updated,
+                        shift2Time: updated.shift2Time ?? "",
+                        shift2AdditionalInfo: updated.shift2AdditionalInfo ?? "",
+                        isModified: true,
+                      }
+                    : d
+                )
               );
             }}
           />
-        </motion.div>
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <p className="text-gray-500">Данные не найдены</p>
+        </div>
       )}
 
       <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>

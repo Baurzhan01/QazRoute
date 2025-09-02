@@ -81,6 +81,19 @@ export interface UpdateBusRequest {
 export type WeekendDriver = DisplayDriver;
 export type WeekendBus = DisplayBus;
 
+// Автобус с назначениями для депо
+export interface DepotBusWithAssignment {
+  busId: string;
+  govNumber: string;
+  garageNumber: string;
+  status: string;
+  routeName: string | null;
+  busLineNumber: string | null;
+  shiftType: string | null;
+  driverFullName: string | null;
+  convoyNumber: string;
+}
+
 // Универсальный ответ API
 export interface ApiResponse<T> {
   isSuccess: boolean;

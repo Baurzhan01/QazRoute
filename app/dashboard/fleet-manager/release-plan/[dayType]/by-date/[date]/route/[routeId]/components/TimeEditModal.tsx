@@ -96,7 +96,16 @@ export default function TimeEditModal({
             : formatTime(times.shiftChangeTime),
       };
 
+      console.log("TimeEditModal - обновляем время:", {
+        timeType,
+        value,
+        updatedTime,
+        body
+      });
+
       const res = await busLineService.update(busLineId, body);
+
+      console.log("TimeEditModal - результат обновления:", res);
 
       if (res.isSuccess) {
         onClose();
@@ -105,6 +114,7 @@ export default function TimeEditModal({
         setError("Ошибка при сохранении: " + res.error);
       }
     } catch (err) {
+      console.error("TimeEditModal - ошибка:", err);
       setError("Ошибка запроса: " + String(err));
     }
   };

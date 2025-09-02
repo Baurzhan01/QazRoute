@@ -78,7 +78,14 @@ export default function DepartureTable({
               <TimeButton label={dep.departureTime} onClick={() => onEditTime(dep, "exitTime")} />
             </TableCell>
             <TableCell className="p-2">
-              <TimeButton label={dep.scheduleTime} onClick={() => onEditTime(dep, "shiftChangeTime")} />
+              <TimeButton
+                label={
+                  dep.busLine?.shiftChangeTime
+                    ? dep.busLine.shiftChangeTime.substring(0, 5)
+                    : (dep.shift2Time || "—")
+                }
+                onClick={() => onEditTime(dep, "shiftChangeTime")}
+              />
             </TableCell>
             <TableCell className="p-2">
               {dep.shift2Driver ? (
@@ -91,7 +98,15 @@ export default function DepartureTable({
                 "—"
               )}
             </TableCell>
-            <TableCell className="p-2">{dep.shift2Time ?? "—"}</TableCell>
+            <TableCell className="p-2">
+              {dep.shift2Driver ? (
+                <span className="text-sm text-gray-600">
+                  {dep.shift2Time || "—"}
+                </span>
+              ) : (
+                "—"
+              )}
+            </TableCell>
             <TableCell className="p-2">
               <TimeButton label={dep.endTime} onClick={() => onEditTime(dep, "endTime")} />
             </TableCell>

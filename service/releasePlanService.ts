@@ -20,6 +20,7 @@ import type {
   DispatchReplacementHistoryDto,
   FullStatementData
 } from "@/types/releasePlanTypes"
+import { toHHmmss } from "@/app/dashboard/fleet-manager/release-plan/utils/timeUtils"
 
 
 export const statusEnumMap: Record<DispatchBusLineStatus, string> = {
@@ -129,7 +130,21 @@ export const releasePlanService = {
   updateDispatchRoute: async (
     payload: DispatchRouteUpdateRequest
   ): Promise<ApiResponse<string>> => {
-    const { data } = await apiClient.put(`/dispatches/route`, payload)
+    const normalized = {
+      dispatchRouteId: payload.dispatchRouteId,
+      busLines: payload.busLines.map(b => ({
+        id: b.id,
+        busId: b.busId,
+        driver1Id: b.driver1Id,
+        driver2Id: b.driver2Id,
+        departureTime: toHHmmss(b.departureTime)!, // → "HH:mm:ss"
+        endTime: toHHmmss(b.endTime)!,
+        ...(b.scheduleStart != null && { scheduleStart: toHHmmss(b.scheduleStart)! }),
+        ...(b.scheduleShiftChange != null && { scheduleShiftChange: toHHmmss(b.scheduleShiftChange)! }),
+      })),
+    }
+  
+    const { data } = await apiClient.put(`/dispatches/route`, normalized)
     return data
   },
 

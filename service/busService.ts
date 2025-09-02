@@ -4,9 +4,9 @@ import type {
   BusWithDrivers,
   DisplayBus,
   PaginatedBusesResponse,
-  ApiResponse
+  ApiResponse,
+  DepotBusWithAssignment
 } from "@/types/bus.types";
-import type { DepotBusWithAssignment } from "@/types/bus.types"
 
 export const busService = {
   getAll: async (): Promise<ApiResponse<Bus[]>> => {
