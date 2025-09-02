@@ -2,6 +2,15 @@ import type { Config } from "tailwindcss"
 
 const config: Config = {
   darkMode: ["class"],
+  safelist: [
+    "bg-green-100", "border-green-300", "text-green-800",
+    "bg-red-100", "border-red-300", "text-red-700",
+    "bg-yellow-100", "border-yellow-300", "text-yellow-800",
+    "bg-blue-100", "border-blue-300", "text-blue-800",
+    "bg-purple-100", "border-purple-300", "text-purple-800",
+    "bg-gray-200", "border-gray-300", "text-gray-700",
+    "bg-white", "border-gray-200", "text-gray-700"
+  ],
   content: [
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",

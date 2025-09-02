@@ -9,9 +9,11 @@ import type {
   PaginatedDriversResponse,
   DriverStatusCount,
   DisplayDriver,
+  DriverStatus, // ← добавили
+  DepotDriverWithAssignment, // ← переносим импорт сюда, можно из того же файла типов
 } from "@/types/driver.types"
-import type { DepotDriverWithAssignment } from "@/types/driver.types"
 
+// 👇 Этот тип локальный для истории работы — оставляем здесь (или перенеси в общий types при желании)
 export interface DriverWorkHistoryItem {
   date: string // "YYYY-MM-DD"
   routeAndExit: string | null // например "4А/16"
@@ -23,8 +25,9 @@ export const driverService = {
     const response = await apiClient.get<ApiResponse<Driver[]>>("/drivers")
     return response.data
   },
-   // 🔹 Новый метод получения истории работы водителя
-   getWorkHistory: async (
+
+  // 🔹 История работы водителя за период
+  getWorkHistory: async (
     driverId: string,
     startDate: string,
     days: number
@@ -50,14 +53,29 @@ export const driverService = {
     const response = await apiClient.get<ApiResponse<Driver[]>>(`/drivers/by-depot/${depotId}`)
     return response.data
   },
+
   getByDepotWithAssignments: async (
     depotId: string,
     date: string
   ): Promise<ApiResponse<DepotDriverWithAssignment[]>> => {
-    const response = await apiClient.get(`/drivers/by-depot/${depotId}/${date}`)
+    const response = await apiClient.get<ApiResponse<DepotDriverWithAssignment[]>>(
+      `/drivers/by-depot/${depotId}/${date}`
+    )
     return response.data
   },
-  
+
+  // 🔹 Ручная установка статуса дня (перекрывает авто-логику)
+  setDailyStatus: async (
+    driverId: string,
+    date: string, // YYYY-MM-DD
+    status: DriverStatus // "OnWork" | "DayOff" | ...
+  ): Promise<ApiResponse<void>> => {
+    const response = await apiClient.post<ApiResponse<void>>(
+      `/drivers/${driverId}/daily-status`,
+      { date, status }
+    )
+    return response.data
+  },
 
   filter: async (
     filter: DriverFilterRequest
@@ -70,8 +88,8 @@ export const driverService = {
   },
 
   searchDrivers: async (depotId: string, query: string): Promise<ApiResponse<Driver[]>> => {
-  const response = await apiClient.get("/drivers/search", {
-    params: { depotId, query },
+    const response = await apiClient.get<ApiResponse<Driver[]>>("/drivers/search", {
+      params: { depotId, query },
     })
     return response.data
   },
@@ -85,7 +103,6 @@ export const driverService = {
     })
     return response.data
   },
-  
 
   create: async (data: CreateDriverRequest): Promise<ApiResponse<Driver>> => {
     const response = await apiClient.post<ApiResponse<Driver>>("/drivers", data)

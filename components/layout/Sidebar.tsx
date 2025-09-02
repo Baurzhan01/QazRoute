@@ -21,6 +21,7 @@ import {
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CalendarCheck } from "lucide-react";
 
 interface NavItem {
   title: string;
@@ -93,8 +94,8 @@ export default function Sidebar() {
     { title: "Список автобусов", href: "/dashboard/fleet-manager/buses", icon: <Truck className="h-5 w-5 text-sky-500" /> },
     { title: "Сходы с линии", href: "/dashboard/breakdowns", icon: <AlertTriangle className="h-5 w-5 text-yellow-500" /> },
     { title: "Журнал ремонтов", href: "/dashboard/repairs", icon: <ClipboardList className="h-5 w-5 text-sky-500" /> },
+    { title: "Табель", href: "/dashboard/timesheet", icon: <CalendarCheck className="h-5 w-5 text-sky-500" /> },
     { title: "Отчёты", href: "/dashboard/fleet-manager/reports", icon: <FileText className="h-5 w-5 text-sky-500" /> },
-    { title: "Настройки", href: `${dashboardPath}/settings`, icon: <Settings className="h-5 w-5 text-sky-500" /> },
     { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5 text-sky-500" /> },
   ];
 
