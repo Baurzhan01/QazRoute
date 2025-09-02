@@ -98,6 +98,7 @@ export function useRouteAssignments(routeId: string, date: Date) {
         const endTimeUI = toHHmm(line.busLine.endTime);
         const scheduleStartUI = toHHmm(line.scheduleStart ?? null);
         const scheduleShiftChangeUI = toHHmm(line.scheduleShiftChange ?? (line.busLine?.shiftChangeTime ?? null));
+        const startShiftChangeTimeUI = toHHmm(line.startShiftChangeTime ?? null); 
 
         return {
           id: line.id,
@@ -105,6 +106,7 @@ export function useRouteAssignments(routeId: string, date: Date) {
           departureTime: exitTimeUI,
           scheduleTime: scheduleStartUI,
           shift2Time: scheduleShiftChangeUI || "",
+          startShiftChangeTime: startShiftChangeTimeUI || null,
           endTime: endTimeUI,
           additionalInfo: "",
           shift2AdditionalInfo: "",

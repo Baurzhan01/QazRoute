@@ -99,13 +99,13 @@ export default function DepartureTable({
               )}
             </TableCell>
             <TableCell className="p-2">
-              {dep.shift2Driver ? (
-                <span className="text-sm text-gray-600">
-                  {dep.shift2Time || "—"}
-                </span>
-              ) : (
-                "—"
-              )}
+            {dep.shift2Driver ? (
+                  <span className="text-sm text-gray-600">
+                    {dep.startShiftChangeTime?.substring(0, 5) || "—"}
+                  </span>
+                ) : (
+                  "—"
+                )}
             </TableCell>
             <TableCell className="p-2">
               <TimeButton label={dep.endTime} onClick={() => onEditTime(dep, "endTime")} />

@@ -46,6 +46,8 @@ export function useTimesheet({
 
   const days = useMemo(() => getMonthDays(year, month0), [year, month0]);
 
+  // ВАЖНО: drivers уже приходят постранично с сервера — но если вдруг придут все,
+  // этот slice не повредит.
   const pageDrivers = useMemo(() => {
     const start = (page - 1) * pageSize;
     return drivers.slice(start, start + pageSize);
@@ -66,8 +68,11 @@ export function useTimesheet({
       try {
         const results = await Promise.all(
           pageDrivers.map(async (driver) => {
+            // 🔧 Унифицированное чтение ответа: массив ИЛИ { value: [...] }
             const res = await driverService.getWorkHistory(driver.id, startDate, days.length);
-            const value = (res.value || []) as DriverWorkHistoryItem[];
+            const value: DriverWorkHistoryItem[] = Array.isArray(res)
+              ? res
+              : (res?.value ?? []);
 
             const map: TimesheetRow["days"] = {};
             days.forEach((d) => {
@@ -135,7 +140,42 @@ export function useTimesheet({
   };
 }
 
-function normalizeStatus(s: string): TimesheetDayStatus {
+/**
+ * Приводим статус из бэкенда/истории к enum таблицы.
+ * Поддерживаем и EN-коды бэкенда, и RU подписи.
+ */
+function normalizeStatus(s: string | null | undefined): TimesheetDayStatus {
+  if (!s) return "Empty";
+
+  // Сразу отдаём, если уже одно из целевых значений
+  switch (s) {
+    case "Worked":
+    case "DayOff":
+    case "OnVacation":
+    case "OnSickLeave":
+    case "Intern":
+    case "Fired":
+    case "Empty":
+      return s;
+  }
+
+  // EN-коды бэкенда
+  switch (s) {
+    case "OnWork":
+      return "Worked";
+    case "DayOff":
+      return "DayOff";
+    case "OnVacation":
+      return "OnVacation";
+    case "OnSickLeave":
+      return "OnSickLeave";
+    case "Intern":
+      return "Intern";
+    case "Fired":
+      return "Fired";
+  }
+
+  // RU-строки (если где-то ещё могут прийти)
   switch (s) {
     case "Работал":
       return "Worked";

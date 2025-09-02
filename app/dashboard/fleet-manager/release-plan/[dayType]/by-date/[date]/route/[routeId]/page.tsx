@@ -249,6 +249,7 @@ export default function RouteDetailsPage() {
             departure={selectedDeparture}
             convoyId={auth?.convoyId ?? ""}
             routeId={routeId}
+            dispatchRouteId={data?.dispatchRouteId}
             date={dateString}
             onSave={async (driverId: string, shiftTime: string) => {
               if (!selectedDeparture) return;

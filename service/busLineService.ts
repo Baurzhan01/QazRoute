@@ -26,6 +26,25 @@ export const busLineService = {
       throw new Error(error.response?.data?.error || "Не удалось загрузить выход");
     }
   },
+  updateShiftChangeTime: async (
+    busLineId: string,
+    startShiftChangeTime: string,
+    shiftChangeTime: string
+  ): Promise<ApiResponse<any>> => {
+    try {
+      const res = await apiClient.put<ApiResponse<any>>(
+        `/bus-lines/update/shift-change-time/${busLineId}`,
+        {
+          startShiftChangeTime,
+          shiftChangeTime,
+        }
+      );
+      return res.data;
+    } catch (error: any) {
+      console.error("❌ Ошибка при обновлении shiftChangeTime:", error);
+      throw new Error(error.response?.data?.error || "Не удалось обновить время пересменки");
+    }
+  },  
 
   getByRouteId: async (routeId: string): Promise<ApiResponse<BusLine[]>> => {
     try {

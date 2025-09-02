@@ -192,11 +192,13 @@ export interface Departure {
   endTime: string
   shift2Time?: string
   shift2AdditionalInfo?: string
+  startShiftChangeTime?:string | null;
   isModified?: boolean
 
   bus?: DisplayBus
   driver?: DisplayDriver
   shift2Driver?: DisplayDriver
+  shiftChangeTime?: string | null; // ← добавить вот это
 
   busLine?: {
     id: string
