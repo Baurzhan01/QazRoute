@@ -17,8 +17,8 @@ export const busService = {
 
   async getByDepot(
     depotId: string,
-    page: number = 1,
-    pageSize: number = 25
+    page: string = "1",
+    pageSize: string = "25"
   ): Promise<BusDepotPagedResponse> {
     const res = await apiClient.get(`/buses/by-depot/${depotId}`, {
       params: { Page: page, PageSize: pageSize }, // <-- именно так

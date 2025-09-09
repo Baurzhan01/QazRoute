@@ -7,35 +7,64 @@ export interface ApiResponse<T> {
     statusCode: number;
     value: T;
   }
+
   
-  /** DTO даты формата DateOnly с бэка (.NET) */
-  export interface DateOnlyDto {
-    year: number;
-    month: number; // 1-12
-    day: number;   // 1-31
-    /** Необязательное поле: день недели (если бэк его использует) */
-    dayOfWeek?: number; // 0-6 или 1-7
+  export interface RepairWork {
+    name: string;
+    count: number;
+    hour: number;
+    price: number;
+    sum: number;
   }
   
-  /** Создание ремонта */
+  export interface RepairSparePart {
+    name: string;
+    count: number;
+    price: number;
+    sum: number;
+  }
+  
   export interface CreateRepairRequest {
     busId: string;
     applicationNumber: number;
-  
+    
+    
     sparePart: string;
     sparePartCount: number;
     sparePartPrice: number;
-  
-    /** Дата выезда/отправки автобуса в ремонт (DateOnly) */
-    departureDate: DateOnlyDto;
-    /** Дата возврата/въезда автобуса из ремонта (DateOnly) */
-    entryDate: DateOnlyDto;
-  
+    
+    
+    /** YYYY-MM-DD */
+    departureDate: string;
+    /** YYYY-MM-DD */
+    entryDate: string;
+    
+    
     workName: string;
     workCount: number;
     workHour: number;
     workPrice: number;
+    }
+    
+    
+    // для отправки batch'ом — просто массив CreateRepairRequest[]
+    export type CreateRepairBatchRequest = CreateRepairRequest[];
+  
+  export interface Repair {
+    id: string;
+    busId: string;
+    createdAt: string;
+    applicationNumber: number;
+    departureDate: string;
+    entryDate: string;
+    works: RepairWork[];
+    spareParts: RepairSparePart[];
+    allSum: number;
+    garageNumber: string;
+    govNumber: string;
   }
+  
+  
   
   /** Обновление ремонта (по спецификации бэка даты и busId не меняются) */
   export interface UpdateRepairRequest {
@@ -79,17 +108,5 @@ export interface ApiResponse<T> {
     departureDate: string;
     /** В ответах приходит строка "YYYY-MM-DD" или "0001-01-01" */
     entryDate: string;
-  }
-  
-  /** Хелпер для удобного формирования DateOnlyDto из JS Date/строки */
-  export function toDateOnlyDto(date: Date | string): DateOnlyDto {
-    const d = typeof date === "string" ? new Date(date) : date;
-    return {
-      year: d.getFullYear(),
-      month: d.getMonth() + 1,
-      day: d.getDate(),
-      // dayOfWeek можно опустить; если нужно — раскомментируй:
-      // dayOfWeek: d.getDay(),
-    };
   }
   

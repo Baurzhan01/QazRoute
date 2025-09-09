@@ -6,6 +6,7 @@ import type {
     Repair,
     CreateRepairRequest,
     UpdateRepairRequest,
+    CreateRepairBatchRequest,
   } from "@/types/repairBus.types";
   
 
@@ -26,6 +27,11 @@ export const repairBusService = {
   async getById(id: string): Promise<ApiResponse<Repair>> {
     const res = await apiClient.get(`/repairs/${id}`);
     return res.data;
+  },
+  /** Новый метод — batch-создание записей за одну дату */
+  createBatch: async (payload: CreateRepairBatchRequest): Promise<ApiResponse<Repair[]>> => {
+  const res = await apiClient.post(`/repairs/batch`, payload);
+  return res.data;
   },
 
   /** Обновить ремонт */
