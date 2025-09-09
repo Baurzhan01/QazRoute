@@ -5,13 +5,25 @@ import type {
   DisplayBus,
   PaginatedBusesResponse,
   ApiResponse,
-  DepotBusWithAssignment
+  DepotBusWithAssignment,
+  BusDepotPagedResponse
 } from "@/types/bus.types";
 
 export const busService = {
   getAll: async (): Promise<ApiResponse<Bus[]>> => {
     const response = await apiClient.get("/buses");
     return response.data;
+  },
+
+  async getByDepot(
+    depotId: string,
+    page: number = 1,
+    pageSize: number = 25
+  ): Promise<BusDepotPagedResponse> {
+    const res = await apiClient.get(`/buses/by-depot/${depotId}`, {
+      params: { Page: page, PageSize: pageSize }, // <-- именно так
+    })
+    return res.data
   },
 
   getByConvoy: async (convoyId: string): Promise<DisplayBus[]> => {

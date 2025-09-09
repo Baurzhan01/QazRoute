@@ -48,6 +48,16 @@ export default function Sidebar() {
     }
   }, []);
 
+  // --- добавлено меню для механика ---
+  const mechanicNavItems: NavItem[] = [
+    { title: "Главная", href: "/dashboard/mechanic", icon: <Home className="h-5 w-5" /> },
+    { title: "Журнал ремонтов", href: "/dashboard/mechanic/repairs", icon: <ClipboardList className="h-5 w-5" /> },
+    { title: "Список автобусов", href: "/dashboard/mechanic/buses", icon: <Truck className="h-5 w-5" /> },
+    { title: "Сходы с линии", href: "/dashboard/mechanic/breakdowns", icon: <AlertTriangle className="h-5 w-5" /> },
+    { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
+  ];
+  
+
   const ctsNavItems: NavItem[] = [
     { title: "Главная", href: "/dashboard/cts", icon: <Home className="h-5 w-5" /> },
     { title: "Разнарядка", href: "/dashboard/cts/release-plan", icon: <BarChart2 className="h-5 w-5" /> },
@@ -100,13 +110,13 @@ export default function Sidebar() {
   ];
 
   const navItems =
-  role === "mcc" ? mccNavItems :
-  role === "cts" || role === "on-duty-mechanic" ? ctsNavItems :
-  role === "dispatcher" ? dispatcherNavItems :
-  role === "lrt" ? lrtNavItems :
-  role === "guide" ? guideNavItems :
-  defaultNavItems;
-
+    role === "mechanic" ? mechanicNavItems :
+    role === "mcc" ? mccNavItems :
+    role === "cts" || role === "on-duty-mechanic" ? ctsNavItems :
+    role === "dispatcher" ? dispatcherNavItems :
+    role === "lrt" ? lrtNavItems :
+    role === "guide" ? guideNavItems :
+    defaultNavItems;
 
   return (
     <aside className="hidden md:flex w-64 flex-col bg-white border-r">

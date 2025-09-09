@@ -1,3 +1,4 @@
+// components/layout/MobileSidebar.tsx
 "use client"
 
 import { useEffect, useState } from "react"
@@ -13,7 +14,6 @@ import {
   Wrench,
   Clock,
   AlertCircle,
-  Bell,
   UserCircle,
   Truck,
   AlertTriangle,
@@ -45,6 +45,16 @@ export function MobileSidebar() {
     }
   }, [])
 
+  // --- добавлено меню для механика ---
+  const mechanicNavItems: NavItem[] = [
+    { title: "Главная", href: "/dashboard/mechanic", icon: <Home className="h-5 w-5" /> },
+    { title: "Журнал ремонтов", href: "/dashboard/mechanic/repairs", icon: <ClipboardList className="h-5 w-5" /> },
+    { title: "Список автобусов", href: "/dashboard/mechanic/buses", icon: <Truck className="h-5 w-5" /> },
+    { title: "Сходы с линии", href: "/dashboard/mechanic/breakdowns", icon: <AlertTriangle className="h-5 w-5" /> },
+    { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
+  ];
+  
+
   const ctsNavItems: NavItem[] = [
     { title: "Главная", href: "/dashboard/cts", icon: <Home className="h-5 w-5" /> },
     { title: "Разнарядка", href: "/dashboard/cts/release-plan", icon: <BarChart2 className="h-5 w-5" /> },
@@ -67,13 +77,13 @@ export function MobileSidebar() {
     { title: "Сходы с линий", href: "/dashboard/lrt/breakdowns", icon: <Wrench className="h-5 w-5" /> },
     { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
   ];
-  
+
   const guideNavItems: NavItem[] = [
     { title: "Главная", href: "/dashboard/guide", icon: <Home className="h-5 w-5" /> },
     { title: "Отчёты", href: "/dashboard/guide/reports", icon: <BarChart2 className="h-5 w-5" /> },
     { title: "Контроль", href: "/dashboard/guide/overview", icon: <Users className="h-5 w-5" /> },
     { title: "Личный кабинет", href: "/dashboard/guide/profile", icon: <UserCircle className="h-5 w-5" /> },
-  ];  
+  ];
 
   const dispatcherNavItems: NavItem[] = [
     { title: "Главная", href: "/dashboard/dispatcher", icon: <Home className="h-5 w-5" /> },
@@ -97,13 +107,13 @@ export function MobileSidebar() {
   ];
 
   const navItems =
-  role === "mcc" ? mccNavItems :
-  role === "cts" || role === "on-duty-mechanic" ? ctsNavItems :
-  role === "dispatcher" ? dispatcherNavItems :
-  role === "lrt" ? lrtNavItems :
-  role === "guide" ? guideNavItems :
-  defaultNavItems;
-
+    role === "mechanic" ? mechanicNavItems :
+    role === "mcc" ? mccNavItems :
+    role === "cts" || role === "on-duty-mechanic" ? ctsNavItems :
+    role === "dispatcher" ? dispatcherNavItems :
+    role === "lrt" ? lrtNavItems :
+    role === "guide" ? guideNavItems :
+    defaultNavItems;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

@@ -1,3 +1,4 @@
+// app/(auth)/login/page.tsx  (или ваш путь к LoginPage)
 "use client"
 
 import { useState } from "react"
@@ -23,6 +24,7 @@ export default function LoginPage() {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
+  // Куда редиректить после логина
   function normalizeRolePath(role: string): string {
     const map: Record<string, string> = {
       CTS: "cts",
@@ -35,11 +37,27 @@ export default function LoginPage() {
       admin: "admin",
       Guide: "guide",
       LRT: "lrt",
+      // добавлено:
+      mechanic: "mechanic",
+      Mechanic: "mechanic",
+      mechanicOnDuty: "cts",       // дежурный механик пока идёт в раздел КТС
+      MechanicOnDuty: "cts",
+      "on-duty-mechanic": "cts",   // на случай если уже пришёл слаг
     }
-  
     return map[role] || role.toLowerCase()
   }
-  
+
+  // Как хранить роль в localStorage, чтобы сайдбары её распознали
+  function normalizeRoleForStorage(role?: string): string {
+    if (!role) return "default"
+    const r = String(role)
+    // дежурный механик → "on-duty-mechanic" (сайдбар уже ждёт такое значение)
+    if (/mechaniconduty/i.test(r)) return "on-duty-mechanic"
+    // обычный механик → "mechanic"
+    if (/^mechanic$/i.test(r)) return "mechanic"
+    // остальное без изменений (CTS, MCC, Guide, LRT и т.д.)
+    return r
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,8 +77,20 @@ export default function LoginPage() {
 
       if (response.value) {
         const { role } = response.value
-        const normalizedRole = normalizeRolePath(role)
-        router.push(`/dashboard/${normalizedRole}`)
+
+        // 1) Сохраняем authData в localStorage так, чтобы сайдбары корректно определили роль
+        const storageRole = normalizeRoleForStorage(role)
+        const userForStorage = { ...response.value, role: storageRole }
+        try {
+          localStorage.setItem("authData", JSON.stringify(userForStorage))
+        } catch {
+          // ignore quota issues
+        }
+
+        // 2) Редиректим на подходящую домашнюю страницу роли
+        const normalizedRolePath = normalizeRolePath(role)
+        const to = `/dashboard/${normalizedRolePath}`
+        router.push(to)
       }
     } catch {
       setError("Ошибка при входе. Попробуйте позже.")
@@ -71,7 +101,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      {/* Карусель — безопасна после правки */}
+      {/* Карусель */}
       <div className="hidden md:block md:w-1/2 lg:w-3/5 bg-gray-900 relative overflow-hidden">
         <LoginCarousel />
       </div>

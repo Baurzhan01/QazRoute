@@ -26,6 +26,38 @@ export interface Bus {
   mileage?: number; // ← Добавлено
 }
 
+
+export interface BusDriverShort {
+  id: string
+  fullName: string
+  serviceNumber: string
+}
+
+export interface BusDepotItem {
+  id: string                 // <-- busId
+  govNumber: string | null
+  garageNumber: string | null
+  additionalInfo: string | null
+  busStatus: "OnWork" | "Repair" | "Reserve" | "Decommissioned" | string
+  brand: string | null       // например: Yutong ZK6128BEVG
+  type: string | null        // тип/класс (если приходит)
+  dataSheetNumber: string | null
+  vinCode: string | null
+  year: number | null
+  mileage: number | null
+  convoyId: string | null
+  drivers: BusDriverShort[]
+}
+
+// Универсальная пагинация
+export interface ApiPaged<T> {
+  items: T[]
+  totalCount: number
+}
+
+// Удобный алиас для ответа
+export type BusDepotPagedResponse = ApiResponse<ApiPaged<BusDepotItem>>
+
 // Для отображения автобусов в UI
 export interface DisplayBus {
   id: string
@@ -37,6 +69,19 @@ export interface DisplayBus {
   assignedRoute?: string
   stateNumber?: string // ← см. ниже
 }
+
+export interface DepotBusWithAssignment {
+  busId: string
+  garageNumber: string
+  govNumber: string
+  status: "OnWork" | "Reserve" | "Repair" | string
+  routeName: string | null
+  busLineNumber: string | null
+  convoyNumber: string
+  firstDriverFullName: string | null
+  secondDriverFullName: string | null
+}
+
 
 // Автобус с назначенными водителями
 export interface BusWithDrivers extends Bus {
@@ -80,19 +125,6 @@ export interface UpdateBusRequest {
 
 export type WeekendDriver = DisplayDriver;
 export type WeekendBus = DisplayBus;
-
-// Автобус с назначениями для депо
-export interface DepotBusWithAssignment {
-  busId: string;
-  govNumber: string;
-  garageNumber: string;
-  status: string;
-  routeName: string | null;
-  busLineNumber: string | null;
-  shiftType: string | null;
-  driverFullName: string | null;
-  convoyNumber: string;
-}
 
 // Универсальный ответ API
 export interface ApiResponse<T> {
