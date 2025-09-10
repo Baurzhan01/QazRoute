@@ -10,6 +10,20 @@ import { format } from "date-fns"
 import { getAuthData } from "@/lib/auth-utils"
 import type { FinalDispatchData, ValidDayType } from "@/types/releasePlanTypes"
 
+// ===== helper: нормализация времени =====
+function hhmm(v?: string | { hour: number; minute: number } | null): string {
+  if (!v) return "—"
+  if (typeof v === "string") {
+    if (v === "00:00:00" || v.trim() === "") return "—"
+    // ожидаем "HH:MM" или "HH:MM:SS"
+    return v.length >= 5 ? v.slice(0, 5) : v
+  }
+  // объект вида { hour, minute }
+  const hh = String(v.hour ?? 0).padStart(2, "0")
+  const mm = String(v.minute ?? 0).padStart(2, "0")
+  return `${hh}:${mm}`
+}
+
 interface UseFinalDispatchResult {
   finalDispatch: FinalDispatchData | null
   convoySummary?: {
@@ -57,6 +71,7 @@ export function useFinalDispatch(
     sunday: "Sunday",
     holiday: "Holiday",
   }
+  const routeStatus = dayType ? routeStatusMap[dayType] : undefined
 
   function formatDriverName(fullName?: string, serviceNumber?: string) {
     if (!fullName) return "—"
@@ -65,8 +80,6 @@ export function useFinalDispatch(
     const nameShort = `${last} ${initials}`
     return serviceNumber ? `${nameShort} (№ ${serviceNumber})` : nameShort
   }
-
-  const routeStatus = dayType ? routeStatusMap[dayType] : undefined
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["finalDispatch", dateStr, convoyId, routeStatus],
@@ -137,52 +150,105 @@ export function useFinalDispatch(
 
       const convoyNumber = convoyDetailsRes.isSuccess ? convoyDetailsRes.value?.number : undefined
 
+      // ===== Маршруты и выходы =====
       const rawRoutes = (dispatchRes.value as any)?.routes ?? []
       const routeGroups = rawRoutes.map((route: any) => ({
         routeId: route.routeId,
         routeNumber: route.routeNumber,
-        assignments: (route.busLines ?? []).map((bl: any) => ({
-          dispatchBusLineId: bl.dispatchBusLineId,
-          busLineNumber: bl.busLineNumber ?? "—",
-          garageNumber: bl.bus?.garageNumber ?? "—",
-          stateNumber: bl.bus?.govNumber ?? "—",
-          driver: bl.firstDriver
-            ? { fullName: bl.firstDriver.fullName, serviceNumber: bl.firstDriver.serviceNumber }
-            : null,
-          shift2Driver: bl.secondDriver
-            ? { fullName: bl.secondDriver.fullName, serviceNumber: bl.secondDriver.serviceNumber }
-            : undefined,
-          departureTime: bl.exitTime ?? "—",
-          scheduleTime: bl.scheduleStart ?? "—",
-          endTime: bl.endTime ?? "—",
-          additionalInfo: bl.description ?? "",
-          shift2AdditionalInfo: bl.shift2AdditionalInfo ?? "",
-        })),
+        assignments: (route.busLines ?? []).map((bl: any) => {
+          // поля могут приходить в разных местах/типах — нормализуем
+          const exitTime = bl.exitTime ?? bl.busLine?.exitTime
+          const endTime = bl.endTime ?? bl.busLine?.endTime
+          const scheduleStart = bl.scheduleStart
+          const shiftChange = bl.shiftChangeTime ?? bl.busLine?.shiftChangeTime
+          const startShift2 = bl.startShiftChangeTime ?? bl.scheduleShiftChange
+
+          return {
+            dispatchBusLineId: bl.dispatchBusLineId,
+            busLineNumber: bl.busLineNumber ?? bl.busLine?.number ?? "—",
+
+            garageNumber: bl.bus?.garageNumber ?? "—",
+            stateNumber: bl.bus?.govNumber ?? "—",
+
+            bus: bl.bus
+              ? {
+                  id: bl.bus.id,
+                  garageNumber: bl.bus.garageNumber,
+                  govNumber: bl.bus.govNumber,
+                }
+              : undefined,
+
+            driver: bl.firstDriver
+              ? {
+                  id: bl.firstDriver.id,
+                  fullName: bl.firstDriver.fullName,
+                  serviceNumber: bl.firstDriver.serviceNumber,
+                }
+              : null,
+
+            // вторая смена
+            shift2Driver: bl.secondDriver
+              ? {
+                  id: bl.secondDriver.id,
+                  fullName: bl.secondDriver.fullName,
+                  serviceNumber: bl.secondDriver.serviceNumber,
+                }
+              : undefined,
+
+            // времена (нормализованы)
+            departureTime: hhmm(exitTime),
+            scheduleTime: hhmm(scheduleStart),
+            endTime: hhmm(endTime),
+            shiftChangeTime: hhmm(shiftChange),     // 🆕
+            startShift2Time: hhmm(startShift2),     // 🆕
+
+            // доп. поля
+            additionalInfo: bl.description ?? "",
+            shift2AdditionalInfo: bl.shift2AdditionalInfo ?? "",
+
+            // статус / прочее — если приходят
+            status: bl.status,
+            isRealsed: Boolean(bl.isRealsed),
+            fuelAmount: bl.fuelAmount,
+            releasedTime: bl.releasedTime ? hhmm(bl.releasedTime) : undefined,
+          }
+        }),
       }))
 
-      const reserveAssignments = (reserveRes.value ?? []).map((r: any, index: number) => ({
-        id: r.id,
-        dispatchBusLineId: r.dispatchBusLineId,
-        sequenceNumber: r.sequenceNumber ?? index + 1,
-        garageNumber: r.garageNumber ?? "",
-        govNumber: r.govNumber ?? "",
-        driver: r.driver ?? {
-          fullName: r.driverFullName ?? "",
-          serviceNumber: r.driverTabNumber ?? "",
-        },
-        additionalInfo: r.description ?? "",
-        endTime: r.endTime ?? "",
-        departureTime: r.departureTime ?? "",
-        scheduleTime: r.scheduleTime ?? "",
-        isReplace: r.isReplace ?? false,
-      }))
+     // ===== Резерв =====
+      const reserveAssignments = (reserveRes.value ?? []).map((r: any, index: number) => {
+        // вытаскиваем водителя из разных вариантов ответа
+        const drv =
+          r.driver
+            ? { id: String(r.driver.id ?? ""), fullName: String(r.driver.fullName ?? ""), serviceNumber: String(r.driver.serviceNumber ?? "") }
+            : r.driverTabNumber
+              ? { id: String(r.driverId ?? ""), fullName: String(r.driverFullName ?? ""), serviceNumber: String(r.driverTabNumber ?? "") }
+              : { id: "", fullName: "", serviceNumber: "" } // ← гарантируем, что driver есть
 
+        return {
+          id: String(r.id),
+          dispatchBusLineId: String(r.dispatchBusLineId ?? ""),
+          sequenceNumber: Number(r.sequenceNumber ?? index + 1),
+          garageNumber: String(r.garageNumber ?? ""),
+          govNumber: String(r.govNumber ?? ""),
+          driver: drv, // ← всегда объект (не undefined)
+          additionalInfo: String(r.description ?? ""),
+          endTime: hhmm(r.endTime),
+          departureTime: hhmm(r.departureTime),
+          scheduleTime: hhmm(r.scheduleTime),
+          isReplace: Boolean(r.isReplace),
+          // (опционально) status: r.status, time: r.time ? String(r.time) : null,
+        } as const
+      })
+
+
+      // ===== Заказ =====
       const orderAssignments = (orderRes.value ?? []).map((r: any, i: number) => ({
         id: r.id,
         sequenceNumber: r.sequenceNumber ?? i + 1,
-        departureTime: r.departureTime ?? "—",
-        scheduleTime: r.scheduleTime ?? "—",
-        endTime: r.endTime ?? "—",
+        departureTime: hhmm(r.departureTime),
+        scheduleTime: hhmm(r.scheduleTime),
+        endTime: hhmm(r.endTime),
         garageNumber: r.garageNumber ?? "—",
         govNumber: r.govNumber ?? "—",
         busId: r.busId ?? null,
@@ -200,19 +266,24 @@ export function useFinalDispatch(
         date: dateStr,
         routeGroups,
         reserveAssignments,
-        repairBuses: repairBusesRes.items?.map(b => `${b.garageNumber} (${b.govNumber})`) ?? [],
-        dayOffBuses: weekendBusesRes.value?.map(b => `${b.garageNumber} (${b.govNumber})`) ?? [],
+        repairBuses: repairBusesRes.items?.map((b: any) => `${b.garageNumber} (${b.govNumber})`) ?? [],
+        dayOffBuses: weekendBusesRes.value?.map((b: any) => `${b.garageNumber} (${b.govNumber})`) ?? [],
         driverStatuses: {
-          OnSickLeave: sickLeaveDriversRes.value?.items?.map(d => formatDriverName(d.fullName, d.serviceNumber)) ?? [],
-          OnVacation: vacationDriversRes.value?.items?.map(d => formatDriverName(d.fullName, d.serviceNumber)) ?? [],
-          Intern: internDriversRes.value?.items?.map(d => formatDriverName(d.fullName, d.serviceNumber)) ?? [],
-          DayOff: weekendDriversRes.value?.map(d => formatDriverName(d.fullName, d.serviceNumber)) ?? [],
+          OnSickLeave:
+            sickLeaveDriversRes.value?.items?.map((d: any) => formatDriverName(d.fullName, d.serviceNumber)) ?? [],
+          OnVacation:
+            vacationDriversRes.value?.items?.map((d: any) => formatDriverName(d.fullName, d.serviceNumber)) ?? [],
+          Intern:
+            internDriversRes.value?.items?.map((d: any) => formatDriverName(d.fullName, d.serviceNumber)) ?? [],
+          DayOff:
+            weekendDriversRes.value?.map((d: any) => formatDriverName(d.fullName, d.serviceNumber)) ?? [],
           total: undefined,
         },
         orders: orderAssignments,
-        scheduledRepairs: [], // пока пусть будет пустой, если не подключал usePlannedRepairs
+        scheduledRepairs: [],
       }
 
+      // ===== Подсчёты уникальных =====
       const uniqueDrivers = new Set<string>()
       const uniqueBuses = new Set<string>()
 
@@ -232,14 +303,15 @@ export function useFinalDispatch(
       const driversCount = uniqueDrivers.size
       const busesCount = uniqueBuses.size
 
-      const convoySummary = summaryRes.isSuccess && summaryRes.value
-        ? {
-            driverOnWork: summaryRes.value.driverOnWork,
-            busOnWork: summaryRes.value.busOnWork,
-            totalDrivers: summaryRes.value.totalDrivers,
-            totalBuses: summaryRes.value.totalBuses,
-          }
-        : undefined
+      const convoySummary =
+        summaryRes.isSuccess && summaryRes.value
+          ? {
+              driverOnWork: summaryRes.value.driverOnWork,
+              busOnWork: summaryRes.value.busOnWork,
+              totalDrivers: summaryRes.value.totalDrivers,
+              totalBuses: summaryRes.value.totalBuses,
+            }
+          : undefined
 
       return {
         finalDispatch,

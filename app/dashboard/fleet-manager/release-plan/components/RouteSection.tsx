@@ -31,26 +31,34 @@ export default function RouteSection({
   return (
     <div className="overflow-auto rounded-md border print-export">
       <table className="w-full text-sm text-gray-800 border-collapse">
-        <thead className="bg-sky-100 text-sky-900">
-          <tr>
-            <th className="p-2 border text-center">Маршрут</th>
-            <th className="p-2 border text-center">№</th>
-            <th className="p-2 border text-center">Гар. номер</th>
-            <th className="p-2 border text-center">Гос. номер</th>
-            <th className="p-2 border text-center">ФИО</th>
-            <th className="p-2 border text-center">Таб. номер</th>
-            <th className="p-2 border text-center">Время выхода</th>
+      <thead className="bg-sky-100 text-sky-900">
+        <tr>
+          <th className="p-2 border text-center">Маршрут</th>
+          <th className="p-2 border text-center">№</th>
+          <th className="p-2 border text-center">Гар. номер</th>
+          <th className="p-2 border text-center">Гос. номер</th>
+          <th className="p-2 border text-center">ФИО</th>
+          <th className="p-2 border text-center">Таб. номер</th>
+          <th className="p-2 border text-center">Время выхода</th>
+
+          {/* если НЕТ 2-й смены — «Доп. информация» идёт сразу после «Время выхода» */}
+          {!hasSecondShift && (
             <th className="p-2 border text-center w-[800px]">Доп. информация</th>
-            {hasSecondShift && (
-              <>
-                <th className="p-2 border text-center">Пересменка</th>
-                <th className="p-2 border text-center">ФИО</th>
-                <th className="p-2 border text-center">Таб. номер</th>
-              </>
-            )}
-            <th className="p-2 border text-center">Конец</th>
-          </tr>
-        </thead>
+          )}
+
+          {/* если ЕСТЬ 2-я смена — сначала колонки 2-й смены, потом «Доп. информация» */}
+          {hasSecondShift && (
+            <>
+              <th className="p-2 border text-center">Пересменка</th>
+              <th className="p-2 border text-center">Начало 2 смены</th>
+              <th className="p-2 border text-center">ФИО (2&nbsp;смена)</th>
+              <th className="p-2 border text-center w-[800px]">Доп. информация</th>
+            </>
+          )}
+
+          <th className="p-2 border text-center">Конец</th>
+        </tr>
+      </thead>
         <tbody>
           {sortedAssignments.map((a: RouteAssignment, i: number) => (
             <tr key={a.dispatchBusLineId || `${group.routeId}-${i}`}>

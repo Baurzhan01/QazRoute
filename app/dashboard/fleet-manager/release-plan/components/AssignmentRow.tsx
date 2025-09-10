@@ -25,38 +25,79 @@ function formatTime(time?: string): string {
   return time.slice(0, 5)
 }
 
-const AssignmentRow = memo(function AssignmentRow({ a, i, readOnlyMode, displayDate }: AssignmentRowProps) {
+const AssignmentRow = memo(function AssignmentRow({
+  a,
+  readOnlyMode,
+  displayDate,
+}: AssignmentRowProps) {
+  const hasSecondShift = !!a.shift2Driver
   const primaryDriverName = formatShortName(a.driver?.fullName)
   const shift2DriverName = formatShortName(a.shift2Driver?.fullName, a.shift2Driver?.serviceNumber)
 
+  // единая «Доп. информация» для обеих смен
+  const InfoCell = (
+    <td className="border px-1 text-left text-lg whitespace-pre-wrap break-words">
+      <PopoverEditor
+        initialValue={a.additionalInfo ?? ""}
+        assignmentId={a.dispatchBusLineId}
+        date={displayDate}
+        type="route"
+        busId={null}
+        driverId={null}
+        readOnly={readOnlyMode}
+      />
+    </td>
+  )
+
   return (
     <>
-      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">{a.busLineNumber ?? "—"}</td>
-      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">{a.garageNumber}</td>
-      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">{a.stateNumber}</td>
-      <td className="border px-1 text-left text-lg whitespace-pre-wrap break-words">{primaryDriverName}</td>
-      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">{a.driver?.serviceNumber ?? "—"}</td>
-      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">{formatTime(a.departureTime)}</td>
-      <td className="border px-1 text-left text-lg whitespace-pre-wrap break-words">
-        <PopoverEditor
-          initialValue={a.additionalInfo ?? ""}
-          assignmentId={a.dispatchBusLineId}
-          date={displayDate}
-          type="route"
-          busId={null}
-          driverId={null}
-          readOnly={readOnlyMode}
-        />
+      {/* № выхода / гаражный / гос. номер */}
+      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">
+        {a.busLineNumber ?? "—"}
       </td>
-      {a.shift2Driver && (
+      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">
+        {a.garageNumber}
+      </td>
+      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">
+        {a.stateNumber}
+      </td>
+
+      {/* ФИО 1 смены + таб. номер (отдельной колонкой — как в шапке) */}
+      <td className="border px-1 text-left text-lg whitespace-pre-wrap break-words">
+        {primaryDriverName}
+      </td>
+      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">
+        {a.driver?.serviceNumber ?? "—"}
+      </td>
+
+      {/* Время выхода 1 смены */}
+      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">
+        {formatTime(a.departureTime)}
+      </td>
+
+      {/* Если 2-й смены нет — «Доп. информация» здесь */}
+      {!hasSecondShift && InfoCell}
+
+      {/* Если 2-я смена есть — сначала её колонки, затем «Доп. информация» */}
+      {hasSecondShift && (
         <>
-          <td className="border px-1 text-left text-lg whitespace-pre-wrap break-words">{a.shift2AdditionalInfo ?? "—"}</td>
-          <td className="border px-1 text-left text-lg whitespace-pre-wrap break-words">{shift2DriverName}</td>
-          <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">{a.shift2Driver?.serviceNumber ?? "—"}</td>
+          <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">
+            {formatTime(a.shiftChangeTime)}
+          </td>
+          <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">
+            {formatTime(a.startShift2Time)}
+          </td>
+          <td className="border px-1 text-left text-lg whitespace-pre-wrap break-words">
+            {shift2DriverName}
+          </td>
+          {InfoCell}
         </>
       )}
 
-      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">{formatTime(a.endTime)}</td>
+      {/* Конец работы */}
+      <td className="border px-1 text-center text-lg whitespace-pre-wrap break-words">
+        {formatTime(a.endTime)}
+      </td>
     </>
   )
 })

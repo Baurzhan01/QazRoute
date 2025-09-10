@@ -425,34 +425,50 @@ export interface RouteAssignment {
   dispatchBusLineId: string;
   busLineNumber: string;
   routeNumber?: string;
-  description?: string // 👈 Добавь эту строку
-  garageNumber: string
-  stateNumber: string
+
+  // общая доп. инфо на обе смены
+  description?: string;
+  additionalInfo?: string;
+
+  garageNumber: string;
+  stateNumber: string;
+
   bus?: {
     id: string
     garageNumber: string
     govNumber: string
   }
+
   driver: {
     id: string
     serviceNumber: string
     fullName: string
   } | null
+
+  // первая смена
   departureTime: string
+  scheduleTime: string
+  endTime: string
+
+  // статус/прочее
   status?: DispatchBusLineStatus
   isRealsed: boolean
-  fuelAmount?: string 
+  fuelAmount?: string
   releasedTime?: string
-  scheduleTime: string
-  additionalInfo?: string
-  shift2AdditionalInfo?: string
+
+  // вторая смена
   shift2Driver?: {
     id: string
     serviceNumber: string
     fullName: string
   }
-  endTime: string
+  shift2AdditionalInfo?: string
+
+  // 🆕 ДОБАВИТЬ:
+  shiftChangeTime?: string        // время пересменки (чч:мм или "—")
+  startShift2Time?: string        // старт 2-й смены (чч:мм или "—")
 }
+
 
 export interface ReserveAssignment {
   id: string;
