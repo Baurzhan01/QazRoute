@@ -9,6 +9,11 @@ import type {
   BusDepotPagedResponse
 } from "@/types/bus.types";
 
+export type GetByDepotExtra = {
+  govNumber?: string;
+  garageNumber?: string;
+};
+
 export const busService = {
   getAll: async (): Promise<ApiResponse<Bus[]>> => {
     const response = await apiClient.get("/buses");
@@ -18,12 +23,39 @@ export const busService = {
   async getByDepot(
     depotId: string,
     page: string = "1",
+    pageSize: string = "25",
+    extra?: GetByDepotExtra
+  ): Promise<BusDepotPagedResponse> {
+    const params: Record<string, string> = {
+      Page: page,
+      PageSize: pageSize,
+    };
+    if (extra?.govNumber?.trim()) params.GovNumber = extra.govNumber.trim();
+    if (extra?.garageNumber?.trim()) params.GarageNumber = extra.garageNumber.trim();
+
+    const res = await apiClient.get(`/buses/by-depot/${depotId}`, { params });
+    return res.data;
+  },
+
+  // Удобный хелпер: сам решает, какой параметр подставить
+  async searchByDepot(
+    depotId: string,
+    query: string,
+    page: string = "1",
     pageSize: string = "25"
   ): Promise<BusDepotPagedResponse> {
-    const res = await apiClient.get(`/buses/by-depot/${depotId}`, {
-      params: { Page: page, PageSize: pageSize }, // <-- именно так
-    })
-    return res.data
+    const q = query.trim();
+    const onlyDigits = /^\d+$/.test(q);
+    const params: Record<string, string> = {
+      Page: page,
+      PageSize: pageSize,
+    };
+    if (q) {
+      if (onlyDigits) params.GarageNumber = q; // «гаражный» чаще цифры
+      else params.GovNumber = q;               // госномер обычно смешанный (буквы+цифры)
+    }
+    const res = await apiClient.get(`/buses/by-depot/${depotId}`, { params });
+    return res.data;
   },
 
   getByConvoy: async (convoyId: string): Promise<DisplayBus[]> => {
