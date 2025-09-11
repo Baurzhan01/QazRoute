@@ -76,6 +76,13 @@ export const driverService = {
     )
     return response.data
   },
+  /** Переместить водителя в другую автоколонну */
+  replaceConvoy: async (driverId: string, convoyId: string): Promise<ApiResponse<void>> => {
+    const res = await apiClient.put<ApiResponse<void>>("/drivers/replace", null, {
+      params: { driverId, convoyId },
+    })
+    return res.data
+  },
 
   filter: async (
     filter: DriverFilterRequest
