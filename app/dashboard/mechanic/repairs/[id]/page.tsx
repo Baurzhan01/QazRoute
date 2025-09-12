@@ -138,6 +138,7 @@ export default function RepairDetailsPage() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="text-left text-muted-foreground">
+                    <th className="py-2 pr-4">Артикул</th>
                     <th className="py-2 pr-4">Наименование</th>
                     <th className="py-2 pr-4 text-right">Кол-во</th>
                     <th className="py-2 pr-4 text-right">Цена</th>
@@ -146,6 +147,7 @@ export default function RepairDetailsPage() {
                 </thead>
                 <tbody>
                   <tr className="border-t">
+                    <td className="py-2 pr-4">{repair?.sparePartArticle || "—"}</td>
                     <td className="py-2 pr-4">{repair?.sparePart || "—"}</td>
                     <td className="py-2 pr-4 text-right">{repair?.sparePartCount ?? 0}</td>
                     <td className="py-2 pr-4 text-right">
@@ -158,7 +160,7 @@ export default function RepairDetailsPage() {
                 </tbody>
                 <tfoot>
                   <tr className="border-t font-medium">
-                    <td className="py-2 pr-4" colSpan={3}>Итого по запчастям</td>
+                    <td className="py-2 pr-4" colSpan={4}>Итого по запчастям</td>
                     <td className="py-2 pr-0 text-right">
                       {(repair?.sparePartSum ?? 0).toLocaleString("ru-RU")}
                     </td>
@@ -179,6 +181,7 @@ export default function RepairDetailsPage() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="text-left text-muted-foreground">
+                    <th className="py-2 pr-4">Код операции</th>
                     <th className="py-2 pr-4">Наименование работы</th>
                     <th className="py-2 pr-4 text-right">Кол-во</th>
                     <th className="py-2 pr-4 text-right">Часы</th>
@@ -188,6 +191,7 @@ export default function RepairDetailsPage() {
                 </thead>
                 <tbody>
                   <tr className="border-t">
+                    <td className="py-2 pr-4">{repair?.workCode || "—"}</td>
                     <td className="py-2 pr-4">{repair?.workName || "—"}</td>
                     <td className="py-2 pr-4 text-right">{repair?.workCount ?? 0}</td>
                     <td className="py-2 pr-4 text-right">{repair?.workHour ?? 0}</td>
@@ -201,7 +205,7 @@ export default function RepairDetailsPage() {
                 </tbody>
                 <tfoot>
                   <tr className="border-t font-medium">
-                    <td className="py-2 pr-4" colSpan={4}>Итого по работам</td>
+                    <td className="py-2 pr-4" colSpan={5}>Итого по работам</td>
                     <td className="py-2 pr-0 text-right">
                       {(repair?.workSum ?? 0).toLocaleString("ru-RU")}
                     </td>

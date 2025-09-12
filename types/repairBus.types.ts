@@ -1,112 +1,63 @@
-// src/types/repairBus.types.ts
+// types/repairBus.types.ts
 
-/** Обёртка стандартного ответа бэка */
+// Универсальный ответ API
 export interface ApiResponse<T> {
-    isSuccess: boolean;
-    error: string | null;
-    statusCode: number;
-    value: T;
-  }
+  isSuccess: boolean;
+  error: string | null;
+  statusCode: number;
+  value: T;
+}
 
-  
-  export interface RepairWork {
-    name: string;
-    count: number;
-    hour: number;
-    price: number;
-    sum: number;
-  }
-  
-  export interface RepairSparePart {
-    name: string;
-    count: number;
-    price: number;
-    sum: number;
-  }
-  
-  export interface CreateRepairRequest {
-    busId: string;
-    applicationNumber: number;
-    
-    
-    sparePart: string;
-    sparePartCount: number;
-    sparePartPrice: number;
-    
-    
-    /** YYYY-MM-DD */
-    departureDate: string;
-    /** YYYY-MM-DD */
-    entryDate: string;
-    
-    
-    workName: string;
-    workCount: number;
-    workHour: number;
-    workPrice: number;
-    }
-    
-    
-    // для отправки batch'ом — просто массив CreateRepairRequest[]
-    export type CreateRepairBatchRequest = CreateRepairRequest[];
-  
-  export interface Repair {
-    id: string;
-    busId: string;
-    createdAt: string;
-    applicationNumber: number;
-    departureDate: string;
-    entryDate: string;
-    works: RepairWork[];
-    spareParts: RepairSparePart[];
-    allSum: number;
-    garageNumber: string;
-    govNumber: string;
-  }
-  
-  
-  
-  /** Обновление ремонта (по спецификации бэка даты и busId не меняются) */
-  export interface UpdateRepairRequest {
-    applicationNumber: number;
-  
-    sparePart: string;
-    sparePartCount: number;
-    sparePartPrice: number;
-  
-    workName: string;
-    workCount: number;
-    workHour: number;
-    workPrice: number;
-  }
-  
-  /** Полная сущность ремонта из ответов бэка */
-  export interface Repair {
-    id: string;
-    busId: string;
-    createdAt: string; // ISO
-  
-    applicationNumber: number;
-  
-    sparePart: string;
-    sparePartCount: number;
-    sparePartPrice: number;
-    sparePartSum: number;
-  
-    workName: string;
-    workCount: number;
-    workHour: number;
-    workPrice: number;
-    workSum: number;
-  
-    allSum: number;
-  
-    garageNumber: string;
-    govNumber: string;
-  
-    /** В ответах приходит строка "YYYY-MM-DD" или "0001-01-01" */
-    departureDate: string;
-    /** В ответах приходит строка "YYYY-MM-DD" или "0001-01-01" */
-    entryDate: string;
-  }
-  
+// --- Создание ремонта ---
+export interface CreateRepairRequest {
+  busId: string;
+  applicationNumber: number;
+
+  departureDate: string; // строка "YYYY-MM-DD"
+  entryDate: string;     // строка "YYYY-MM-DD"
+
+  // Запчасти
+  sparePartId?: string | null;
+  sparePartCount?: number;
+
+  // Работы
+  laborTimeId?: string | null;
+  workCount?: number;
+  workHour?: number;
+}
+
+// --- Модель ремонта ---
+export interface Repair {
+  id: string;
+  busId: string;
+  applicationNumber: number;
+
+  // Запчасти
+  sparePartId: string | null;
+  sparePart: string;
+  sparePartCount: number;
+  sparePartPrice: number;
+  sparePartSum: number;
+  sparePartArticle: string | null;
+
+  // Работы
+  laborTimeId: string | null;
+  workName: string;
+  workCount: number;
+  workHour: number;
+  workPrice: number;
+  workSum: number;
+  workCode: string;
+
+  // Общая сумма
+  allSum: number;
+
+  // Даты
+  departureDate: string; // "YYYY-MM-DD"
+  entryDate: string;     // "YYYY-MM-DD"
+  createdAt: string;     // ISO-строка
+
+  // Данные автобуса
+  garageNumber: string;
+  govNumber: string;
+}
