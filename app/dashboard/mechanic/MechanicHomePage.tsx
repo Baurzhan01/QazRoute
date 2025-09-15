@@ -45,11 +45,11 @@ export default function MechanicHomePage() {
   // фильтры
   const [page, setPage] = useState(Number(searchParams.get("page")) || 1);
   const [pageSize] = useState(25);
-  const [createdFrom, setCreatedFrom] = useState(
-    searchParams.get("createdFrom") || ""
+  const [departureFrom, setDepartureFrom] = useState(
+    searchParams.get("departureFrom") || ""
   );
-  const [createdTo, setCreatedTo] = useState(
-    searchParams.get("createdTo") || ""
+  const [departureTo, setDepartureTo] = useState(
+    searchParams.get("departureTo") || ""
   );
   const [garageNumber, setGarageNumber] = useState(
     searchParams.get("garageNumber") || ""
@@ -77,7 +77,7 @@ export default function MechanicHomePage() {
 
   // по умолчанию текущий месяц
   useEffect(() => {
-    if (createdFrom && createdTo) return;
+    if (departureFrom && departureTo) return;
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1)
       .toISOString()
@@ -85,25 +85,25 @@ export default function MechanicHomePage() {
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
       .toISOString()
       .slice(0, 10);
-    setCreatedFrom(start);
-    setCreatedTo(end);
+    setDepartureFrom(start);
+    setDepartureTo(end);
   }, []);
 
   // подгрузка данных
   useEffect(() => {
-    if (!depotId || !createdFrom || !createdTo) return;
+    if (!depotId || !departureFrom || !departureTo) return;
 
     const params: Record<string, string | number> = {
       page,
       pageSize,
-      createdFrom,
-      createdTo,
+      DepartureFrom: departureFrom, // 👈 правильные параметры
+      DepartureTo: departureTo,
     };
     if (garageNumber) params.garageNumber = garageNumber;
     if (govNumber) params.govNumber = govNumber;
     if (workName) params.workName = workName;
     if (sparePartName) params.sparePartName = sparePartName;
-    if (appNumber) params.appNumber = appNumber; // 👈 новый параметр
+    if (appNumber) params.appNumber = appNumber;
 
     // обновляем URL
     const qs = new URLSearchParams(params as any).toString();
@@ -122,8 +122,8 @@ export default function MechanicHomePage() {
     depotId,
     page,
     pageSize,
-    createdFrom,
-    createdTo,
+    departureFrom,
+    departureTo,
     garageNumber,
     govNumber,
     workName,
@@ -171,7 +171,7 @@ export default function MechanicHomePage() {
               Общая сумма
             </CardTitle>
             <div className="text-sm text-muted-foreground">
-              {createdFrom} — {createdTo}
+              {departureFrom} — {departureTo}
             </div>
           </CardHeader>
           <CardContent className="text-3xl font-bold">
@@ -259,7 +259,7 @@ export default function MechanicHomePage() {
                     <th className="py-2 pr-4">Автобус</th>
                     <th className="py-2 pr-4">Работа / Запчасть</th>
                     <th className="py-2 pr-4">Сумма</th>
-                    <th className="py-2">Создано</th>
+                    <th className="py-2">Заезд</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -283,8 +283,8 @@ export default function MechanicHomePage() {
                         {(r.allSum ?? 0).toLocaleString("ru-RU")} ₸
                       </td>
                       <td className="py-2">
-                        {r.createdAt
-                          ? new Date(r.createdAt).toLocaleDateString("ru-RU")
+                        {r.departureDate
+                          ? new Date(r.departureDate).toLocaleDateString("ru-RU")
                           : "—"}
                       </td>
                     </tr>
@@ -339,19 +339,19 @@ export default function MechanicHomePage() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Дата с</Label>
+              <Label>Дата выезда с</Label>
               <Input
                 type="date"
-                value={createdFrom}
-                onChange={(e) => setCreatedFrom(e.target.value)}
+                value={departureFrom}
+                onChange={(e) => setDepartureFrom(e.target.value)}
               />
             </div>
             <div>
-              <Label>Дата по</Label>
+              <Label>Дата выезда по</Label>
               <Input
                 type="date"
-                value={createdTo}
-                onChange={(e) => setCreatedTo(e.target.value)}
+                value={departureTo}
+                onChange={(e) => setDepartureTo(e.target.value)}
               />
             </div>
             <div>
@@ -408,8 +408,8 @@ export default function MechanicHomePage() {
                     .toISOString()
                     .slice(0, 10);
 
-                  setCreatedFrom(start);
-                  setCreatedTo(end);
+                  setDepartureFrom(start);
+                  setDepartureTo(end);
                   setAppNumber("");
                   setGarageNumber("");
                   setGovNumber("");
@@ -418,7 +418,7 @@ export default function MechanicHomePage() {
                   setPage(1);
 
                   router.replace(
-                    `?page=1&pageSize=${pageSize}&createdFrom=${start}&createdTo=${end}`
+                    `?page=1&pageSize=${pageSize}&departureFrom=${start}&departureTo=${end}`
                   );
                 }}
               >
