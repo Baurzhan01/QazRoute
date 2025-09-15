@@ -1,6 +1,5 @@
 // types/repairBus.types.ts
 
-// Универсальный ответ API
 export interface ApiResponse<T> {
   isSuccess: boolean;
   error: string | null;
@@ -8,13 +7,14 @@ export interface ApiResponse<T> {
   value: T;
 }
 
-// --- Создание ремонта ---
+// --- Запрос на создание/обновление ---
 export interface CreateRepairRequest {
+  id?: string;               // при обновлении
   busId: string;
   applicationNumber: number;
 
-  departureDate: string; // строка "YYYY-MM-DD"
-  entryDate: string;     // строка "YYYY-MM-DD"
+  departureDate: string;     // "YYYY-MM-DD"
+  entryDate: string;         // "YYYY-MM-DD"
 
   // Запчасти
   sparePartId?: string | null;
@@ -53,11 +53,22 @@ export interface Repair {
   allSum: number;
 
   // Даты
-  departureDate: string; // "YYYY-MM-DD"
-  entryDate: string;     // "YYYY-MM-DD"
-  createdAt: string;     // ISO-строка
+  departureDate: string;
+  entryDate: string;
+  createdAt: string;
 
-  // Данные автобуса
+  // Автобус
   garageNumber: string;
   govNumber: string;
+}
+
+// --- Пагинированный ответ ---
+export interface PagedResult<T> {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  items: T[];
+  totalAllSum?: number;
+  totalWorkSum?: number;
+  totalSpareSum?: number;
 }

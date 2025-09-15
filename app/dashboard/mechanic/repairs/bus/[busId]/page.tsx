@@ -7,16 +7,32 @@ import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 
 import { repairBusService } from "@/service/repairBusService";
 import { busService } from "@/service/busService";
 
-import type { Repair } from "@/types/repairBus.types";
+import type { Repair, PagedResult } from "@/types/repairBus.types";
 import type { Bus } from "@/types/bus.types";
 
 import AddRepairDialog from "../../../components/AddRepairDialog";
 import EditRepairDialog from "../../../components/EditRepairDialog";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 function fmtDate(s?: string) {
   if (!s || s === "0001-01-01") return "—";
@@ -33,44 +49,73 @@ export default function BusHistoryPage() {
   const { busId } = useParams<{ busId: string }>();
   const router = useRouter();
 
-  const [repairs, setRepairs] = useState<Repair[]>([]);
+  const [repairsPaged, setRepairsPaged] = useState<PagedResult<Repair>>({
+    page: 1,
+    pageSize: 20,
+    totalCount: 0,
+    items: [],
+    totalAllSum: 0,
+    totalWorkSum: 0,
+    totalSpareSum: 0,
+  });
   const [loading, setLoading] = useState(false);
   const [editItem, setEditItem] = useState<Repair | null>(null);
+  
 
   const [bus, setBus] = useState<Bus | null>(null);
   const [appSearch, setAppSearch] = useState("");
 
-  const reload = useCallback(async () => {
-    if (!busId) return;
-    setLoading(true);
-    try {
-      const [rep, busRes] = await Promise.all([
-        repairBusService.getByBusId(busId),
-        busService.getById(busId),
-      ]);
-      setRepairs(rep.value ?? []);
-      setBus(busRes.value ?? null);
-    } finally {
-      setLoading(false);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(25);
+
+  // === reload ===
+const reload = useCallback(async () => {
+  if (!busId) return;
+  setLoading(true);
+  try {
+    const params: Record<string, string | number> = { page, pageSize };
+    if (appSearch.trim()) {
+      params.appNum = appSearch.trim();   // 👈 новый параметр
     }
-  }, [busId]);
+
+    const [rep, busRes] = await Promise.all([
+      repairBusService.getByBusId(busId, params),
+      busService.getById(busId),
+    ]);
+
+    const value = (rep?.value as PagedResult<Repair>) ?? {
+      page: 1,
+      pageSize,
+      totalCount: 0,
+      items: [],
+      totalAllSum: 0,
+      totalWorkSum: 0,
+      totalSpareSum: 0,
+    };
+
+    setRepairsPaged(value);
+    setBus(busRes.value ?? null);
+  } finally {
+    setLoading(false);
+  }
+}, [busId, page, pageSize, appSearch]);
 
   useEffect(() => {
     reload();
   }, [reload]);
 
   const header = useMemo(() => {
-    const r = repairs[0];
+    const r = repairsPaged.items[0];
     return { garage: r?.garageNumber ?? "—", gov: r?.govNumber ?? "—" };
-  }, [repairs]);
+  }, [repairsPaged]);
 
   const visibleRepairs = useMemo(() => {
     const q = appSearch.trim();
-    if (!q) return repairs;
-    return repairs.filter((r) =>
+    if (!q) return repairsPaged.items;
+    return repairsPaged.items.filter((r) =>
       String(r.applicationNumber ?? "").includes(q)
     );
-  }, [repairs, appSearch]);
+  }, [repairsPaged, appSearch]);
 
   const grouped = useMemo(() => {
     const map = new Map<number, Repair[]>();
@@ -82,31 +127,19 @@ export default function BusHistoryPage() {
     return Array.from(map.entries()).sort((a, b) => b[0] - a[0]);
   }, [visibleRepairs]);
 
-  // === Итоговые расходы на автобус ===
   const totals = useMemo(() => {
-    let workTotal = 0;
-    let partsTotal = 0;
-    let allTotal = 0;
+    return {
+      workTotal: repairsPaged.totalWorkSum ?? 0,
+      partsTotal: repairsPaged.totalSpareSum ?? 0,
+      allTotal: repairsPaged.totalAllSum ?? 0,
+    };
+  }, [repairsPaged]);
 
-    for (const r of repairs) {
-      workTotal += safeSum(r.workSum, (r.workHour ?? 0) * (r.workPrice ?? 0));
-      partsTotal += safeSum(
-        r.sparePartSum,
-        (r.sparePartCount ?? 0) * (r.sparePartPrice ?? 0)
-      );
-      allTotal += safeSum(r.allSum, 0);
-    }
-
-    return { workTotal, partsTotal, allTotal };
-  }, [repairs]);
-
-  const onCreated = async (_created: Repair[]) => {
-    setRepairs((prev) => [..._created, ...prev]);
+  const onCreated = async () => {
     await reload();
   };
 
-  const onUpdated = async (updated: Repair) => {
-    setRepairs((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+  const onUpdated = async () => {
     setEditItem(null);
     await reload();
   };
@@ -114,7 +147,6 @@ export default function BusHistoryPage() {
   const onDelete = async (id: string) => {
     if (!confirm("Удалить запись ремонта?")) return;
     await repairBusService.remove(id);
-    setRepairs((prev) => prev.filter((r) => r.id !== id));
     await reload();
   };
 
@@ -128,7 +160,9 @@ export default function BusHistoryPage() {
 
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Поиск по № заявки</span>
+            <span className="text-sm text-muted-foreground">
+              Поиск по № заявки
+            </span>
             <Input
               className="w-40"
               placeholder="Напр. 5136"
@@ -145,16 +179,20 @@ export default function BusHistoryPage() {
         </div>
       </div>
 
-      {/* Паспорт автобуса */}
+      {/* Паспорт автобуса + KPI */}
       <Card className="shadow-sm border border-slate-200">
         <CardHeader className="bg-slate-50 border-b py-2">
-          <CardTitle className="text-base font-semibold">Информация об автобусе</CardTitle>
+          <CardTitle className="text-base font-semibold">
+            Информация об автобусе
+          </CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
           <div className="grid md:grid-cols-2 gap-6">
-            {/* Левая часть — паспорт */}
+            {/* Паспорт */}
             <div className="border rounded-md p-4 bg-slate-50 h-full">
-              <div className="text-sm text-muted-foreground mb-3">Паспорт автобуса</div>
+              <div className="text-sm text-muted-foreground mb-3">
+                Паспорт автобуса
+              </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="rounded-md border bg-white p-3">
                   <div className="text-xs text-muted-foreground">VIN-код</div>
@@ -162,10 +200,14 @@ export default function BusHistoryPage() {
                 </div>
                 <div className="rounded-md border bg-white p-3">
                   <div className="text-xs text-muted-foreground">Марка</div>
-                  <div className="font-medium">{bus?.brand || "—"} {bus?.type ? `(${bus.type})` : ""}</div>
+                  <div className="font-medium">
+                    {bus?.brand || "—"} {bus?.type ? `(${bus.type})` : ""}
+                  </div>
                 </div>
                 <div className="rounded-md border bg-white p-3">
-                  <div className="text-xs text-muted-foreground">Год выпуска</div>
+                  <div className="text-xs text-muted-foreground">
+                    Год выпуска
+                  </div>
                   <div className="font-medium">{bus?.year ?? "—"}</div>
                 </div>
                 <div className="rounded-md border bg-white p-3">
@@ -174,24 +216,23 @@ export default function BusHistoryPage() {
                 </div>
                 <div className="rounded-md border bg-white p-3">
                   <div className="text-xs text-muted-foreground">Гаражный №</div>
-                  <div className="font-bold text-blue-600">{bus?.garageNumber || header.garage}</div>
+                  <div className="font-bold text-blue-600">
+                    {bus?.garageNumber || header.garage}
+                  </div>
                 </div>
                 <div className="rounded-md border bg-white p-3">
                   <div className="text-xs text-muted-foreground">Госномер</div>
-                  <div className="font-bold text-green-600">{bus?.govNumber || header.gov}</div>
-                </div>
-                <div className="rounded-md border bg-white p-3 col-span-2">
-                  <div className="text-xs text-muted-foreground">Пробег</div>
-                  <div className="font-medium">
-                    {bus?.mileage != null ? bus.mileage.toLocaleString("ru-RU") + " км" : "—"}
+                  <div className="font-bold text-green-600">
+                    {bus?.govNumber || header.gov}
                   </div>
                 </div>
               </div>
             </div>
-            {/* Правая часть — расходы */}
+            {/* Расходы */}
             <div className="border rounded-md p-4 bg-slate-50 h-full">
-              <div className="text-sm text-muted-foreground mb-3">Расходы на обслуживание</div>
-              {/* Карточки с суммами */}
+              <div className="text-sm text-muted-foreground mb-3">
+                Расходы на обслуживание
+              </div>
               <div className="grid sm:grid-cols-3 gap-3 text-sm mb-6">
                 <div className="rounded-md border p-2 bg-white flex flex-col items-center">
                   <span className="text-xs text-muted-foreground">Работы</span>
@@ -212,8 +253,6 @@ export default function BusHistoryPage() {
                   </span>
                 </div>
               </div>
-
-              {/* Диаграмма */}
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
@@ -221,12 +260,15 @@ export default function BusHistoryPage() {
                       { name: "Работы", value: totals.workTotal },
                       { name: "Запчасти", value: totals.partsTotal },
                     ]}
-                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="name" />
                     <YAxis />
-                    <Tooltip formatter={(val: number) => `${val.toLocaleString("ru-RU")} ₸`} />
+                    <Tooltip
+                      formatter={(val: number) =>
+                        `${val.toLocaleString("ru-RU")} ₸`
+                      }
+                    />
                     <Bar dataKey="value" fill="#2563eb" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -235,10 +277,13 @@ export default function BusHistoryPage() {
           </div>
         </CardContent>
       </Card>
+
       {/* Заказ-наряды */}
       <Card>
         <CardHeader>
-          <CardTitle>Заказ-наряды</CardTitle>
+          <CardTitle>
+            Заказ-наряды ({repairsPaged.totalCount || 0})
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -251,53 +296,41 @@ export default function BusHistoryPage() {
                 const parts = group.filter((g) => (g.sparePart ?? "").trim() !== "");
                 const works = group.filter((g) => (g.workName ?? "").trim() !== "");
 
-                const partsSum = parts.reduce((s, x) => {
-                  const cnt = safeSum(x.sparePartCount, 0);
-                  const price = safeSum(x.sparePartPrice, 0);
-                  return s + safeSum(x.sparePartSum, cnt * price);
-                }, 0);
-
-                const worksSum = works.reduce((s, x) => {
-                  const hour = safeSum(x.workHour, 0);
-                  const price = safeSum(x.workPrice, 0);
-                  return s + safeSum(x.workSum, hour * price);
-                }, 0);
-
+                const partsSum = parts.reduce(
+                  (s, x) => s + safeSum(x.sparePartSum, 0),
+                  0
+                );
+                const worksSum = works.reduce(
+                  (s, x) => s + safeSum(x.workSum, 0),
+                  0
+                );
                 const totalSum = group.reduce(
                   (s, x) => s + safeSum(x.allSum, 0),
                   0
                 );
 
-                const dep = fmtDate(group[0]?.departureDate);
-                const ent = fmtDate(group[0]?.entryDate);
-
                 return (
-                  <div key={`app-${appNum}`} className="border rounded-lg overflow-hidden">
-                    {/* Шапка */}
-                    <div className="flex flex-wrap items-center justify-between bg-slate-50 px-4 py-3 border-b">
-                      <div className="text-sm">
-                        <div className="font-semibold">Заказ-наряд № {appNum || "—"}</div>
-                        <div className="text-muted-foreground">
-                          выезд: {dep} &nbsp;·&nbsp; въезд: {ent}
+                  <div key={appNum} className="border rounded-lg overflow-hidden">
+                    <div className="flex items-center justify-between bg-slate-50 px-4 py-2 border-b">
+                      <div>
+                        <div className="font-semibold">
+                          Заказ-наряд № {appNum || "—"}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          выезд: {fmtDate(group[0]?.departureDate)} · въезд:{" "}
+                          {fmtDate(group[0]?.entryDate)}
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Всего к оплате:</span>{" "}
-                          <span className="font-semibold">{totalSum.toLocaleString("ru-RU")} ₸</span>
-                        </div>
-                        <Button variant="link" className="px-0" asChild>
-                          <Link href={`/dashboard/mechanic/repairs/${group[0].id}/print`}>Печать</Link>
-                        </Button>
+                      <div className="font-semibold">
+                        {totalSum.toLocaleString("ru-RU")} ₸
                       </div>
                     </div>
 
                     {/* Запчасти */}
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm border border-slate-300">
+                      <table className="w-full text-sm border">
                         <thead>
-                          <tr className="bg-slate-100 text-left text-muted-foreground">
-                            <th className="p-2 border">№</th>
+                          <tr className="bg-slate-100 text-left">
                             <th className="p-2 border">Артикул</th>
                             <th className="p-2 border">Наименование</th>
                             <th className="p-2 border text-right">Кол-во</th>
@@ -309,51 +342,55 @@ export default function BusHistoryPage() {
                         <tbody>
                           {parts.length === 0 ? (
                             <tr>
-                              <td colSpan={7} className="p-2 text-center text-muted-foreground border">—</td>
+                              <td colSpan={6} className="p-2 text-center text-muted-foreground border">—</td>
                             </tr>
                           ) : (
-                            parts.map((p, idx) => (
-                              <tr key={`${p.id}-part`} className="border-t">
-                                <td className="p-2 border text-center">{idx + 1}</td>
+                            parts.map((p) => (
+                              <tr key={p.id}>
                                 <td className="p-2 border">{p.sparePartArticle || "—"}</td>
                                 <td className="p-2 border">{p.sparePart}</td>
-                                <td className="p-2 border text-right">{safeSum(p.sparePartCount, 0)}</td>
-                                <td className="p-2 border text-right">
-                                  {safeSum(p.sparePartPrice, 0).toLocaleString("ru-RU")}
-                                </td>
-                                <td className="p-2 border text-right">
-                                  {safeSum(
-                                    p.sparePartSum,
-                                    safeSum(p.sparePartCount, 0) * safeSum(p.sparePartPrice, 0)
-                                  ).toLocaleString("ru-RU")}
-                                </td>
+                                <td className="p-2 border text-right">{p.sparePartCount}</td>
+                                <td className="p-2 border text-right">{p.sparePartPrice}</td>
+                                <td className="p-2 border text-right">{p.sparePartSum}</td>
                                 <td className="p-2 border text-right">
                                   <div className="flex gap-2 justify-end">
-                                    <Button variant="link" className="h-6 px-1 text-xs" onClick={() => setEditItem(p)}>✏️</Button>
-                                    <Button variant="link" className="h-6 px-1 text-xs text-red-600" onClick={() => onDelete(p.id)}>🗑</Button>
+                                    <Button
+                                      variant="link"
+                                      className="h-6 px-1 text-xs"
+                                      onClick={() => setEditItem(p)}
+                                    >
+                                      ✏️
+                                    </Button>
+                                    <Button
+                                      variant="link"
+                                      className="h-6 px-1 text-xs text-red-600"
+                                      onClick={() => onDelete(p.id)}
+                                    >
+                                      🗑
+                                    </Button>
                                   </div>
                                 </td>
                               </tr>
                             ))
                           )}
                         </tbody>
-                        <tfoot>
-                          <tr className="border-t font-medium bg-slate-50">
-                            <td className="p-2 border text-right" colSpan={5}>Итого по запчастям</td>
-                            <td className="p-2 border text-right">{partsSum.toLocaleString("ru-RU")}</td>
-                            <td className="p-2 border"></td>
-                          </tr>
-                        </tfoot>
+                        {parts.length > 0 && (
+                          <tfoot>
+                            <tr className="bg-slate-50 font-semibold">
+                              <td colSpan={5} className="p-2 border text-right">Итого</td>
+                              <td className="p-2 border text-right">{partsSum.toLocaleString("ru-RU")}</td>
+                            </tr>
+                          </tfoot>
+                        )}
                       </table>
                     </div>
 
                     {/* Работы */}
-                    <div className="overflow-x-auto mt-6">
-                      <table className="w-full text-sm border border-slate-300">
+                    <div className="overflow-x-auto mt-4">
+                      <table className="w-full text-sm border">
                         <thead>
-                          <tr className="bg-slate-100 text-left text-muted-foreground">
-                            <th className="p-2 border">№</th>
-                            <th className="p-2 border">Код операции</th>
+                          <tr className="bg-slate-100 text-left">
+                            <th className="p-2 border">Код</th>
                             <th className="p-2 border">Наименование работы</th>
                             <th className="p-2 border text-right">Кол-во</th>
                             <th className="p-2 border text-right">Часы</th>
@@ -365,42 +402,47 @@ export default function BusHistoryPage() {
                         <tbody>
                           {works.length === 0 ? (
                             <tr>
-                              <td colSpan={8} className="p-2 text-center text-muted-foreground border">—</td>
+                              <td colSpan={7} className="p-2 text-center text-muted-foreground border">—</td>
                             </tr>
                           ) : (
-                            works.map((w, idx) => (
-                              <tr key={`${w.id}-work`} className="border-t">
-                                <td className="p-2 border text-center">{idx + 1}</td>
-                                <td className="p-2 border">{w.workCode || "—"}</td>
+                            works.map((w) => (
+                              <tr key={w.id}>
+                                <td className="p-2 border">{w.workCode}</td>
                                 <td className="p-2 border">{w.workName}</td>
-                                <td className="p-2 border text-right">{safeSum(w.workCount, 0)}</td>
-                                <td className="p-2 border text-right">{safeSum(w.workHour, 0)}</td>
-                                <td className="p-2 border text-right">
-                                  {safeSum(w.workPrice, 0).toLocaleString("ru-RU")}
-                                </td>
-                                <td className="p-2 border text-right">
-                                  {safeSum(
-                                    w.workSum,
-                                    safeSum(w.workHour, 0) * safeSum(w.workPrice, 0)
-                                  ).toLocaleString("ru-RU")}
-                                </td>
+                                <td className="p-2 border text-right">{w.workCount}</td>
+                                <td className="p-2 border text-right">{w.workHour}</td>
+                                <td className="p-2 border text-right">{w.workPrice}</td>
+                                <td className="p-2 border text-right">{w.workSum}</td>
                                 <td className="p-2 border text-right">
                                   <div className="flex gap-2 justify-end">
-                                    <Button variant="link" className="h-6 px-1 text-xs" onClick={() => setEditItem(w)}>✏️</Button>
-                                    <Button variant="link" className="h-6 px-1 text-xs text-red-600" onClick={() => onDelete(w.id)}>🗑</Button>
+                                    <Button
+                                      variant="link"
+                                      className="h-6 px-1 text-xs"
+                                      onClick={() => setEditItem(w)}
+                                    >
+                                      ✏️
+                                    </Button>
+                                    <Button
+                                      variant="link"
+                                      className="h-6 px-1 text-xs text-red-600"
+                                      onClick={() => onDelete(w.id)}
+                                    >
+                                      🗑
+                                    </Button>
                                   </div>
                                 </td>
                               </tr>
                             ))
                           )}
                         </tbody>
-                        <tfoot>
-                          <tr className="border-t font-medium bg-slate-50">
-                            <td className="p-2 border text-right" colSpan={6}>Итого по работам</td>
-                            <td className="p-2 border text-right">{worksSum.toLocaleString("ru-RU")}</td>
-                            <td className="p-2 border"></td>
-                          </tr>
-                        </tfoot>
+                        {works.length > 0 && (
+                          <tfoot>
+                            <tr className="bg-slate-50 font-semibold">
+                              <td colSpan={6} className="p-2 border text-right">Итого</td>
+                              <td className="p-2 border text-right">{worksSum.toLocaleString("ru-RU")}</td>
+                            </tr>
+                          </tfoot>
+                        )}
                       </table>
                     </div>
                   </div>
@@ -408,6 +450,42 @@ export default function BusHistoryPage() {
               })}
             </div>
           )}
+
+          {/* Пагинация */}
+          <Pagination className="mt-6">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                />
+              </PaginationItem>
+              {Array.from(
+                { length: Math.ceil((repairsPaged.totalCount || 0) / pageSize) },
+                (_, i) => (
+                  <PaginationItem key={i}>
+                    <PaginationLink
+                      isActive={page === i + 1}
+                      onClick={() => setPage(i + 1)}
+                    >
+                      {i + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              )}
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() =>
+                    setPage((p) =>
+                      p <
+                      Math.ceil((repairsPaged.totalCount || 0) / pageSize)
+                        ? p + 1
+                        : p
+                    )
+                  }
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </CardContent>
       </Card>
 

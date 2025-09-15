@@ -133,7 +133,7 @@ export default function AddRepairDialog({
   // --- Общие итоги ---
   const totals = works.reduce(
     (acc, w) => {
-      acc.work += parseDec(w.workHour) * parseDec(w.workPrice);
+      acc.work += parseDec(w.workCount) * parseDec(w.workHour) * parseDec(w.workPrice);
       acc.parts += parseDec(w.sparePartCount) * parseDec(w.sparePartPrice);
       return acc;
     },
@@ -188,7 +188,7 @@ export default function AddRepairDialog({
           <div className="max-h-[450px] overflow-y-auto pr-2 space-y-8">
             {works.map((w, idx) => {
               const workSum =
-                parseDec(w.workHour) * parseDec(w.workPrice) || 0;
+                parseDec(w.workCount) * parseDec(w.workHour) * parseDec(w.workPrice) || 0;
               const partSum =
                 parseDec(w.sparePartCount) * parseDec(w.sparePartPrice) || 0;
 
@@ -237,7 +237,16 @@ export default function AddRepairDialog({
                       updateWork(idx, "workPrice", "9000");
                     }}
                   />
-                  <div className="grid grid-cols-3 gap-2">
+                  {/* Новое поле для наименования работы */}
+                    <div className="mt-2">
+                      <Label>Наименование работы</Label>
+                      <Input
+                        value={w.workName || ""}
+                        onChange={(e) => updateWork(idx, "workName", e.target.value)}
+                        placeholder="Введите или выберите работу"
+                      />
+                    </div>
+                  <div className="grid grid-cols-4 gap-2">
                     <div>
                       <Label>Кол-во (ед.)</Label>
                       <Input
@@ -245,6 +254,7 @@ export default function AddRepairDialog({
                         onChange={(e) =>
                           updateWork(idx, "workCount", e.target.value)
                         }
+                        autoComplete="off"
                       />
                     </div>
                     <div>
@@ -254,6 +264,7 @@ export default function AddRepairDialog({
                         onChange={(e) =>
                           updateWork(idx, "workHour", e.target.value)
                         }
+                        autoComplete="off"
                       />
                     </div>
                     <div>
@@ -263,6 +274,15 @@ export default function AddRepairDialog({
                         onChange={(e) =>
                           updateWork(idx, "workPrice", e.target.value)
                         }
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div>
+                      <Label>Сумма работы (₸)</Label>
+                      <Input
+                        value={String(workSum)}
+                        readOnly
+                        className="bg-gray-50"
                       />
                     </div>
                   </div>
@@ -318,6 +338,7 @@ export default function AddRepairDialog({
                         onChange={(e) =>
                           updateWork(idx, "sparePartCount", e.target.value)
                         }
+                        autoComplete="off"
                       />
                     </div>
                     <div>
@@ -327,11 +348,16 @@ export default function AddRepairDialog({
                         onChange={(e) =>
                           updateWork(idx, "sparePartPrice", e.target.value)
                         }
+                        autoComplete="off"
                       />
                     </div>
                     <div>
                       <Label>Итого (₸)</Label>
-                      <Input value={String(partSum)} readOnly />
+                      <Input 
+                        value={String(partSum)} 
+                        readOnly 
+                        className="bg-gray-50"
+                      />
                     </div>
                   </div>
 

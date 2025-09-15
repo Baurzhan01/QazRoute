@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 
 import { repairBusService } from "@/service/repairBusService";
 import { sparePartsService } from "@/service/sparePartsService";
-import type { Repair } from "@/types/repairBus.types";
+import type { Repair, CreateRepairRequest } from "@/types/repairBus.types";
 import type { SparePart, LaborTime } from "@/types/spareParts.types";
 
 import AutocompleteInput from "./AutocompleteInput";
@@ -90,8 +90,7 @@ export default function EditRepairDialog({
     if (!repair) return;
     setSaving(true);
     try {
-      const payload = {
-        id: repair.id,
+      const payload: CreateRepairRequest = {
         busId: repair.busId,
         applicationNumber: repair.applicationNumber ?? 0,
         departureDate: repair.departureDate ?? new Date().toISOString().slice(0, 10),
@@ -109,8 +108,11 @@ export default function EditRepairDialog({
       const res = await repairBusService.update(repair.id, payload);
       if (res.isSuccess && res.value) {
         onUpdated(res.value);
+        onClose();
+      } else {
+        console.error("Ошибка обновления ремонта:", res.error);
+        // Можно добавить toast для показа ошибки
       }
-      onClose();
     } finally {
       setSaving(false);
     }
@@ -157,12 +159,13 @@ export default function EditRepairDialog({
             onChange={(e) => update("workName", e.target.value)}
           />
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <div>
             <Label>Кол-во (ед.)</Label>
             <Input
               value={draft.workCount || ""}
               onChange={(e) => update("workCount", e.target.value)}
+              autoComplete="off"
             />
           </div>
           <div>
@@ -170,6 +173,7 @@ export default function EditRepairDialog({
             <Input
               value={draft.workHour || ""}
               onChange={(e) => update("workHour", e.target.value)}
+              autoComplete="off"
             />
           </div>
           <div>
@@ -177,6 +181,15 @@ export default function EditRepairDialog({
             <Input
               value={draft.workPrice || ""}
               onChange={(e) => update("workPrice", e.target.value)}
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <Label>Сумма работы (₸)</Label>
+            <Input
+              value={String(parseDec(draft.workCount) * parseDec(draft.workHour) * parseDec(draft.workPrice))}
+              readOnly
+              className="bg-gray-50"
             />
           </div>
         </div>
@@ -222,6 +235,7 @@ export default function EditRepairDialog({
             <Input
               value={draft.sparePartCount || ""}
               onChange={(e) => update("sparePartCount", e.target.value)}
+              autoComplete="off"
             />
           </div>
           <div>
@@ -229,18 +243,33 @@ export default function EditRepairDialog({
             <Input
               value={draft.sparePartPrice || ""}
               onChange={(e) => update("sparePartPrice", e.target.value)}
+              autoComplete="off"
             />
           </div>
           <div>
-            <Label>Сумма (₸)</Label>
+            <Label>Сумма запчастей (₸)</Label>
             <Input
               value={String(
-                parseDec(draft.workHour) * parseDec(draft.workPrice) +
-                  parseDec(draft.sparePartCount) *
-                    parseDec(draft.sparePartPrice)
+                parseDec(draft.sparePartCount) * parseDec(draft.sparePartPrice)
               )}
               readOnly
+              className="bg-gray-50"
             />
+          </div>
+        </div>
+
+        {/* Общая сумма */}
+        <div className="mt-6 bg-slate-50 border rounded-md p-4">
+          <div className="flex justify-between text-sm font-medium">
+            <span className="text-blue-600">
+              Работы: {(parseDec(draft.workCount) * parseDec(draft.workHour) * parseDec(draft.workPrice)).toLocaleString("ru-RU")} ₸
+            </span>
+            <span className="text-orange-600">
+              Запчасти: {(parseDec(draft.sparePartCount) * parseDec(draft.sparePartPrice)).toLocaleString("ru-RU")} ₸
+            </span>
+            <span className="text-green-600">
+              Всего: {((parseDec(draft.workCount) * parseDec(draft.workHour) * parseDec(draft.workPrice)) + (parseDec(draft.sparePartCount) * parseDec(draft.sparePartPrice))).toLocaleString("ru-RU")} ₸
+            </span>
           </div>
         </div>
 

@@ -7,6 +7,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import RussianStatusBadge from "../components/RussianStatusBadge";
+
 
 /** Чип статуса (минималистично, без зависимостей) */
 function StatusBadge({ status }: { status?: string | null }) {
@@ -170,8 +172,8 @@ export default function MechanicBusesPage() {
                 <tbody>
                   {filtered.map((b) => (
                     <tr key={b.id} className="border-t">
-                      <td className="py-2 pr-4">
-                        <StatusBadge status={b.busStatus} />
+                      <td className="py-4 px-4 border-r border-gray-200">
+                        <RussianStatusBadge status={b.busStatus} />
                       </td>
                       <td className="py-2 pr-4">{b.garageNumber ?? "—"}</td>
                       <td className="py-2 pr-4">{b.govNumber ?? "—"}</td>

@@ -1,6 +1,7 @@
+// service/repairBusService.ts
 import apiClient from "@/app/api/apiClient";
 import type { ApiResponse } from "@/types/api.types";
-import type { Repair, CreateRepairRequest } from "@/types/repairBus.types";
+import type { Repair, CreateRepairRequest, PagedResult } from "@/types/repairBus.types";
 
 export const repairBusService = {
   // Получить все ремонты
@@ -15,15 +16,40 @@ export const repairBusService = {
     return res.data;
   },
 
-  // Получить ремонты по автобусу
-  getByBusId: async (busId: string): Promise<ApiResponse<Repair[]>> => {
-    const res = await apiClient.get(`/repairs/by-bus/${busId}`);
+  // Получить ремонты по автобусу (с пагинацией/фильтрацией)
+  getByBusId: async (
+    busId: string,
+    params?: { page?: number; pageSize?: number; createdFrom?: string; createdTo?: string }
+  ): Promise<ApiResponse<PagedResult<Repair>>> => {
+    const res = await apiClient.get(`/repairs/by-bus/${busId}`, { params });
     return res.data;
   },
 
-  // Получить ремонты по автобусному парку
-  getByDepotId: async (depotId: string): Promise<ApiResponse<Repair[]>> => {
-    const res = await apiClient.get(`/repairs/by-depot/${depotId}`);
+  // Получить ремонты по автопарку (с фильтрацией/пагинацией)
+  getByDepotId: async (
+    depotId: string,
+    params?: {
+      busId?: string;
+      busBrand?: string;
+      garageNumber?: string;
+      govNumber?: string;
+      sparePartId?: string;
+      sparePartName?: string;
+      sparePartArticle?: string;
+      laborTimeId?: string;
+      workName?: string;
+      workCode?: string;
+      createdFrom?: string;
+      createdTo?: string;
+      departureFrom?: string;
+      departureTo?: string;
+      minAllSum?: number;
+      maxAllSum?: number;
+      page?: number;
+      pageSize?: number;
+    }
+  ): Promise<ApiResponse<PagedResult<Repair>>> => {
+    const res = await apiClient.get(`/repairs/by-depot/${depotId}`, { params });
     return res.data;
   },
 
@@ -34,18 +60,13 @@ export const repairBusService = {
   },
 
   // Создать несколько ремонтов
-  createBatch: async (
-    payload: CreateRepairRequest[]
-  ): Promise<ApiResponse<Repair[]>> => {
+  createBatch: async (payload: CreateRepairRequest[]): Promise<ApiResponse<Repair[]>> => {
     const res = await apiClient.post("/repairs/batch", payload);
     return res.data;
   },
 
   // Обновить ремонт
-  update: async (
-    id: string,
-    payload: CreateRepairRequest
-  ): Promise<ApiResponse<Repair>> => {
+  update: async (id: string, payload: CreateRepairRequest): Promise<ApiResponse<Repair>> => {
     const res = await apiClient.put(`/repairs/${id}`, payload);
     return res.data;
   },

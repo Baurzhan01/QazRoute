@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "../components/StatusBadge";
 import AddRepairDialog from "../components/AddRepairDialog";
+import RussianStatusBadge from "../components/RussianStatusBadge";
 
 export default function MechanicRepairsEntryPage() {
   const [depotId, setDepotId] = useState<string | null>(null);
@@ -188,7 +189,7 @@ export default function MechanicRepairsEntryPage() {
                       }`}
                     >
                       <td className="py-4 px-4 border-r border-gray-200">
-                        <StatusBadge status={b.busStatus} />
+                        <RussianStatusBadge status={b.busStatus} />
                       </td>
                       <td className="py-4 px-4 border-r border-gray-200 font-medium text-gray-900">
                         {b.garageNumber ?? "—"}
