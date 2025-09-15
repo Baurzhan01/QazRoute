@@ -17,7 +17,7 @@ import { sparePartsService } from "@/service/sparePartsService";
 import type { Repair, CreateRepairRequest } from "@/types/repairBus.types";
 import type { SparePart, LaborTime } from "@/types/spareParts.types";
 
-import AutocompleteInput from "./AutocompleteInput";
+import SearchInput from "./SearchInput";
 
 // --- Хелперы ---
 function parseDec(value?: string): number {
@@ -34,17 +34,14 @@ function roundSparePrice(price: number): number {
 
 // --- Локальный тип строки (для UI) ---
 type RowDraft = {
-  // ID для бэка
   sparePartId?: string | null;
   laborTimeId?: string | null;
 
-  // подписи для UI
   workName?: string;
   sparePart?: string;
   workCode?: string;
   sparePartArticle?: string;
 
-  // для инпутов
   workCount?: string;
   workHour?: string;
   workPrice?: string;
@@ -76,8 +73,12 @@ export default function EditRepairDialog({
         workCount: repair.workCount ? String(repair.workCount) : "",
         workHour: repair.workHour ? String(repair.workHour) : "",
         workPrice: repair.workPrice ? String(repair.workPrice) : "",
-        sparePartCount: repair.sparePartCount ? String(repair.sparePartCount) : "",
-        sparePartPrice: repair.sparePartPrice ? String(repair.sparePartPrice) : "",
+        sparePartCount: repair.sparePartCount
+          ? String(repair.sparePartCount)
+          : "",
+        sparePartPrice: repair.sparePartPrice
+          ? String(repair.sparePartPrice)
+          : "",
       });
     }
   }, [repair]);
@@ -93,10 +94,10 @@ export default function EditRepairDialog({
       const payload: CreateRepairRequest = {
         busId: repair.busId,
         applicationNumber: repair.applicationNumber ?? 0,
-        departureDate: repair.departureDate ?? new Date().toISOString().slice(0, 10),
+        departureDate:
+          repair.departureDate ?? new Date().toISOString().slice(0, 10),
         entryDate: repair.entryDate ?? new Date().toISOString().slice(0, 10),
 
-        // реальные ID
         sparePartId: draft.sparePartId ?? null,
         sparePartCount: parseDec(draft.sparePartCount),
 
@@ -111,7 +112,6 @@ export default function EditRepairDialog({
         onClose();
       } else {
         console.error("Ошибка обновления ремонта:", res.error);
-        // Можно добавить toast для показа ошибки
       }
     } finally {
       setSaving(false);
@@ -126,7 +126,7 @@ export default function EditRepairDialog({
         </DialogHeader>
 
         {/* Работа */}
-        <AutocompleteInput<LaborTime>
+        <SearchInput<LaborTime>
           label="Код операции"
           placeholder="Введите код операции"
           value={draft.workCode || ""}
@@ -149,8 +149,9 @@ export default function EditRepairDialog({
             update("workName", l.operationName);
             update("workCount", l.quantity != null ? String(l.quantity) : "1");
             update("workHour", l.hours != null ? String(l.hours) : "0");
-            update("workPrice", "9000");
-          }}
+            // Убираем l.price, так как в LaborTime его нет
+            update("workPrice", "9000"); // дефолтная цена за работу
+          }}          
         />
         <div>
           <Label>Наименование работы</Label>
@@ -165,7 +166,6 @@ export default function EditRepairDialog({
             <Input
               value={draft.workCount || ""}
               onChange={(e) => update("workCount", e.target.value)}
-              autoComplete="off"
             />
           </div>
           <div>
@@ -173,7 +173,6 @@ export default function EditRepairDialog({
             <Input
               value={draft.workHour || ""}
               onChange={(e) => update("workHour", e.target.value)}
-              autoComplete="off"
             />
           </div>
           <div>
@@ -181,13 +180,16 @@ export default function EditRepairDialog({
             <Input
               value={draft.workPrice || ""}
               onChange={(e) => update("workPrice", e.target.value)}
-              autoComplete="off"
             />
           </div>
           <div>
             <Label>Сумма работы (₸)</Label>
             <Input
-              value={String(parseDec(draft.workCount) * parseDec(draft.workHour) * parseDec(draft.workPrice))}
+              value={String(
+                parseDec(draft.workCount) *
+                  parseDec(draft.workHour) *
+                  parseDec(draft.workPrice)
+              )}
               readOnly
               className="bg-gray-50"
             />
@@ -195,7 +197,7 @@ export default function EditRepairDialog({
         </div>
 
         {/* Запчасть */}
-        <AutocompleteInput<SparePart>
+        <SearchInput<SparePart>
           label="Артикул"
           placeholder="Введите артикул"
           value={draft.sparePartArticle || ""}
@@ -235,7 +237,6 @@ export default function EditRepairDialog({
             <Input
               value={draft.sparePartCount || ""}
               onChange={(e) => update("sparePartCount", e.target.value)}
-              autoComplete="off"
             />
           </div>
           <div>
@@ -243,14 +244,14 @@ export default function EditRepairDialog({
             <Input
               value={draft.sparePartPrice || ""}
               onChange={(e) => update("sparePartPrice", e.target.value)}
-              autoComplete="off"
             />
           </div>
           <div>
             <Label>Сумма запчастей (₸)</Label>
             <Input
               value={String(
-                parseDec(draft.sparePartCount) * parseDec(draft.sparePartPrice)
+                parseDec(draft.sparePartCount) *
+                  parseDec(draft.sparePartPrice)
               )}
               readOnly
               className="bg-gray-50"
@@ -262,13 +263,31 @@ export default function EditRepairDialog({
         <div className="mt-6 bg-slate-50 border rounded-md p-4">
           <div className="flex justify-between text-sm font-medium">
             <span className="text-blue-600">
-              Работы: {(parseDec(draft.workCount) * parseDec(draft.workHour) * parseDec(draft.workPrice)).toLocaleString("ru-RU")} ₸
+              Работы:{" "}
+              {(
+                parseDec(draft.workCount) *
+                parseDec(draft.workHour) *
+                parseDec(draft.workPrice)
+              ).toLocaleString("ru-RU")}{" "}
+              ₸
             </span>
             <span className="text-orange-600">
-              Запчасти: {(parseDec(draft.sparePartCount) * parseDec(draft.sparePartPrice)).toLocaleString("ru-RU")} ₸
+              Запчасти:{" "}
+              {(
+                parseDec(draft.sparePartCount) * parseDec(draft.sparePartPrice)
+              ).toLocaleString("ru-RU")}{" "}
+              ₸
             </span>
             <span className="text-green-600">
-              Всего: {((parseDec(draft.workCount) * parseDec(draft.workHour) * parseDec(draft.workPrice)) + (parseDec(draft.sparePartCount) * parseDec(draft.sparePartPrice))).toLocaleString("ru-RU")} ₸
+              Всего:{" "}
+              {(
+                parseDec(draft.workCount) *
+                  parseDec(draft.workHour) *
+                  parseDec(draft.workPrice) +
+                parseDec(draft.sparePartCount) *
+                  parseDec(draft.sparePartPrice)
+              ).toLocaleString("ru-RU")}{" "}
+              ₸
             </span>
           </div>
         </div>

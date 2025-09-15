@@ -18,7 +18,7 @@ import { sparePartsService } from "@/service/sparePartsService";
 import type { CreateRepairRequest, Repair } from "@/types/repairBus.types";
 import type { SparePart, LaborTime } from "@/types/spareParts.types";
 
-import AutocompleteInput from "./AutocompleteInput";
+import SearchInput from "./SearchInput";
 
 // --- Хелперы ---
 function parseDec(value?: string): number {
@@ -41,18 +41,15 @@ type RowDraft = {
   departureDate?: string;
   entryDate?: string;
 
-  // ID для бэка
   sparePartId?: string | null;
   laborTimeId?: string | null;
 
-  // UI поля
   workName?: string;
   sparePart?: string;
 
   workCode?: string;
   sparePartArticle?: string;
 
-  // Для редактирования чисел строками
   workCount?: string;
   workHour?: string;
   workPrice?: string;
@@ -107,7 +104,6 @@ export default function AddRepairDialog({
           departureDateStr || new Date().toISOString().slice(0, 10),
         entryDate: entryDateStr || new Date().toISOString().slice(0, 10),
 
-        // реальные ID
         sparePartId: w.sparePartId || null,
         sparePartCount: parseDec(w.sparePartCount),
 
@@ -130,10 +126,10 @@ export default function AddRepairDialog({
     }
   }
 
-  // --- Общие итоги ---
   const totals = works.reduce(
     (acc, w) => {
-      acc.work += parseDec(w.workCount) * parseDec(w.workHour) * parseDec(w.workPrice);
+      acc.work +=
+        parseDec(w.workCount) * parseDec(w.workHour) * parseDec(w.workPrice);
       acc.parts += parseDec(w.sparePartCount) * parseDec(w.sparePartPrice);
       return acc;
     },
@@ -151,9 +147,9 @@ export default function AddRepairDialog({
           <DialogTitle>Новая ремонтная запись</DialogTitle>
         </DialogHeader>
 
-        {/* --- Верхние поля --- */}
+        {/* Верхние поля */}
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-1.5">
+          <div>
             <Label>№ заявки</Label>
             <Input
               type="text"
@@ -165,7 +161,7 @@ export default function AddRepairDialog({
               placeholder="Напр. 51636"
             />
           </div>
-          <div className="space-y-1.5">
+          <div>
             <Label>Дата выезда</Label>
             <Input
               type="date"
@@ -173,7 +169,7 @@ export default function AddRepairDialog({
               onChange={(e) => setDepartureDateStr(e.target.value)}
             />
           </div>
-          <div className="space-y-1.5">
+          <div>
             <Label>Дата въезда</Label>
             <Input
               type="date"
@@ -183,12 +179,14 @@ export default function AddRepairDialog({
           </div>
         </div>
 
-        {/* --- Строки работ/запчастей --- */}
+        {/* Строки */}
         <div className="mt-6">
           <div className="max-h-[450px] overflow-y-auto pr-2 space-y-8">
             {works.map((w, idx) => {
               const workSum =
-                parseDec(w.workCount) * parseDec(w.workHour) * parseDec(w.workPrice) || 0;
+                parseDec(w.workCount) *
+                  parseDec(w.workHour) *
+                  parseDec(w.workPrice) || 0;
               const partSum =
                 parseDec(w.sparePartCount) * parseDec(w.sparePartPrice) || 0;
 
@@ -198,7 +196,7 @@ export default function AddRepairDialog({
                   className="border rounded-md p-4 space-y-4 bg-white"
                 >
                   {/* Работа */}
-                  <AutocompleteInput<LaborTime>
+                  <SearchInput<LaborTime>
                     label="Код операции"
                     placeholder="Введите код операции"
                     value={w.workCode || ""}
@@ -221,31 +219,21 @@ export default function AddRepairDialog({
                       updateWork(idx, "laborTimeId", l.id);
                       updateWork(idx, "workCode", l.operationCode);
                       updateWork(idx, "workName", l.operationName);
-
-                      updateWork(
-                        idx,
-                        "workCount",
-                        l.quantity != null ? String(l.quantity) : "1"
-                      );
-
-                      updateWork(
-                        idx,
-                        "workHour",
-                        l.hours != null ? String(l.hours) : "0"
-                      );
-
+                      updateWork(idx, "workCount", l.quantity ? String(l.quantity) : "1");
+                      updateWork(idx, "workHour", l.hours ? String(l.hours) : "0");
                       updateWork(idx, "workPrice", "9000");
                     }}
                   />
-                  {/* Новое поле для наименования работы */}
-                    <div className="mt-2">
-                      <Label>Наименование работы</Label>
-                      <Input
-                        value={w.workName || ""}
-                        onChange={(e) => updateWork(idx, "workName", e.target.value)}
-                        placeholder="Введите или выберите работу"
-                      />
-                    </div>
+                  <div>
+                    <Label>Наименование работы</Label>
+                    <Input
+                      value={w.workName || ""}
+                      onChange={(e) =>
+                        updateWork(idx, "workName", e.target.value)
+                      }
+                      placeholder="Введите или выберите работу"
+                    />
+                  </div>
                   <div className="grid grid-cols-4 gap-2">
                     <div>
                       <Label>Кол-во (ед.)</Label>
@@ -254,7 +242,6 @@ export default function AddRepairDialog({
                         onChange={(e) =>
                           updateWork(idx, "workCount", e.target.value)
                         }
-                        autoComplete="off"
                       />
                     </div>
                     <div>
@@ -264,7 +251,6 @@ export default function AddRepairDialog({
                         onChange={(e) =>
                           updateWork(idx, "workHour", e.target.value)
                         }
-                        autoComplete="off"
                       />
                     </div>
                     <div>
@@ -274,7 +260,6 @@ export default function AddRepairDialog({
                         onChange={(e) =>
                           updateWork(idx, "workPrice", e.target.value)
                         }
-                        autoComplete="off"
                       />
                     </div>
                     <div>
@@ -288,13 +273,11 @@ export default function AddRepairDialog({
                   </div>
 
                   {/* Запчасть */}
-                  <AutocompleteInput<SparePart>
+                  <SearchInput<SparePart>
                     label="Артикул"
                     placeholder="Введите артикул"
                     value={w.sparePartArticle || ""}
-                    onChange={(val) =>
-                      updateWork(idx, "sparePartArticle", val)
-                    }
+                    onChange={(val) => updateWork(idx, "sparePartArticle", val)}
                     fetchOptions={async (q) => {
                       const res = await sparePartsService.searchByArticle(q);
                       return res.isSuccess && res.value ? res.value : [];
@@ -338,7 +321,6 @@ export default function AddRepairDialog({
                         onChange={(e) =>
                           updateWork(idx, "sparePartCount", e.target.value)
                         }
-                        autoComplete="off"
                       />
                     </div>
                     <div>
@@ -348,14 +330,13 @@ export default function AddRepairDialog({
                         onChange={(e) =>
                           updateWork(idx, "sparePartPrice", e.target.value)
                         }
-                        autoComplete="off"
                       />
                     </div>
                     <div>
                       <Label>Итого (₸)</Label>
-                      <Input 
-                        value={String(partSum)} 
-                        readOnly 
+                      <Input
+                        value={String(partSum)}
+                        readOnly
                         className="bg-gray-50"
                       />
                     </div>
@@ -363,7 +344,8 @@ export default function AddRepairDialog({
 
                   {/* Итог по строке */}
                   <div className="text-right font-medium text-sm text-slate-600">
-                    Всего по строке: {(workSum + partSum).toLocaleString("ru-RU")} ₸
+                    Всего по строке:{" "}
+                    {(workSum + partSum).toLocaleString("ru-RU")} ₸
                   </div>
 
                   <Button
@@ -385,7 +367,7 @@ export default function AddRepairDialog({
           </div>
         </div>
 
-        {/* --- Общий итог --- */}
+        {/* Общий итог */}
         <div className="mt-6 bg-slate-50 border rounded-md p-4">
           <div className="flex justify-between text-sm font-medium">
             <span className="text-blue-600">
