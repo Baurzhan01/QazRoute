@@ -51,6 +51,8 @@ function fmtDate(s?: string) {
   return d.toLocaleDateString("ru-RU");
 }
 
+const FILTER_KEY = "mechanic_filters";
+
 export default function MechanicHomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -70,20 +72,17 @@ export default function MechanicHomePage() {
   // фильтры
   const [page, setPage] = useState(Number(searchParams.get("page")) || 1);
   const [pageSize] = useState(25);
-  const [departureFrom, setDepartureFrom] = useState(
-    searchParams.get("departureFrom") || ""
-  );
-  const [departureTo, setDepartureTo] = useState(
-    searchParams.get("departureTo") || ""
-  );
-  const [garageNumber, setGarageNumber] = useState(searchParams.get("garageNumber") || "");
-  const [govNumber, setGovNumber] = useState(searchParams.get("govNumber") || "");
-  const [workName, setWorkName] = useState(searchParams.get("workName") || "");
-  const [sparePartName, setSparePartName] = useState(searchParams.get("sparePartName") || "");
-  const [appNumber, setAppNumber] = useState(searchParams.get("appNumber") || "");
+  const [departureFrom, setDepartureFrom] = useState("");
+  const [departureTo, setDepartureTo] = useState("");
+  const [garageNumber, setGarageNumber] = useState("");
+  const [govNumber, setGovNumber] = useState("");
+  const [workName, setWorkName] = useState("");
+  const [sparePartName, setSparePartName] = useState("");
+  const [appNumber, setAppNumber] = useState("");
 
   const [filterOpen, setFilterOpen] = useState(false);
 
+  // depotId
   useEffect(() => {
     const auth = localStorage.getItem("authData");
     if (auth) {
@@ -92,15 +91,48 @@ export default function MechanicHomePage() {
     }
   }, []);
 
-  // по умолчанию текущий месяц
+  // загрузка фильтров из localStorage
   useEffect(() => {
-    if (departureFrom && departureTo) return;
+    const saved = localStorage.getItem(FILTER_KEY);
+    if (saved) {
+      const f = JSON.parse(saved);
+      setDepartureFrom(f.departureFrom || "");
+      setDepartureTo(f.departureTo || "");
+      setGarageNumber(f.garageNumber || "");
+      setGovNumber(f.govNumber || "");
+      setWorkName(f.workName || "");
+      setSparePartName(f.sparePartName || "");
+      setAppNumber(f.appNumber || "");
+      setPage(f.page || 1);
+      return;
+    }
+
+    // автоподстановка текущего месяца, если фильтров нет
     const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+    const start = new Date(now.getFullYear(), now.getMonth(), 1)
+      .toISOString()
+      .slice(0, 10);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      .toISOString()
+      .slice(0, 10);
     setDepartureFrom(start);
     setDepartureTo(end);
   }, []);
+
+  // сохраняем фильтры в localStorage при изменении
+  useEffect(() => {
+    const f = {
+      page,
+      departureFrom,
+      departureTo,
+      garageNumber,
+      govNumber,
+      workName,
+      sparePartName,
+      appNumber,
+    };
+    localStorage.setItem(FILTER_KEY, JSON.stringify(f));
+  }, [page, departureFrom, departureTo, garageNumber, govNumber, workName, sparePartName, appNumber]);
 
   // подгрузка данных
   useEffect(() => {
@@ -126,15 +158,14 @@ export default function MechanicHomePage() {
       try {
         setLoading(true);
 
-        // основная таблица ремонтов
         const main = await repairBusService.getByDepotId(depotId, params);
 
-        // сходы и плановые: собираем по дням
+        // сходы и плановые
         const exitArr: RouteExitRepairDto[] = [];
         const plannedArr: (RepairRecord & { date: string })[] = [];
 
-        const start = new Date(departureFrom);
-        const end = new Date(departureTo);
+        const start = new Date(departureFrom + "T00:00:00");
+        const end = new Date(departureTo + "T23:59:59");
 
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
           const dateStr = d.toISOString().slice(0, 10);
@@ -152,7 +183,6 @@ export default function MechanicHomePage() {
           }
         }
 
-        // статистика
         const stat = await statisticService.getDispatchRepairStats(
           depotId,
           departureFrom,
@@ -206,7 +236,7 @@ export default function MechanicHomePage() {
     return Array.from(map.entries()).sort((a, b) => b[0] - a[0]);
   }, [repairsPaged]);
 
-  // проверка совпадений с сходами/плановыми
+  // проверка совпадений
   function getSource(r: Repair): { label: string; match: boolean } {
     const depDate = r.departureDate?.slice(0, 10);
     if (!depDate) return { label: "—", match: false };
@@ -215,7 +245,12 @@ export default function MechanicHomePage() {
       (e) => e.bus?.id === r.busId && e.startDate?.slice(0, 10) === depDate
     );
     if (matchExit) {
-      return { label: matchExit.route?.number ? `Сход (маршрут ${matchExit.route.number})` : "Сход (резерв)", match: true };
+      return {
+        label: matchExit.route?.number
+          ? `Сход (маршрут ${matchExit.route.number})`
+          : "Сход (резерв)",
+        match: true,
+      };
     }
 
     const matchPlan = planned.find(
@@ -261,7 +296,6 @@ export default function MechanicHomePage() {
             {loading ? "…" : `${kpi.totalAll.toLocaleString("ru-RU")} ₸`}
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -273,7 +307,6 @@ export default function MechanicHomePage() {
             {loading ? "…" : `${kpi.totalWork.toLocaleString("ru-RU")} ₸`}
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -340,29 +373,12 @@ export default function MechanicHomePage() {
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={stats}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(date) => format(parseISO(date), "dd.MM")}
-                />
+                <XAxis dataKey="date" tickFormatter={(date) => format(parseISO(date), "dd.MM")} />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
                 <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="plannedRepairCount"
-                  stroke="#fbbf24"
-                  strokeWidth={3}
-                  dot={{ r: 5 }}
-                  name="Плановые ремонты"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="unplannedRepairCount"
-                  stroke="#ef4444"
-                  strokeWidth={3}
-                  dot={{ r: 5 }}
-                  name="Сходы с линии"
-                />
+                <Line type="monotone" dataKey="plannedRepairCount" stroke="#fbbf24" strokeWidth={3} dot={{ r: 5 }} name="Плановые ремонты" />
+                <Line type="monotone" dataKey="unplannedRepairCount" stroke="#ef4444" strokeWidth={3} dot={{ r: 5 }} name="Сходы с линии" />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -401,9 +417,7 @@ export default function MechanicHomePage() {
                     return (
                       <tr
                         key={appNum}
-                        className={`border-t ${
-                          source.match ? "bg-green-50" : "bg-red-50"
-                        }`}
+                        className={`border-t ${source.match ? "bg-green-50" : "bg-red-50"}`}
                       >
                         <td className="py-2 pr-4">
                           <Link
@@ -474,41 +488,23 @@ export default function MechanicHomePage() {
           <div className="space-y-4">
             <div>
               <Label>Дата выезда с</Label>
-              <Input
-                type="date"
-                value={departureFrom}
-                onChange={(e) => setDepartureFrom(e.target.value)}
-              />
+              <Input type="date" value={departureFrom} onChange={(e) => setDepartureFrom(e.target.value)} />
             </div>
             <div>
               <Label>Дата выезда по</Label>
-              <Input
-                type="date"
-                value={departureTo}
-                onChange={(e) => setDepartureTo(e.target.value)}
-              />
+              <Input type="date" value={departureTo} onChange={(e) => setDepartureTo(e.target.value)} />
             </div>
             <div>
               <Label>№ заявки</Label>
-              <Input
-                value={appNumber}
-                onChange={(e) => setAppNumber(e.target.value)}
-                placeholder="Напр. 5123"
-              />
+              <Input value={appNumber} onChange={(e) => setAppNumber(e.target.value)} placeholder="Напр. 5123" />
             </div>
             <div>
               <Label>Гаражный номер</Label>
-              <Input
-                value={garageNumber}
-                onChange={(e) => setGarageNumber(e.target.value)}
-              />
+              <Input value={garageNumber} onChange={(e) => setGarageNumber(e.target.value)} />
             </div>
             <div>
               <Label>Госномер</Label>
-              <Input
-                value={govNumber}
-                onChange={(e) => setGovNumber(e.target.value)}
-              />
+              <Input value={govNumber} onChange={(e) => setGovNumber(e.target.value)} />
             </div>
             <div>
               <Label>Работа</Label>
@@ -516,10 +512,7 @@ export default function MechanicHomePage() {
             </div>
             <div>
               <Label>Запчасть</Label>
-              <Input
-                value={sparePartName}
-                onChange={(e) => setSparePartName(e.target.value)}
-              />
+              <Input value={sparePartName} onChange={(e) => setSparePartName(e.target.value)} />
             </div>
 
             {/* Кнопки действий */}
@@ -527,14 +520,10 @@ export default function MechanicHomePage() {
               <Button
                 variant="outline"
                 onClick={() => {
+                  localStorage.removeItem(FILTER_KEY);
                   const now = new Date();
-                  const start = new Date(now.getFullYear(), now.getMonth(), 1)
-                    .toISOString()
-                    .slice(0, 10);
-                  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-                    .toISOString()
-                    .slice(0, 10);
-
+                  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+                  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
                   setDepartureFrom(start);
                   setDepartureTo(end);
                   setAppNumber("");
@@ -543,13 +532,10 @@ export default function MechanicHomePage() {
                   setWorkName("");
                   setSparePartName("");
                   setPage(1);
-
-                  router.replace(
-                    `?page=1&pageSize=${pageSize}&departureFrom=${start}&departureTo=${end}`
-                  );
+                  router.replace(`?page=1&pageSize=${pageSize}&departureFrom=${start}&departureTo=${end}`);
                 }}
               >
-                Очистить
+                Сбросить все фильтры
               </Button>
               <Button onClick={() => setFilterOpen(false)}>Применить</Button>
             </div>
