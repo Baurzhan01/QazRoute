@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClipboardList, Wrench, BarChart3, Filter, Activity } from "lucide-react";
@@ -55,7 +55,6 @@ const FILTER_KEY = "mechanic_filters";
 
 export default function MechanicHomePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const [repairsPaged, setRepairsPaged] = useState<PagedResult<Repair> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -70,7 +69,7 @@ export default function MechanicHomePage() {
   const [showStats, setShowStats] = useState(false);
 
   // фильтры
-  const [page, setPage] = useState(Number(searchParams.get("page")) || 1);
+  const [page, setPage] = useState(1);
   const [pageSize] = useState(25);
   const [departureFrom, setDepartureFrom] = useState("");
   const [departureTo, setDepartureTo] = useState("");
@@ -79,7 +78,6 @@ export default function MechanicHomePage() {
   const [workName, setWorkName] = useState("");
   const [sparePartName, setSparePartName] = useState("");
   const [appNumber, setAppNumber] = useState("");
-
   const [filterOpen, setFilterOpen] = useState(false);
 
   // depotId
@@ -106,7 +104,6 @@ export default function MechanicHomePage() {
       setPage(f.page || 1);
       return;
     }
-
     // автоподстановка текущего месяца, если фильтров нет
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -119,7 +116,7 @@ export default function MechanicHomePage() {
     setDepartureTo(end);
   }, []);
 
-  // сохраняем фильтры в localStorage при изменении
+  // сохраняем фильтры в localStorage
   useEffect(() => {
     const f = {
       page,
@@ -197,19 +194,7 @@ export default function MechanicHomePage() {
         setLoading(false);
       }
     })();
-  }, [
-    depotId,
-    page,
-    pageSize,
-    departureFrom,
-    departureTo,
-    garageNumber,
-    govNumber,
-    workName,
-    sparePartName,
-    appNumber,
-    router,
-  ]);
+  }, [depotId, page, pageSize, departureFrom, departureTo, garageNumber, govNumber, workName, sparePartName, appNumber, router]);
 
   // KPI
   const kpi = useMemo(() => {
@@ -225,16 +210,33 @@ export default function MechanicHomePage() {
     return { totalAll, totalWork, totalSpare, chartData };
   }, [repairsPaged]);
 
-  // группировка заявок
+  // фильтрация статистики по диапазону
+  const filteredStats = useMemo(() => {
+    if (!stats) return [];
+    const start = new Date(departureFrom + "T00:00:00");
+    const end = new Date(departureTo + "T23:59:59");
+    return stats.filter((s) => {
+      const d = new Date(s.date);
+      return d >= start && d <= end;
+    });
+  }, [stats, departureFrom, departureTo]);
+
+  // группировка заявок по applicationNumber и фильтрация по дате
   const grouped = useMemo(() => {
+    const start = new Date(departureFrom + "T00:00:00");
+    const end = new Date(departureTo + "T23:59:59");
     const map = new Map<number, Repair[]>();
+
     for (const r of repairsPaged?.items || []) {
-      const key = r.applicationNumber ?? 0;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(r);
+      const dep = new Date(r.departureDate ?? "");
+      if (!isNaN(dep.getTime()) && dep >= start && dep <= end) {
+        const key = r.applicationNumber ?? 0;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key)!.push(r);
+      }
     }
     return Array.from(map.entries()).sort((a, b) => b[0] - a[0]);
-  }, [repairsPaged]);
+  }, [repairsPaged, departureFrom, departureTo]);
 
   // проверка совпадений
   function getSource(r: Repair): { label: string; match: boolean } {
@@ -282,6 +284,7 @@ export default function MechanicHomePage() {
 
       {/* KPI */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Общая сумма */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -292,10 +295,17 @@ export default function MechanicHomePage() {
               {departureFrom} — {departureTo}
             </div>
           </CardHeader>
-          <CardContent className="text-3xl font-bold">
-            {loading ? "…" : `${kpi.totalAll.toLocaleString("ru-RU")} ₸`}
+          <CardContent>
+            <div className="text-3xl font-bold">
+              {loading ? "…" : `${kpi.totalAll.toLocaleString("ru-RU")} ₸`}
+            </div>
+            <div className="text-sm text-muted-foreground mt-2">
+              Заявок: {repairsPaged?.totalCount ?? 0}
+            </div>
           </CardContent>
         </Card>
+
+        {/* Работы */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -307,6 +317,8 @@ export default function MechanicHomePage() {
             {loading ? "…" : `${kpi.totalWork.toLocaleString("ru-RU")} ₸`}
           </CardContent>
         </Card>
+
+        {/* Запчасти */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -339,13 +351,14 @@ export default function MechanicHomePage() {
                     />
                   </PieChart>
                 </ResponsiveContainer>
+                {/* подписи под графиком */}
                 <div className="flex justify-center gap-6 mt-2 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
-                    <span className="w-3 h-3 rounded-full bg-emerald-500"></span>{" "}
+                    <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
                     Работы: {kpi.totalWork.toLocaleString("ru-RU")} ₸
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className="w-3 h-3 rounded-full bg-indigo-500"></span>{" "}
+                    <span className="w-3 h-3 rounded-full bg-indigo-500"></span>
                     Запчасти: {kpi.totalSpare.toLocaleString("ru-RU")} ₸
                   </div>
                 </div>
@@ -354,7 +367,6 @@ export default function MechanicHomePage() {
           </CardContent>
         </Card>
       </div>
-
       {/* Карточка событий */}
       <Card>
         <CardHeader className="flex justify-between items-center">
@@ -371,14 +383,31 @@ export default function MechanicHomePage() {
           </div>
           {showStats && (
             <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={stats}>
+              <LineChart data={filteredStats}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tickFormatter={(date) => format(parseISO(date), "dd.MM")} />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={(date) => format(parseISO(date), "dd.MM")}
+                />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="plannedRepairCount" stroke="#fbbf24" strokeWidth={3} dot={{ r: 5 }} name="Плановые ремонты" />
-                <Line type="monotone" dataKey="unplannedRepairCount" stroke="#ef4444" strokeWidth={3} dot={{ r: 5 }} name="Сходы с линии" />
+                <Line
+                  type="monotone"
+                  dataKey="plannedRepairCount"
+                  stroke="#fbbf24"
+                  strokeWidth={3}
+                  dot={{ r: 5 }}
+                  name="Плановые ремонты"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="unplannedRepairCount"
+                  stroke="#ef4444"
+                  strokeWidth={3}
+                  dot={{ r: 5 }}
+                  name="Сходы с линии"
+                />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -433,7 +462,9 @@ export default function MechanicHomePage() {
                         <td className="py-2 pr-4">
                           {first.workName || first.sparePart || "—"}
                         </td>
-                        <td className="py-2 pr-4">{totalSum.toLocaleString("ru-RU")} ₸</td>
+                        <td className="py-2 pr-4">
+                          {totalSum.toLocaleString("ru-RU")} ₸
+                        </td>
                         <td className="py-2">{fmtDate(first.departureDate)}</td>
                         <td className="py-2">{source.label}</td>
                       </tr>
@@ -488,42 +519,68 @@ export default function MechanicHomePage() {
           <div className="space-y-4">
             <div>
               <Label>Дата выезда с</Label>
-              <Input type="date" value={departureFrom} onChange={(e) => setDepartureFrom(e.target.value)} />
+              <Input
+                type="date"
+                value={departureFrom}
+                onChange={(e) => setDepartureFrom(e.target.value)}
+              />
             </div>
             <div>
               <Label>Дата выезда по</Label>
-              <Input type="date" value={departureTo} onChange={(e) => setDepartureTo(e.target.value)} />
+              <Input
+                type="date"
+                value={departureTo}
+                onChange={(e) => setDepartureTo(e.target.value)}
+              />
             </div>
             <div>
               <Label>№ заявки</Label>
-              <Input value={appNumber} onChange={(e) => setAppNumber(e.target.value)} placeholder="Напр. 5123" />
+              <Input
+                value={appNumber}
+                onChange={(e) => setAppNumber(e.target.value)}
+              />
             </div>
             <div>
               <Label>Гаражный номер</Label>
-              <Input value={garageNumber} onChange={(e) => setGarageNumber(e.target.value)} />
+              <Input
+                value={garageNumber}
+                onChange={(e) => setGarageNumber(e.target.value)}
+              />
             </div>
             <div>
               <Label>Госномер</Label>
-              <Input value={govNumber} onChange={(e) => setGovNumber(e.target.value)} />
+              <Input
+                value={govNumber}
+                onChange={(e) => setGovNumber(e.target.value)}
+              />
             </div>
             <div>
               <Label>Работа</Label>
-              <Input value={workName} onChange={(e) => setWorkName(e.target.value)} />
+              <Input
+                value={workName}
+                onChange={(e) => setWorkName(e.target.value)}
+              />
             </div>
             <div>
               <Label>Запчасть</Label>
-              <Input value={sparePartName} onChange={(e) => setSparePartName(e.target.value)} />
+              <Input
+                value={sparePartName}
+                onChange={(e) => setSparePartName(e.target.value)}
+              />
             </div>
 
-            {/* Кнопки действий */}
             <div className="flex justify-between pt-4">
               <Button
                 variant="outline"
                 onClick={() => {
                   localStorage.removeItem(FILTER_KEY);
                   const now = new Date();
-                  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-                  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+                  const start = new Date(now.getFullYear(), now.getMonth(), 1)
+                    .toISOString()
+                    .slice(0, 10);
+                  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+                    .toISOString()
+                    .slice(0, 10);
                   setDepartureFrom(start);
                   setDepartureTo(end);
                   setAppNumber("");
@@ -532,7 +589,9 @@ export default function MechanicHomePage() {
                   setWorkName("");
                   setSparePartName("");
                   setPage(1);
-                  router.replace(`?page=1&pageSize=${pageSize}&departureFrom=${start}&departureTo=${end}`);
+                  router.replace(
+                    `?page=1&pageSize=${pageSize}&departureFrom=${start}&departureTo=${end}`
+                  );
                 }}
               >
                 Сбросить все фильтры
