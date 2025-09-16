@@ -219,173 +219,215 @@ export default function AddRepairDialog({
           </TabsList>
 
           {/* Вкладка Работы */}
-          <TabsContent value="works" className="mt-4 space-y-6">
-            {works.map((w, idx) => {
-              const workSum =
-                parseDec(w.workCount) *
-                  parseDec(w.workHour) *
-                  parseDec(w.workPrice) || 0;
+          <TabsContent value="works" className="mt-4">
+            <div className="max-h-[400px] overflow-y-auto pr-2 space-y-6">
+              {works.map((w, idx) => {
+                const workSum =
+                  parseDec(w.workCount) *
+                    parseDec(w.workHour) *
+                    parseDec(w.workPrice) || 0;
 
-              return (
-                <div
-                  key={idx}
-                  className="border rounded-md p-4 space-y-4 bg-white"
-                >
-                  <SearchInput<LaborTime>
-                    label="Код операции"
-                    placeholder="Введите код операции"
-                    value={w.workCode || ""}
-                    onChange={(val) => updateWork(idx, "workCode", val)}
-                    fetchOptions={async (q) => {
-                      const res = await sparePartsService.searchLaborTime(q);
-                      return res.isSuccess && res.value ? res.value : [];
-                    }}
-                    renderOption={(l) => (
-                      <div>
-                        <div className="font-medium">
-                          {l.operationCode} — {l.operationName}
-                        </div>
-                        <div className="text-xs text-gray-500">{l.busModel}</div>
-                      </div>
-                    )}
-                    onSelect={(l) => {
-                      updateWork(idx, "laborTimeId", l.id);
-                      updateWork(idx, "workCode", l.operationCode);
-                      updateWork(idx, "workName", l.operationName);
-                      updateWork(idx, "workCount", l.quantity ? String(l.quantity) : "1");
-                      updateWork(idx, "workHour", l.hours ? String(l.hours) : "0");
-                      updateWork(idx, "workPrice", "9000");
-                    }}
-                  />
-                  {/* Наименование работы */}
-                  <div>
-                    <Label>Наименование работы</Label>
-                    <Input
-                      value={w.workName || ""}
-                      onChange={(e) => updateWork(idx, "workName", e.target.value)}
-                      placeholder="Введите или выберите работу"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    <div>
-                      <Label>Кол-во (ед.)</Label>
-                      <Input
-                        value={w.workCount || ""}
-                        onChange={(e) => updateWork(idx, "workCount", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label>Часы</Label>
-                      <Input
-                        value={w.workHour || ""}
-                        onChange={(e) => updateWork(idx, "workHour", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label>Цена работы (₸)</Label>
-                      <Input
-                        value={w.workPrice || ""}
-                        onChange={(e) => updateWork(idx, "workPrice", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label>Сумма работы (₸)</Label>
-                      <Input value={String(workSum)} readOnly className="bg-gray-50" />
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    className="text-red-600"
-                    onClick={() => removeWorkRow(idx)}
+                return (
+                  <div
+                    key={idx}
+                    className="border rounded-md p-4 space-y-4 bg-white"
                   >
-                    Удалить работу
-                  </Button>
-                </div>
-              );
-            })}
-            <Button variant="outline" onClick={addWorkRow}>
+                    <SearchInput<LaborTime>
+                      label="Код операции"
+                      placeholder="Введите код операции"
+                      value={w.workCode || ""}
+                      onChange={(val) => updateWork(idx, "workCode", val)}
+                      fetchOptions={async (q) => {
+                        const res = await sparePartsService.searchLaborTime(q);
+                        return res.isSuccess && res.value ? res.value : [];
+                      }}
+                      renderOption={(l) => (
+                        <div>
+                          <div className="font-medium">
+                            {l.operationCode} — {l.operationName}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {l.busModel}
+                          </div>
+                        </div>
+                      )}
+                      onSelect={(l) => {
+                        updateWork(idx, "laborTimeId", l.id);
+                        updateWork(idx, "workCode", l.operationCode);
+                        updateWork(idx, "workName", l.operationName);
+                        updateWork(
+                          idx,
+                          "workCount",
+                          l.quantity ? String(l.quantity) : "1"
+                        );
+                        updateWork(
+                          idx,
+                          "workHour",
+                          l.hours ? String(l.hours) : "0"
+                        );
+                        updateWork(idx, "workPrice", "9000");
+                      }}
+                    />
+                    {/* Наименование работы */}
+                    <div>
+                      <Label>Наименование работы</Label>
+                      <Input
+                        value={w.workName || ""}
+                        onChange={(e) =>
+                          updateWork(idx, "workName", e.target.value)
+                        }
+                        placeholder="Введите или выберите работу"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      <div>
+                        <Label>Кол-во (ед.)</Label>
+                        <Input
+                          value={w.workCount || ""}
+                          onChange={(e) =>
+                            updateWork(idx, "workCount", e.target.value)
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label>Часы</Label>
+                        <Input
+                          value={w.workHour || ""}
+                          onChange={(e) =>
+                            updateWork(idx, "workHour", e.target.value)
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label>Цена работы (₸)</Label>
+                        <Input
+                          value={w.workPrice || ""}
+                          onChange={(e) =>
+                            updateWork(idx, "workPrice", e.target.value)
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label>Сумма работы (₸)</Label>
+                        <Input
+                          value={String(workSum)}
+                          readOnly
+                          className="bg-gray-50"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      className="text-red-600"
+                      onClick={() => removeWorkRow(idx)}
+                    >
+                      Удалить работу
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+            <Button variant="outline" onClick={addWorkRow} className="mt-2">
               + Добавить работу
             </Button>
           </TabsContent>
 
           {/* Вкладка Запчасти */}
-          <TabsContent value="spares" className="mt-4 space-y-6">
-            {spares.map((s, idx) => {
-              const partSum =
-                parseDec(s.sparePartCount) * parseDec(s.sparePartPrice) || 0;
+          <TabsContent value="spares" className="mt-4">
+            <div className="max-h-[400px] overflow-y-auto pr-2 space-y-6">
+              {spares.map((s, idx) => {
+                const partSum =
+                  parseDec(s.sparePartCount) * parseDec(s.sparePartPrice) || 0;
 
-              return (
-                <div
-                  key={idx}
-                  className="border rounded-md p-4 space-y-4 bg-white"
-                >
-                  <SearchInput<SparePart>
-                    label="Артикул"
-                    placeholder="Введите артикул"
-                    value={s.sparePartArticle || ""}
-                    onChange={(val) => updateSpare(idx, "sparePartArticle", val)}
-                    fetchOptions={async (q) => {
-                      const res = await sparePartsService.searchByArticle(q);
-                      return res.isSuccess && res.value ? res.value : [];
-                    }}
-                    renderOption={(p) => (
-                      <div>
-                        <div className="font-medium">
-                          {p.article} — {p.name}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {p.busModel} · {roundSparePrice(p.unitPrice)} ₸
-                        </div>
-                      </div>
-                    )}
-                    onSelect={(p) => {
-                      updateSpare(idx, "sparePartId", p.id);
-                      updateSpare(idx, "sparePartArticle", p.article);
-                      updateSpare(idx, "sparePart", p.name);
-                      updateSpare(idx, "sparePartPrice", String(roundSparePrice(p.unitPrice)));
-                      updateSpare(idx, "sparePartCount", "1");
-                    }}
-                  />
-                  {/* Наименование запчасти */}
-                  <div>
-                    <Label>Наименование запчасти</Label>
-                    <Input
-                      value={s.sparePart || ""}
-                      onChange={(e) => updateSpare(idx, "sparePart", e.target.value)}
-                      placeholder="Введите или выберите запчасть"
-                    />
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <Label>Кол-во (шт.)</Label>
-                      <Input
-                        value={s.sparePartCount || ""}
-                        onChange={(e) => updateSpare(idx, "sparePartCount", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label>Цена за ед. (₸)</Label>
-                      <Input
-                        value={s.sparePartPrice || ""}
-                        onChange={(e) => updateSpare(idx, "sparePartPrice", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label>Итого (₸)</Label>
-                      <Input value={String(partSum)} readOnly className="bg-gray-50" />
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    className="text-red-600"
-                    onClick={() => removeSpareRow(idx)}
+                return (
+                  <div
+                    key={idx}
+                    className="border rounded-md p-4 space-y-4 bg-white"
                   >
-                    Удалить запчасть
-                  </Button>
-                </div>
-              );
-            })}
-            <Button variant="outline" onClick={addSpareRow}>
+                    <SearchInput<SparePart>
+                      label="Артикул"
+                      placeholder="Введите артикул"
+                      value={s.sparePartArticle || ""}
+                      onChange={(val) =>
+                        updateSpare(idx, "sparePartArticle", val)
+                      }
+                      fetchOptions={async (q) => {
+                        const res = await sparePartsService.searchByArticle(q);
+                        return res.isSuccess && res.value ? res.value : [];
+                      }}
+                      renderOption={(p) => (
+                        <div>
+                          <div className="font-medium">
+                            {p.article} — {p.name}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {p.busModel} · {roundSparePrice(p.unitPrice)} ₸
+                          </div>
+                        </div>
+                      )}
+                      onSelect={(p) => {
+                        updateSpare(idx, "sparePartId", p.id);
+                        updateSpare(idx, "sparePartArticle", p.article);
+                        updateSpare(idx, "sparePart", p.name);
+                        updateSpare(
+                          idx,
+                          "sparePartPrice",
+                          String(roundSparePrice(p.unitPrice))
+                        );
+                        updateSpare(idx, "sparePartCount", "1");
+                      }}
+                    />
+                    {/* Наименование запчасти */}
+                    <div>
+                      <Label>Наименование запчасти</Label>
+                      <Input
+                        value={s.sparePart || ""}
+                        onChange={(e) =>
+                          updateSpare(idx, "sparePart", e.target.value)
+                        }
+                        placeholder="Введите или выберите запчасть"
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <Label>Кол-во (шт.)</Label>
+                        <Input
+                          value={s.sparePartCount || ""}
+                          onChange={(e) =>
+                            updateSpare(idx, "sparePartCount", e.target.value)
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label>Цена за ед. (₸)</Label>
+                        <Input
+                          value={s.sparePartPrice || ""}
+                          onChange={(e) =>
+                            updateSpare(idx, "sparePartPrice", e.target.value)
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label>Итого (₸)</Label>
+                        <Input
+                          value={String(partSum)}
+                          readOnly
+                          className="bg-gray-50"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      className="text-red-600"
+                      onClick={() => removeSpareRow(idx)}
+                    >
+                      Удалить запчасть
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+            <Button variant="outline" onClick={addSpareRow} className="mt-2">
               + Добавить запчасть
             </Button>
           </TabsContent>
