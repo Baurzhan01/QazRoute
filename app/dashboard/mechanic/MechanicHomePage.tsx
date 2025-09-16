@@ -5,9 +5,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ClipboardList, Wrench, BarChart3, Filter } from "lucide-react";
+import { ClipboardList, Wrench, BarChart3, Filter, Activity } from "lucide-react";
 import { repairBusService } from "@/service/repairBusService";
+import { routeExitRepairService } from "@/service/routeExitRepairService";
+import { repairService } from "@/service/repairService";
+import { statisticService } from "@/service/statisticService";
 import type { Repair, PagedResult } from "@/types/repairBus.types";
+import type { RouteExitRepairDto } from "@/types/routeExitRepair.types";
+import type { RepairRecord } from "@/types/repair.types";
 import {
   Pagination,
   PaginationContent,
@@ -30,17 +35,37 @@ import {
   Pie,
   Cell,
   Tooltip,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
 } from "recharts";
+import { format, parseISO } from "date-fns";
+
+function fmtDate(s?: string) {
+  if (!s || s === "0001-01-01") return "—";
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return s;
+  return d.toLocaleDateString("ru-RU");
+}
 
 export default function MechanicHomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [repairsPaged, setRepairsPaged] = useState<PagedResult<Repair> | null>(
-    null
-  );
+  const [repairsPaged, setRepairsPaged] = useState<PagedResult<Repair> | null>(null);
   const [loading, setLoading] = useState(false);
   const [depotId, setDepotId] = useState<string | null>(null);
+
+  // сходы и плановые
+  const [exits, setExits] = useState<RouteExitRepairDto[]>([]);
+  const [planned, setPlanned] = useState<(RepairRecord & { date: string })[]>([]);
+
+  // статистика
+  const [stats, setStats] = useState<any[]>([]);
+  const [showStats, setShowStats] = useState(false);
 
   // фильтры
   const [page, setPage] = useState(Number(searchParams.get("page")) || 1);
@@ -51,19 +76,11 @@ export default function MechanicHomePage() {
   const [departureTo, setDepartureTo] = useState(
     searchParams.get("departureTo") || ""
   );
-  const [garageNumber, setGarageNumber] = useState(
-    searchParams.get("garageNumber") || ""
-  );
-  const [govNumber, setGovNumber] = useState(
-    searchParams.get("govNumber") || ""
-  );
+  const [garageNumber, setGarageNumber] = useState(searchParams.get("garageNumber") || "");
+  const [govNumber, setGovNumber] = useState(searchParams.get("govNumber") || "");
   const [workName, setWorkName] = useState(searchParams.get("workName") || "");
-  const [sparePartName, setSparePartName] = useState(
-    searchParams.get("sparePartName") || ""
-  );
-  const [appNumber, setAppNumber] = useState(
-    searchParams.get("appNumber") || ""
-  );
+  const [sparePartName, setSparePartName] = useState(searchParams.get("sparePartName") || "");
+  const [appNumber, setAppNumber] = useState(searchParams.get("appNumber") || "");
 
   const [filterOpen, setFilterOpen] = useState(false);
 
@@ -79,12 +96,8 @@ export default function MechanicHomePage() {
   useEffect(() => {
     if (departureFrom && departureTo) return;
     const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1)
-      .toISOString()
-      .slice(0, 10);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      .toISOString()
-      .slice(0, 10);
+    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
     setDepartureFrom(start);
     setDepartureTo(end);
   }, []);
@@ -96,7 +109,7 @@ export default function MechanicHomePage() {
     const params: Record<string, string | number> = {
       page,
       pageSize,
-      DepartureFrom: departureFrom, // 👈 правильные параметры
+      DepartureFrom: departureFrom,
       DepartureTo: departureTo,
     };
     if (garageNumber) params.garageNumber = garageNumber;
@@ -112,8 +125,44 @@ export default function MechanicHomePage() {
     (async () => {
       try {
         setLoading(true);
-        const res = await repairBusService.getByDepotId(depotId, params);
-        setRepairsPaged(res.value);
+
+        // основная таблица ремонтов
+        const main = await repairBusService.getByDepotId(depotId, params);
+
+        // сходы и плановые: собираем по дням
+        const exitArr: RouteExitRepairDto[] = [];
+        const plannedArr: (RepairRecord & { date: string })[] = [];
+
+        const start = new Date(departureFrom);
+        const end = new Date(departureTo);
+
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const dateStr = d.toISOString().slice(0, 10);
+
+          const [exitRes, planRes] = await Promise.all([
+            routeExitRepairService.getByDate(dateStr, depotId),
+            repairService.getRepairsByDepotAndDate(dateStr, depotId),
+          ]);
+
+          if (exitRes.isSuccess && exitRes.value) {
+            exitArr.push(...exitRes.value);
+          }
+          if (planRes.isSuccess && planRes.value) {
+            plannedArr.push(...planRes.value.map((p) => ({ ...p, date: dateStr })));
+          }
+        }
+
+        // статистика
+        const stat = await statisticService.getDispatchRepairStats(
+          depotId,
+          departureFrom,
+          departureTo
+        );
+
+        setRepairsPaged(main.value);
+        setExits(exitArr);
+        setPlanned(plannedArr);
+        setStats(stat ?? []);
       } finally {
         setLoading(false);
       }
@@ -132,6 +181,7 @@ export default function MechanicHomePage() {
     router,
   ]);
 
+  // KPI
   const kpi = useMemo(() => {
     const totalAll = repairsPaged?.totalAllSum ?? 0;
     const totalWork = repairsPaged?.totalWorkSum ?? 0;
@@ -144,6 +194,39 @@ export default function MechanicHomePage() {
 
     return { totalAll, totalWork, totalSpare, chartData };
   }, [repairsPaged]);
+
+  // группировка заявок
+  const grouped = useMemo(() => {
+    const map = new Map<number, Repair[]>();
+    for (const r of repairsPaged?.items || []) {
+      const key = r.applicationNumber ?? 0;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[0] - a[0]);
+  }, [repairsPaged]);
+
+  // проверка совпадений с сходами/плановыми
+  function getSource(r: Repair): { label: string; match: boolean } {
+    const depDate = r.departureDate?.slice(0, 10);
+    if (!depDate) return { label: "—", match: false };
+
+    const matchExit = exits.find(
+      (e) => e.bus?.id === r.busId && e.startDate?.slice(0, 10) === depDate
+    );
+    if (matchExit) {
+      return { label: matchExit.route?.number ? `Сход (маршрут ${matchExit.route.number})` : "Сход (резерв)", match: true };
+    }
+
+    const matchPlan = planned.find(
+      (p) => p.bus?.id === r.busId && p.date?.slice(0, 10) === depDate
+    );
+    if (matchPlan) {
+      return { label: "Плановый ремонт", match: true };
+    }
+
+    return { label: "—", match: false };
+  }
 
   return (
     <div className="space-y-6">
@@ -223,7 +306,6 @@ export default function MechanicHomePage() {
                     />
                   </PieChart>
                 </ResponsiveContainer>
-
                 <div className="flex justify-center gap-6 mt-2 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <span className="w-3 h-3 rounded-full bg-emerald-500"></span>{" "}
@@ -240,15 +322,62 @@ export default function MechanicHomePage() {
         </Card>
       </div>
 
-      {/* Таблица */}
+      {/* Карточка событий */}
       <Card>
-        <CardHeader className="flex items-center justify-between">
-          <CardTitle>Ремонты ({repairsPaged?.totalCount || 0})</CardTitle>
+        <CardHeader className="flex justify-between items-center">
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-red-600" /> События (сходы/плановые)
+          </CardTitle>
+          <Button variant="outline" size="sm" onClick={() => setShowStats((s) => !s)}>
+            {showStats ? "Скрыть график" : "Показать график"}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm mb-4">
+            Сходов: {exits.length} · Плановых: {planned.length}
+          </div>
+          {showStats && (
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={stats}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={(date) => format(parseISO(date), "dd.MM")}
+                />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="plannedRepairCount"
+                  stroke="#fbbf24"
+                  strokeWidth={3}
+                  dot={{ r: 5 }}
+                  name="Плановые ремонты"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="unplannedRepairCount"
+                  stroke="#ef4444"
+                  strokeWidth={3}
+                  dot={{ r: 5 }}
+                  name="Сходы с линии"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Таблица заявок */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Заявки ({grouped.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="text-sm text-muted-foreground">Загрузка…</div>
-          ) : repairsPaged?.items?.length === 0 ? (
+          ) : grouped.length === 0 ? (
             <div className="text-sm text-muted-foreground">Нет данных</div>
           ) : (
             <div className="overflow-x-auto">
@@ -257,38 +386,45 @@ export default function MechanicHomePage() {
                   <tr className="text-left text-muted-foreground">
                     <th className="py-2 pr-4">№ заявки</th>
                     <th className="py-2 pr-4">Автобус</th>
-                    <th className="py-2 pr-4">Работа / Запчасть</th>
+                    <th className="py-2 pr-4">Первая запись</th>
                     <th className="py-2 pr-4">Сумма</th>
-                    <th className="py-2">Заезд</th>
+                    <th className="py-2 pr-4">Заезд</th>
+                    <th className="py-2 pr-4">Источник</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {repairsPaged?.items.map((r) => (
-                    <tr key={r.id} className="border-t">
-                      <td className="py-2 pr-4">
-                        <Link
-                          className="text-sky-600 hover:underline"
-                          href={`/dashboard/mechanic/repairs/${r.id}`}
-                        >
-                          {r.applicationNumber || "—"}
-                        </Link>
-                      </td>
-                      <td className="py-2 pr-4">
-                        {r.garageNumber || "—"} / {r.govNumber || "—"}
-                      </td>
-                      <td className="py-2 pr-4">
-                        {r.workName || r.sparePart || "—"}
-                      </td>
-                      <td className="py-2 pr-4">
-                        {(r.allSum ?? 0).toLocaleString("ru-RU")} ₸
-                      </td>
-                      <td className="py-2">
-                        {r.departureDate
-                          ? new Date(r.departureDate).toLocaleDateString("ru-RU")
-                          : "—"}
-                      </td>
-                    </tr>
-                  ))}
+                  {grouped.map(([appNum, group]) => {
+                    const totalSum = group.reduce((s, x) => s + (x.allSum ?? 0), 0);
+                    const first = group[0];
+                    const source = getSource(first);
+
+                    return (
+                      <tr
+                        key={appNum}
+                        className={`border-t ${
+                          source.match ? "bg-green-50" : "bg-red-50"
+                        }`}
+                      >
+                        <td className="py-2 pr-4">
+                          <Link
+                            className="text-sky-600 hover:underline"
+                            href={`/dashboard/mechanic/repairs/bus/${first.busId}?appNum=${appNum}`}
+                          >
+                            {appNum}
+                          </Link>
+                        </td>
+                        <td className="py-2 pr-4">
+                          {first.garageNumber || "—"} / {first.govNumber || "—"}
+                        </td>
+                        <td className="py-2 pr-4">
+                          {first.workName || first.sparePart || "—"}
+                        </td>
+                        <td className="py-2 pr-4">{totalSum.toLocaleString("ru-RU")} ₸</td>
+                        <td className="py-2">{fmtDate(first.departureDate)}</td>
+                        <td className="py-2">{source.label}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -298,9 +434,7 @@ export default function MechanicHomePage() {
           <Pagination className="mt-4">
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                />
+                <PaginationPrevious onClick={() => setPage((p) => Math.max(1, p - 1))} />
               </PaginationItem>
               {Array.from(
                 { length: Math.ceil((repairsPaged?.totalCount || 0) / pageSize) },
@@ -378,10 +512,7 @@ export default function MechanicHomePage() {
             </div>
             <div>
               <Label>Работа</Label>
-              <Input
-                value={workName}
-                onChange={(e) => setWorkName(e.target.value)}
-              />
+              <Input value={workName} onChange={(e) => setWorkName(e.target.value)} />
             </div>
             <div>
               <Label>Запчасть</Label>
@@ -400,11 +531,7 @@ export default function MechanicHomePage() {
                   const start = new Date(now.getFullYear(), now.getMonth(), 1)
                     .toISOString()
                     .slice(0, 10);
-                  const end = new Date(
-                    now.getFullYear(),
-                    now.getMonth() + 1,
-                    0
-                  )
+                  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
                     .toISOString()
                     .slice(0, 10);
 

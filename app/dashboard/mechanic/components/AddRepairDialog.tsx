@@ -12,6 +12,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs";
 
 import { repairBusService } from "@/service/repairBusService";
 import { sparePartsService } from "@/service/sparePartsService";
@@ -27,32 +33,25 @@ function parseDec(value?: string): number {
   const n = Number(normalized);
   return Number.isFinite(n) ? n : 0;
 }
-
 function roundSparePrice(price: number): number {
   const intPart = Math.floor(price);
   const frac = price - intPart;
   return frac >= 0.5 ? Math.ceil(price) : Math.floor(price);
 }
 
-// --- Тип строки ---
-type RowDraft = {
-  busId?: string;
-  applicationNumber?: number;
-  departureDate?: string;
-  entryDate?: string;
-
-  sparePartId?: string | null;
+// --- Типы ---
+type WorkDraft = {
   laborTimeId?: string | null;
-
-  workName?: string;
-  sparePart?: string;
-
   workCode?: string;
-  sparePartArticle?: string;
-
+  workName?: string;
   workCount?: string;
   workHour?: string;
   workPrice?: string;
+};
+type SpareDraft = {
+  sparePartId?: string | null;
+  sparePartArticle?: string;
+  sparePart?: string;
   sparePartCount?: string;
   sparePartPrice?: string;
 };
@@ -72,52 +71,80 @@ export default function AddRepairDialog({
   const [entryDateStr, setEntryDateStr] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const [works, setWorks] = useState<RowDraft[]>([{}]);
+  const [works, setWorks] = useState<WorkDraft[]>([{}]);
+  const [spares, setSpares] = useState<SpareDraft[]>([{}]);
 
-  function updateWork(index: number, field: keyof RowDraft, value: string) {
+  function updateWork(index: number, field: keyof WorkDraft, value: string) {
     setWorks((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
   }
-
-  function addRow() {
-    setWorks((prev) => [...prev, {}]);
+  function updateSpare(index: number, field: keyof SpareDraft, value: string) {
+    setSpares((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
   }
 
-  function removeRow(index: number) {
+  function addWorkRow() {
+    setWorks((prev) => [...prev, {}]);
+  }
+  function addSpareRow() {
+    setSpares((prev) => [...prev, {}]);
+  }
+
+  function removeWorkRow(index: number) {
     setWorks((prev) =>
+      prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)
+    );
+  }
+  function removeSpareRow(index: number) {
+    setSpares((prev) =>
       prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)
     );
   }
 
   async function submit() {
-    if (!busId || works.length === 0) return;
+    if (!busId || (works.length === 0 && spares.length === 0)) return;
     setSaving(true);
     try {
-      const payload: CreateRepairRequest[] = works.map((w) => ({
-        busId,
-        applicationNumber:
-          applicationNumber === "" ? 0 : Number(applicationNumber),
-        departureDate:
-          departureDateStr || new Date().toISOString().slice(0, 10),
-        entryDate: entryDateStr || new Date().toISOString().slice(0, 10),
-
-        sparePartId: w.sparePartId || null,
-        sparePartCount: parseDec(w.sparePartCount),
-
-        laborTimeId: w.laborTimeId || null,
-        workCount: parseDec(w.workCount),
-        workHour: parseDec(w.workHour),
-      }));
-
-      if (payload.length === 0) return;
+      const payload: CreateRepairRequest[] = [
+        ...works.map((w) => ({
+          busId,
+          applicationNumber:
+            applicationNumber === "" ? 0 : Number(applicationNumber),
+          departureDate:
+            departureDateStr || new Date().toISOString().slice(0, 10),
+          entryDate: entryDateStr || new Date().toISOString().slice(0, 10),
+          laborTimeId: w.laborTimeId || null,
+          workCount: parseDec(w.workCount),
+          workHour: parseDec(w.workHour),
+          sparePartId: null,
+          sparePartCount: 0,
+        })),
+        ...spares.map((s) => ({
+          busId,
+          applicationNumber:
+            applicationNumber === "" ? 0 : Number(applicationNumber),
+          departureDate:
+            departureDateStr || new Date().toISOString().slice(0, 10),
+          entryDate: entryDateStr || new Date().toISOString().slice(0, 10),
+          sparePartId: s.sparePartId || null,
+          sparePartCount: parseDec(s.sparePartCount),
+          laborTimeId: null,
+          workCount: 0,
+          workHour: 0,
+        })),
+      ];
 
       const res = await repairBusService.createBatch(payload);
       onCreated(res.value ?? []);
       setOpen(false);
       setWorks([{}]);
+      setSpares([{}]);
       setApplicationNumber("");
       setDepartureDateStr("");
       setEntryDateStr("");
@@ -126,15 +153,20 @@ export default function AddRepairDialog({
     }
   }
 
-  const totals = works.reduce(
-    (acc, w) => {
-      acc.work +=
-        parseDec(w.workCount) * parseDec(w.workHour) * parseDec(w.workPrice);
-      acc.parts += parseDec(w.sparePartCount) * parseDec(w.sparePartPrice);
-      return acc;
-    },
-    { work: 0, parts: 0 }
-  );
+  const totals = {
+    work: works.reduce(
+      (sum, w) =>
+        sum +
+        parseDec(w.workCount) *
+          parseDec(w.workHour) *
+          parseDec(w.workPrice),
+      0
+    ),
+    parts: spares.reduce(
+      (sum, s) => sum + parseDec(s.sparePartCount) * parseDec(s.sparePartPrice),
+      0
+    ),
+  };
   const totalSum = totals.work + totals.parts;
 
   return (
@@ -179,23 +211,26 @@ export default function AddRepairDialog({
           </div>
         </div>
 
-        {/* Строки */}
-        <div className="mt-6">
-          <div className="max-h-[450px] overflow-y-auto pr-2 space-y-8">
+        {/* Табы */}
+        <Tabs defaultValue="works" className="mt-6">
+          <TabsList>
+            <TabsTrigger value="works">🔧 Работы</TabsTrigger>
+            <TabsTrigger value="spares">🛠️ Запчасти</TabsTrigger>
+          </TabsList>
+
+          {/* Вкладка Работы */}
+          <TabsContent value="works" className="mt-4 space-y-6">
             {works.map((w, idx) => {
               const workSum =
                 parseDec(w.workCount) *
                   parseDec(w.workHour) *
                   parseDec(w.workPrice) || 0;
-              const partSum =
-                parseDec(w.sparePartCount) * parseDec(w.sparePartPrice) || 0;
 
               return (
                 <div
                   key={idx}
                   className="border rounded-md p-4 space-y-4 bg-white"
                 >
-                  {/* Работа */}
                   <SearchInput<LaborTime>
                     label="Код операции"
                     placeholder="Введите код операции"
@@ -210,9 +245,7 @@ export default function AddRepairDialog({
                         <div className="font-medium">
                           {l.operationCode} — {l.operationName}
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {l.busModel}
-                        </div>
+                        <div className="text-xs text-gray-500">{l.busModel}</div>
                       </div>
                     )}
                     onSelect={(l) => {
@@ -224,13 +257,12 @@ export default function AddRepairDialog({
                       updateWork(idx, "workPrice", "9000");
                     }}
                   />
+                  {/* Наименование работы */}
                   <div>
                     <Label>Наименование работы</Label>
                     <Input
                       value={w.workName || ""}
-                      onChange={(e) =>
-                        updateWork(idx, "workName", e.target.value)
-                      }
+                      onChange={(e) => updateWork(idx, "workName", e.target.value)}
                       placeholder="Введите или выберите работу"
                     />
                   </div>
@@ -239,45 +271,59 @@ export default function AddRepairDialog({
                       <Label>Кол-во (ед.)</Label>
                       <Input
                         value={w.workCount || ""}
-                        onChange={(e) =>
-                          updateWork(idx, "workCount", e.target.value)
-                        }
+                        onChange={(e) => updateWork(idx, "workCount", e.target.value)}
                       />
                     </div>
                     <div>
                       <Label>Часы</Label>
                       <Input
                         value={w.workHour || ""}
-                        onChange={(e) =>
-                          updateWork(idx, "workHour", e.target.value)
-                        }
+                        onChange={(e) => updateWork(idx, "workHour", e.target.value)}
                       />
                     </div>
                     <div>
                       <Label>Цена работы (₸)</Label>
                       <Input
                         value={w.workPrice || ""}
-                        onChange={(e) =>
-                          updateWork(idx, "workPrice", e.target.value)
-                        }
+                        onChange={(e) => updateWork(idx, "workPrice", e.target.value)}
                       />
                     </div>
                     <div>
                       <Label>Сумма работы (₸)</Label>
-                      <Input
-                        value={String(workSum)}
-                        readOnly
-                        className="bg-gray-50"
-                      />
+                      <Input value={String(workSum)} readOnly className="bg-gray-50" />
                     </div>
                   </div>
+                  <Button
+                    variant="ghost"
+                    className="text-red-600"
+                    onClick={() => removeWorkRow(idx)}
+                  >
+                    Удалить работу
+                  </Button>
+                </div>
+              );
+            })}
+            <Button variant="outline" onClick={addWorkRow}>
+              + Добавить работу
+            </Button>
+          </TabsContent>
 
-                  {/* Запчасть */}
+          {/* Вкладка Запчасти */}
+          <TabsContent value="spares" className="mt-4 space-y-6">
+            {spares.map((s, idx) => {
+              const partSum =
+                parseDec(s.sparePartCount) * parseDec(s.sparePartPrice) || 0;
+
+              return (
+                <div
+                  key={idx}
+                  className="border rounded-md p-4 space-y-4 bg-white"
+                >
                   <SearchInput<SparePart>
                     label="Артикул"
                     placeholder="Введите артикул"
-                    value={w.sparePartArticle || ""}
-                    onChange={(val) => updateWork(idx, "sparePartArticle", val)}
+                    value={s.sparePartArticle || ""}
+                    onChange={(val) => updateSpare(idx, "sparePartArticle", val)}
                     fetchOptions={async (q) => {
                       const res = await sparePartsService.searchByArticle(q);
                       return res.isSuccess && res.value ? res.value : [];
@@ -293,79 +339,57 @@ export default function AddRepairDialog({
                       </div>
                     )}
                     onSelect={(p) => {
-                      updateWork(idx, "sparePartId", p.id);
-                      updateWork(idx, "sparePartArticle", p.article);
-                      updateWork(idx, "sparePart", p.name);
-                      updateWork(
-                        idx,
-                        "sparePartPrice",
-                        String(roundSparePrice(p.unitPrice))
-                      );
-                      updateWork(idx, "sparePartCount", "1");
+                      updateSpare(idx, "sparePartId", p.id);
+                      updateSpare(idx, "sparePartArticle", p.article);
+                      updateSpare(idx, "sparePart", p.name);
+                      updateSpare(idx, "sparePartPrice", String(roundSparePrice(p.unitPrice)));
+                      updateSpare(idx, "sparePartCount", "1");
                     }}
                   />
+                  {/* Наименование запчасти */}
                   <div>
                     <Label>Наименование запчасти</Label>
                     <Input
-                      value={w.sparePart || ""}
-                      onChange={(e) =>
-                        updateWork(idx, "sparePart", e.target.value)
-                      }
+                      value={s.sparePart || ""}
+                      onChange={(e) => updateSpare(idx, "sparePart", e.target.value)}
+                      placeholder="Введите или выберите запчасть"
                     />
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     <div>
                       <Label>Кол-во (шт.)</Label>
                       <Input
-                        value={w.sparePartCount || ""}
-                        onChange={(e) =>
-                          updateWork(idx, "sparePartCount", e.target.value)
-                        }
+                        value={s.sparePartCount || ""}
+                        onChange={(e) => updateSpare(idx, "sparePartCount", e.target.value)}
                       />
                     </div>
                     <div>
                       <Label>Цена за ед. (₸)</Label>
                       <Input
-                        value={w.sparePartPrice || ""}
-                        onChange={(e) =>
-                          updateWork(idx, "sparePartPrice", e.target.value)
-                        }
+                        value={s.sparePartPrice || ""}
+                        onChange={(e) => updateSpare(idx, "sparePartPrice", e.target.value)}
                       />
                     </div>
                     <div>
                       <Label>Итого (₸)</Label>
-                      <Input
-                        value={String(partSum)}
-                        readOnly
-                        className="bg-gray-50"
-                      />
+                      <Input value={String(partSum)} readOnly className="bg-gray-50" />
                     </div>
                   </div>
-
-                  {/* Итог по строке */}
-                  <div className="text-right font-medium text-sm text-slate-600">
-                    Всего по строке:{" "}
-                    {(workSum + partSum).toLocaleString("ru-RU")} ₸
-                  </div>
-
                   <Button
                     variant="ghost"
                     className="text-red-600"
-                    onClick={() => removeRow(idx)}
+                    onClick={() => removeSpareRow(idx)}
                   >
-                    Удалить строку
+                    Удалить запчасть
                   </Button>
                 </div>
               );
             })}
-          </div>
-
-          <div className="mt-4">
-            <Button variant="outline" onClick={addRow}>
-              + Добавить строку
+            <Button variant="outline" onClick={addSpareRow}>
+              + Добавить запчасть
             </Button>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
 
         {/* Общий итог */}
         <div className="mt-6 bg-slate-50 border rounded-md p-4">

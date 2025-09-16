@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -48,6 +48,9 @@ function safeSum(n?: number | null, fallback = 0) {
 export default function BusHistoryPage() {
   const { busId } = useParams<{ busId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const appNumParam = searchParams.get("appNum") || "";
 
   const [repairsPaged, setRepairsPaged] = useState<PagedResult<Repair>>({
     page: 1,
@@ -60,49 +63,58 @@ export default function BusHistoryPage() {
   });
   const [loading, setLoading] = useState(false);
   const [editItem, setEditItem] = useState<Repair | null>(null);
-  
 
   const [bus, setBus] = useState<Bus | null>(null);
-  const [appSearch, setAppSearch] = useState("");
+  const [appSearch, setAppSearch] = useState(appNumParam);
 
   const [page, setPage] = useState(1);
   const [pageSize] = useState(25);
 
   // === reload ===
-const reload = useCallback(async () => {
-  if (!busId) return;
-  setLoading(true);
-  try {
-    const params: Record<string, string | number> = { page, pageSize };
-    if (appSearch.trim()) {
-      params.appNum = appSearch.trim();   // 👈 новый параметр
+  const reload = useCallback(async () => {
+    if (!busId) return;
+    setLoading(true);
+    try {
+      const params: Record<string, string | number> = { page, pageSize };
+      if (appSearch.trim()) {
+        params.appNum = appSearch.trim();
+      }
+
+      const [rep, busRes] = await Promise.all([
+        repairBusService.getByBusId(busId, params),
+        busService.getById(busId),
+      ]);
+
+      const value = (rep?.value as PagedResult<Repair>) ?? {
+        page: 1,
+        pageSize,
+        totalCount: 0,
+        items: [],
+        totalAllSum: 0,
+        totalWorkSum: 0,
+        totalSpareSum: 0,
+      };
+
+      setRepairsPaged(value);
+      setBus(busRes.value ?? null);
+    } finally {
+      setLoading(false);
     }
-
-    const [rep, busRes] = await Promise.all([
-      repairBusService.getByBusId(busId, params),
-      busService.getById(busId),
-    ]);
-
-    const value = (rep?.value as PagedResult<Repair>) ?? {
-      page: 1,
-      pageSize,
-      totalCount: 0,
-      items: [],
-      totalAllSum: 0,
-      totalWorkSum: 0,
-      totalSpareSum: 0,
-    };
-
-    setRepairsPaged(value);
-    setBus(busRes.value ?? null);
-  } finally {
-    setLoading(false);
-  }
-}, [busId, page, pageSize, appSearch]);
+  }, [busId, page, pageSize, appSearch]);
 
   useEffect(() => {
     reload();
   }, [reload]);
+
+  // обновляем query при изменении поиска
+  useEffect(() => {
+    if (appSearch) {
+      const qs = new URLSearchParams({ appNum: appSearch }).toString();
+      router.replace(`?${qs}`);
+    } else {
+      router.replace(``);
+    }
+  }, [appSearch, router]);
 
   const header = useMemo(() => {
     const r = repairsPaged.items[0];
@@ -281,9 +293,7 @@ const reload = useCallback(async () => {
       {/* Заказ-наряды */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            Заказ-наряды ({repairsPaged.totalCount || 0})
-          </CardTitle>
+          <CardTitle>Заказ-наряды ({repairsPaged.totalCount || 0})</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -342,16 +352,29 @@ const reload = useCallback(async () => {
                         <tbody>
                           {parts.length === 0 ? (
                             <tr>
-                              <td colSpan={6} className="p-2 text-center text-muted-foreground border">—</td>
+                              <td
+                                colSpan={6}
+                                className="p-2 text-center text-muted-foreground border"
+                              >
+                                —
+                              </td>
                             </tr>
                           ) : (
                             parts.map((p) => (
                               <tr key={p.id}>
-                                <td className="p-2 border">{p.sparePartArticle || "—"}</td>
+                                <td className="p-2 border">
+                                  {p.sparePartArticle || "—"}
+                                </td>
                                 <td className="p-2 border">{p.sparePart}</td>
-                                <td className="p-2 border text-right">{p.sparePartCount}</td>
-                                <td className="p-2 border text-right">{p.sparePartPrice}</td>
-                                <td className="p-2 border text-right">{p.sparePartSum}</td>
+                                <td className="p-2 border text-right">
+                                  {p.sparePartCount}
+                                </td>
+                                <td className="p-2 border text-right">
+                                  {p.sparePartPrice}
+                                </td>
+                                <td className="p-2 border text-right">
+                                  {p.sparePartSum}
+                                </td>
                                 <td className="p-2 border text-right">
                                   <div className="flex gap-2 justify-end">
                                     <Button
@@ -377,8 +400,12 @@ const reload = useCallback(async () => {
                         {parts.length > 0 && (
                           <tfoot>
                             <tr className="bg-slate-50 font-semibold">
-                              <td colSpan={5} className="p-2 border text-right">Итого</td>
-                              <td className="p-2 border text-right">{partsSum.toLocaleString("ru-RU")}</td>
+                              <td colSpan={5} className="p-2 border text-right">
+                                Итого
+                              </td>
+                              <td className="p-2 border text-right">
+                                {partsSum.toLocaleString("ru-RU")}
+                              </td>
                             </tr>
                           </tfoot>
                         )}
@@ -402,17 +429,30 @@ const reload = useCallback(async () => {
                         <tbody>
                           {works.length === 0 ? (
                             <tr>
-                              <td colSpan={7} className="p-2 text-center text-muted-foreground border">—</td>
+                              <td
+                                colSpan={7}
+                                className="p-2 text-center text-muted-foreground border"
+                              >
+                                —
+                              </td>
                             </tr>
                           ) : (
                             works.map((w) => (
                               <tr key={w.id}>
                                 <td className="p-2 border">{w.workCode}</td>
                                 <td className="p-2 border">{w.workName}</td>
-                                <td className="p-2 border text-right">{w.workCount}</td>
-                                <td className="p-2 border text-right">{w.workHour}</td>
-                                <td className="p-2 border text-right">{w.workPrice}</td>
-                                <td className="p-2 border text-right">{w.workSum}</td>
+                                <td className="p-2 border text-right">
+                                  {w.workCount}
+                                </td>
+                                <td className="p-2 border text-right">
+                                  {w.workHour}
+                                </td>
+                                <td className="p-2 border text-right">
+                                  {w.workPrice}
+                                </td>
+                                <td className="p-2 border text-right">
+                                  {w.workSum}
+                                </td>
                                 <td className="p-2 border text-right">
                                   <div className="flex gap-2 justify-end">
                                     <Button
@@ -438,8 +478,12 @@ const reload = useCallback(async () => {
                         {works.length > 0 && (
                           <tfoot>
                             <tr className="bg-slate-50 font-semibold">
-                              <td colSpan={6} className="p-2 border text-right">Итого</td>
-                              <td className="p-2 border text-right">{worksSum.toLocaleString("ru-RU")}</td>
+                              <td colSpan={6} className="p-2 border text-right">
+                                Итого
+                              </td>
+                              <td className="p-2 border text-right">
+                                {worksSum.toLocaleString("ru-RU")}
+                              </td>
                             </tr>
                           </tfoot>
                         )}
