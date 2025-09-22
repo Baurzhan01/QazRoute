@@ -104,7 +104,7 @@ export default function MechanicHomePage() {
       setPage(f.page || 1);
       return;
     }
-    // автоподстановка текущего месяца, если фильтров нет
+    // автоподстановка текущего месяца
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1)
       .toISOString()
@@ -155,30 +155,39 @@ export default function MechanicHomePage() {
       try {
         setLoading(true);
 
+        // основная таблица ремонтов
         const main = await repairBusService.getByDepotId(depotId, params);
 
-        // сходы и плановые
-        const exitArr: RouteExitRepairDto[] = [];
-        const plannedArr: (RepairRecord & { date: string })[] = [];
+        // сходы через filter
+        const exitRes = await routeExitRepairService.filter({
+          startDate: departureFrom,
+          endDate: departureTo,
+          depotId,
+          repairTypes: "all",
+        });
 
-        const start = new Date(departureFrom + "T00:00:00");
-        const end = new Date(departureTo + "T23:59:59");
+        // плановые ремонты через новый filter
+        const planRes = await repairService.filter({
+          StartDate: departureFrom,
+          EndDate: departureTo,
+          Page: 1,
+          PageSize: 1000,
+          BusGovNumber: govNumber || undefined,
+          BusGarageNumber: garageNumber || undefined,
+        });
 
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          const dateStr = d.toISOString().slice(0, 10);
-
-          const [exitRes, planRes] = await Promise.all([
-            routeExitRepairService.getByDate(dateStr, depotId),
-            repairService.getRepairsByDepotAndDate(dateStr, depotId),
-          ]);
-
-          if (exitRes.isSuccess && exitRes.value) {
-            exitArr.push(...exitRes.value);
-          }
-          if (planRes.isSuccess && planRes.value) {
-            plannedArr.push(...planRes.value.map((p) => ({ ...p, date: dateStr })));
-          }
+        if (exitRes.isSuccess && exitRes.value) {
+          setExits(exitRes.value.filter((e) => e.repairType === "Unscheduled"));
         }
+
+        if (planRes.isSuccess && planRes.value) {
+          setPlanned(
+            planRes.value.map((p) => ({
+              ...p,
+              date: (p.departureDate || p.date || "").slice(0, 10),
+            }))
+          );
+        }        
 
         const stat = await statisticService.getDispatchRepairStats(
           depotId,
@@ -187,8 +196,6 @@ export default function MechanicHomePage() {
         );
 
         setRepairsPaged(main.value);
-        setExits(exitArr);
-        setPlanned(plannedArr);
         setStats(stat ?? []);
       } finally {
         setLoading(false);
@@ -210,18 +217,7 @@ export default function MechanicHomePage() {
     return { totalAll, totalWork, totalSpare, chartData };
   }, [repairsPaged]);
 
-  // фильтрация статистики по диапазону
-  const filteredStats = useMemo(() => {
-    if (!stats) return [];
-    const start = new Date(departureFrom + "T00:00:00");
-    const end = new Date(departureTo + "T23:59:59");
-    return stats.filter((s) => {
-      const d = new Date(s.date);
-      return d >= start && d <= end;
-    });
-  }, [stats, departureFrom, departureTo]);
-
-  // группировка заявок по applicationNumber и фильтрация по дате
+  // группировка заявок
   const grouped = useMemo(() => {
     const start = new Date(departureFrom + "T00:00:00");
     const end = new Date(departureTo + "T23:59:59");
@@ -284,7 +280,6 @@ export default function MechanicHomePage() {
 
       {/* KPI */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Общая сумма */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -305,7 +300,6 @@ export default function MechanicHomePage() {
           </CardContent>
         </Card>
 
-        {/* Работы */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -318,7 +312,6 @@ export default function MechanicHomePage() {
           </CardContent>
         </Card>
 
-        {/* Запчасти */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -341,8 +334,8 @@ export default function MechanicHomePage() {
                       outerRadius={70}
                       labelLine={false}
                     >
-                      <Cell fill="#10b981" /> {/* Работы */}
-                      <Cell fill="#6366f1" /> {/* Запчасти */}
+                      <Cell fill="#10b981" />
+                      <Cell fill="#6366f1" />
                     </Pie>
                     <Tooltip
                       formatter={(val: number, name: string) =>
@@ -351,7 +344,6 @@ export default function MechanicHomePage() {
                     />
                   </PieChart>
                 </ResponsiveContainer>
-                {/* подписи под графиком */}
                 <div className="flex justify-center gap-6 mt-2 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
@@ -367,7 +359,8 @@ export default function MechanicHomePage() {
           </CardContent>
         </Card>
       </div>
-      {/* Карточка событий */}
+
+      {/* События */}
       <Card>
         <CardHeader className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
@@ -383,12 +376,9 @@ export default function MechanicHomePage() {
           </div>
           {showStats && (
             <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={filteredStats}>
+              <LineChart data={stats}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(date) => format(parseISO(date), "dd.MM")}
-                />
+                <XAxis dataKey="date" tickFormatter={(date) => format(parseISO(date), "dd.MM")} />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
                 <Legend />
@@ -475,7 +465,6 @@ export default function MechanicHomePage() {
             </div>
           )}
 
-          {/* пагинация */}
           <Pagination className="mt-4">
             <PaginationContent>
               <PaginationItem>
@@ -535,38 +524,23 @@ export default function MechanicHomePage() {
             </div>
             <div>
               <Label>№ заявки</Label>
-              <Input
-                value={appNumber}
-                onChange={(e) => setAppNumber(e.target.value)}
-              />
+              <Input value={appNumber} onChange={(e) => setAppNumber(e.target.value)} />
             </div>
             <div>
               <Label>Гаражный номер</Label>
-              <Input
-                value={garageNumber}
-                onChange={(e) => setGarageNumber(e.target.value)}
-              />
+              <Input value={garageNumber} onChange={(e) => setGarageNumber(e.target.value)} />
             </div>
             <div>
               <Label>Госномер</Label>
-              <Input
-                value={govNumber}
-                onChange={(e) => setGovNumber(e.target.value)}
-              />
+              <Input value={govNumber} onChange={(e) => setGovNumber(e.target.value)} />
             </div>
             <div>
               <Label>Работа</Label>
-              <Input
-                value={workName}
-                onChange={(e) => setWorkName(e.target.value)}
-              />
+              <Input value={workName} onChange={(e) => setWorkName(e.target.value)} />
             </div>
             <div>
               <Label>Запчасть</Label>
-              <Input
-                value={sparePartName}
-                onChange={(e) => setSparePartName(e.target.value)}
-              />
+              <Input value={sparePartName} onChange={(e) => setSparePartName(e.target.value)} />
             </div>
 
             <div className="flex justify-between pt-4">

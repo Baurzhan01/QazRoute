@@ -27,6 +27,28 @@ export const repairService = {
     return res.data;
   },
 
+  filter: async (params: {
+    StartDate: string;
+    EndDate: string;
+    BusId?: string;
+    BusGovNumber?: string;
+    BusGarageNumber?: string;
+    Page?: number;
+    PageSize?: number;
+  }): Promise<ApiResponse<RepairDto[]>> => {
+    try {
+      const res = await apiClient.get("/repair/filter", { params });
+      return res.data;
+    } catch (error: any) {
+      return {
+        isSuccess: false,
+        error: error?.response?.data?.message || "Ошибка при получении ремонтов",
+        value: null,
+        statusCode: 500,
+      };
+    }
+  },
+
   assignRepairs: async (
     date: string,
     convoyId: string,

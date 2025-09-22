@@ -26,7 +26,7 @@ export interface BusRepairStatsResponse {
 }
 
   
-export type RouteExitRepairStatus = "Unscheduled" | "Other" | "LongTerm"
+export type RouteExitRepairStatus = "Unscheduled" | "Other" | "LongTerm" | "LaunchedFromGarage"
 
 export interface RouteExitRepairDto {
   id: string

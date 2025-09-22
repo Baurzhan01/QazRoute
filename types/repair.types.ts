@@ -6,6 +6,8 @@ export interface RepairDto {
   convoyId: string;
   convoyNumber: number;
   number: number;
+  date?: string;            // дата заявки (универсально)
+  departureDate?: string; 
   description: string;
   bus: {
     id: string;
