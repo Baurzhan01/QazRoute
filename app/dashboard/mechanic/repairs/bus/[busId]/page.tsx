@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -63,6 +64,11 @@ export default function BusHistoryPage() {
   });
   const [loading, setLoading] = useState(false);
   const [editItem, setEditItem] = useState<Repair | null>(null);
+  const [editingGroup, setEditingGroup] = useState<{ appNum: number; repairs: Repair[] } | null>(null);
+  const [editAppNum, setEditAppNum] = useState<string>("");
+  const [editDeparture, setEditDeparture] = useState<string>("");
+  const [editEntry, setEditEntry] = useState<string>("");
+  const [savingGroup, setSavingGroup] = useState(false);
 
   const [bus, setBus] = useState<Bus | null>(null);
   const [appSearch, setAppSearch] = useState(appNumParam);
@@ -161,6 +167,48 @@ export default function BusHistoryPage() {
     await repairBusService.remove(id);
     await reload();
   };
+
+  async function saveGroupChanges() {
+    if (!editingGroup) return;
+    setSavingGroup(true);
+    try {
+      const newNumber = Number(editAppNum) || 0;
+      const newDep = editDeparture || new Date().toISOString().slice(0, 10);
+      const newEntry = editEntry || newDep;
+      await Promise.all(
+        editingGroup.repairs.map((r) =>
+          repairBusService.update(r.id, {
+            busId: r.busId,
+            applicationNumber: newNumber,
+            departureDate: newDep,
+            entryDate: newEntry,
+            laborTimeId: r.laborTimeId ?? null,
+            workCount: r.workCount,
+            workHour: r.workHour,
+            sparePartId: r.sparePartId ?? null,
+            sparePartCount: r.sparePartCount,
+          })
+        )
+      );
+      setEditingGroup(null);
+      await reload();
+    } finally {
+      setSavingGroup(false);
+    }
+  }
+
+  async function deleteWholeGroup() {
+    if (!editingGroup) return;
+    if (!confirm("Удалить весь заказ-наряд целиком?")) return;
+    setSavingGroup(true);
+    try {
+      await Promise.all(editingGroup.repairs.map((r) => repairBusService.remove(r.id)));
+      setEditingGroup(null);
+      await reload();
+    } finally {
+      setSavingGroup(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -331,8 +379,34 @@ export default function BusHistoryPage() {
                           {fmtDate(group[0]?.entryDate)}
                         </div>
                       </div>
-                      <div className="font-semibold">
-                        {totalSum.toLocaleString("ru-RU")} ₸
+                      <div className="flex items-center gap-3">
+                        <div className="font-semibold mr-2">
+                          {totalSum.toLocaleString("ru-RU")} ₸
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingGroup({ appNum, repairs: group });
+                            setEditAppNum(String(appNum));
+                            setEditDeparture((group[0]?.departureDate || "").slice(0, 10));
+                            setEditEntry((group[0]?.entryDate || "").slice(0, 10));
+                          }}
+                        >
+                          Изменить
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600"
+                          onClick={async () => {
+                            if (!confirm("Удалить весь заказ-наряд?")) return;
+                            await Promise.all(group.map((r) => repairBusService.remove(r.id)));
+                            await reload();
+                          }}
+                        >
+                          Удалить
+                        </Button>
                       </div>
                     </div>
 
@@ -532,6 +606,40 @@ export default function BusHistoryPage() {
           </Pagination>
         </CardContent>
       </Card>
+
+      {/* Диалог редактирования шапки заказ-наряда */}
+      <Dialog open={!!editingGroup} onOpenChange={() => setEditingGroup(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Изменить заказ-наряд</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <span className="text-sm text-muted-foreground">№ заявки</span>
+              <Input value={editAppNum} onChange={(e) => setEditAppNum(e.target.value)} />
+            </div>
+            <div>
+              <span className="text-sm text-muted-foreground">Дата выезда</span>
+              <Input type="date" value={editDeparture} onChange={(e) => setEditDeparture(e.target.value)} />
+            </div>
+            <div>
+              <span className="text-sm text-muted-foreground">Дата въезда</span>
+              <Input type="date" value={editEntry} onChange={(e) => setEditEntry(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingGroup(null)}>
+              Отмена
+            </Button>
+            <Button onClick={saveGroupChanges} disabled={savingGroup}>
+              {savingGroup ? "Сохранение…" : "Сохранить"}
+            </Button>
+            <Button variant="outline" className="text-red-600" onClick={deleteWholeGroup} disabled={savingGroup}>
+              Удалить заказ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {editItem && (
         <EditRepairDialog

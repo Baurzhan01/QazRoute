@@ -53,23 +53,37 @@ function fmtDate(s?: string) {
 
 const FILTER_KEY = "mechanic_filters";
 
+type Filters = {
+  page: number;
+  pageSize: number;
+  departureFrom: string;
+  departureTo: string;
+  garageNumber: string;
+  govNumber: string;
+  workName: string;
+  sparePartName: string;
+  appNumber: string;
+};
+
 export default function MechanicHomePage() {
   const router = useRouter();
 
-  // --- состояния ---
   const [repairsPaged, setRepairsPaged] = useState<PagedResult<Repair> | null>(null);
   const [loading, setLoading] = useState(false);
   const [depotId, setDepotId] = useState<string | null>(null);
+
+  // Полный набор записей и KPI по всем записям
+  const [allRepairs, setAllRepairs] = useState<Repair[]>([]);
+  const [kpiTotals, setKpiTotals] = useState({ totalAll: 0, totalWork: 0, totalSpare: 0 });
 
   const [exits, setExits] = useState<RouteExitRepairDto[]>([]);
   const [planned, setPlanned] = useState<(RepairRecord & { date: string })[]>([]);
   const [stats, setStats] = useState<any[]>([]);
   const [showStats, setShowStats] = useState(false);
 
-  // --- фильтры ---
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<Filters>({
     page: 1,
-    pageSize: 25,
+    pageSize: 10,
     departureFrom: "",
     departureTo: "",
     garageNumber: "",
@@ -78,10 +92,10 @@ export default function MechanicHomePage() {
     sparePartName: "",
     appNumber: "",
   });
-  const [draftFilters, setDraftFilters] = useState(filters);
+  const [draftFilters, setDraftFilters] = useState<Filters>(filters);
   const [filterOpen, setFilterOpen] = useState(false);
 
-  // --- depotId ---
+  // depotId
   useEffect(() => {
     const auth = localStorage.getItem("authData");
     if (auth) {
@@ -90,58 +104,125 @@ export default function MechanicHomePage() {
     }
   }, []);
 
-  // --- загрузка сохранённых фильтров ---
+  // загрузка фильтров / инициализация месяца
   useEffect(() => {
     const saved = localStorage.getItem(FILTER_KEY);
     if (saved) {
-      const parsed = JSON.parse(saved);
-      setFilters(parsed);
-      setDraftFilters(parsed);
+      const parsed: Filters = JSON.parse(saved);
+      // Жёстко фиксируем размер страницы = 10, даже если сохранён другой
+      const fixed = { ...parsed, pageSize: 10 } as Filters;
+      setFilters(fixed);
+      setDraftFilters(fixed);
       return;
     }
-    // автоподстановка текущего месяца
     const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1)
-      .toISOString()
-      .slice(0, 10);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      .toISOString()
-      .slice(0, 10);
-    const initial = { ...filters, departureFrom: start, departureTo: end };
+    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+    const initial: Filters = {
+      page: 1,
+      pageSize: 10,
+      departureFrom: start,
+      departureTo: end,
+      garageNumber: "",
+      govNumber: "",
+      workName: "",
+      sparePartName: "",
+      appNumber: "",
+    };
     setFilters(initial);
     setDraftFilters(initial);
   }, []);
 
-  // --- сохраняем фильтры в localStorage ---
+  // сохраняем активные фильтры
   useEffect(() => {
     localStorage.setItem(FILTER_KEY, JSON.stringify(filters));
   }, [filters]);
 
-  // --- загрузка данных ---
+  // загрузка данных
   const reload = useCallback(async () => {
     if (!depotId || !filters.departureFrom || !filters.departureTo) return;
 
     setLoading(true);
-
-    const params: Record<string, string | number> = {
+    // Сохраняем параметры в URL (текущая страница в UI и pageSize групп)
+    const urlParams: Record<string, string | number> = {
       page: filters.page,
       pageSize: filters.pageSize,
       DepartureFrom: filters.departureFrom,
       DepartureTo: filters.departureTo,
     };
-    if (filters.garageNumber) params.garageNumber = filters.garageNumber;
-    if (filters.govNumber) params.govNumber = filters.govNumber;
-    if (filters.workName) params.workName = filters.workName;
-    if (filters.sparePartName) params.sparePartName = filters.sparePartName;
-    if (filters.appNumber) params.appNumber = filters.appNumber;
-
-    // обновляем URL
-    const qs = new URLSearchParams(params as any).toString();
+    if (filters.garageNumber) urlParams.garageNumber = filters.garageNumber;
+    if (filters.govNumber) urlParams.govNumber = filters.govNumber;
+    if (filters.workName) urlParams.workName = filters.workName;
+    if (filters.sparePartName) urlParams.sparePartName = filters.sparePartName;
+    if (filters.appNumber) urlParams.appNumber = filters.appNumber;
+    const qs = new URLSearchParams(urlParams as any).toString();
     router.replace(`?${qs}`);
 
     try {
-      const [main, exitRes, planRes, stat] = await Promise.all([
-        repairBusService.getByDepotId(depotId, params),
+      // Выгружаем ВСЕ страницы по выбранному периоду
+      const pageSizeForFetch = 1000; // максимально крупные страницы для снижения числа запросов
+      let page = 1;
+      let totalCount = 0;
+      let accumulated: Repair[] = [];
+
+      // Первый запрос — чтобы узнать totalCount
+      const baseParams: Record<string, string | number> = {
+        page,
+        pageSize: pageSizeForFetch,
+        DepartureFrom: filters.departureFrom,
+        DepartureTo: filters.departureTo,
+      };
+      if (filters.garageNumber) baseParams.garageNumber = filters.garageNumber;
+      if (filters.govNumber) baseParams.govNumber = filters.govNumber;
+      if (filters.workName) baseParams.workName = filters.workName;
+      if (filters.sparePartName) baseParams.sparePartName = filters.sparePartName;
+      if (filters.appNumber) baseParams.appNumber = filters.appNumber;
+
+      const first = await repairBusService.getByDepotId(depotId, baseParams);
+      const firstValue: PagedResult<Repair> =
+        first.value || ({ page: 1, pageSize: pageSizeForFetch, totalCount: 0, items: [] } as PagedResult<Repair>);
+      totalCount = firstValue.totalCount || 0;
+      accumulated = firstValue.items || [];
+
+      // Догружаем оставшиеся страницы, если есть
+      const totalPagesFetch = Math.max(1, Math.ceil(totalCount / pageSizeForFetch));
+      if (totalPagesFetch > 1) {
+        const promises: Promise<any>[] = [];
+        for (let p = 2; p <= totalPagesFetch; p++) {
+          promises.push(
+            repairBusService.getByDepotId(depotId, {
+              ...baseParams,
+              page: p,
+              pageSize: pageSizeForFetch,
+            })
+          );
+        }
+        const rest = await Promise.all(promises);
+        for (const r of rest) {
+          accumulated = accumulated.concat(r.value?.items || []);
+        }
+      }
+
+      // KPI по всем записям
+      const totals = accumulated.reduce(
+        (acc, x) => {
+          const work = x.workSum ?? 0;
+          const spare = x.sparePartSum ?? 0;
+          const all = x.allSum ?? work + spare;
+          acc.totalWork += work;
+          acc.totalSpare += spare;
+          acc.totalAll += all;
+          return acc;
+        },
+        { totalAll: 0, totalWork: 0, totalSpare: 0 }
+      );
+
+      setAllRepairs(accumulated);
+      setKpiTotals(totals);
+      setRepairsPaged(firstValue); // сохраняем последний ответ для совместимости, но UI опирается на allRepairs/kpiTotals
+
+      // Прочие источники/статистика
+      const [exitRes, planRes, stat] = await Promise.all([
         routeExitRepairService.filter({
           startDate: filters.departureFrom,
           endDate: filters.departureTo,
@@ -163,21 +244,15 @@ export default function MechanicHomePage() {
         ),
       ]);
 
-      setRepairsPaged(main.value);
-
-      if (exitRes.isSuccess && exitRes.value) {
-        setExits(exitRes.value.filter((e) => e.repairType === "Unscheduled"));
-      }
-
-      if (planRes.isSuccess && planRes.value) {
-        setPlanned(
-          planRes.value.map((p) => ({
-            ...p,
-            date: (p.departureDate || p.date || "").slice(0, 10),
-          }))
-        );
-      }
-
+      setExits(exitRes.isSuccess && exitRes.value ? exitRes.value.filter((e) => e.repairType === "Unscheduled") : []);
+      setPlanned(
+        planRes.isSuccess && planRes.value
+          ? planRes.value.map((p) => ({
+              ...p,
+              date: (p.departureDate || p.date || "").slice(0, 10),
+            }))
+          : []
+      );
       setStats(stat ?? []);
     } finally {
       setLoading(false);
@@ -188,42 +263,77 @@ export default function MechanicHomePage() {
     reload();
   }, [reload]);
 
-  // --- KPI ---
+  // KPI
   const kpi = useMemo(() => {
-    const totalAll = repairsPaged?.totalAllSum ?? 0;
-    const totalWork = repairsPaged?.totalWorkSum ?? 0;
-    const totalSpare = repairsPaged?.totalSpareSum ?? 0;
+    const totalAll = kpiTotals.totalAll;
+    const totalWork = kpiTotals.totalWork;
+    const totalSpare = kpiTotals.totalSpare;
+    return {
+      totalAll,
+      totalWork,
+      totalSpare,
+      chartData: [
+        { name: "Работы", value: totalWork },
+        { name: "Запчасти", value: totalSpare },
+      ],
+    };
+  }, [kpiTotals]);
+  
 
-    const chartData = [
-      { name: "Работы", value: totalWork },
-      { name: "Запчасти", value: totalSpare },
-    ];
+  
 
-    return { totalAll, totalWork, totalSpare, chartData };
-  }, [repairsPaged]);
-
-  // --- группировка заявок ---
+  // группировка заявок: по номеру заявки + автобусу (чтобы не смешивать разные автобусы с одинаковым номером)
   const grouped = useMemo(() => {
     const start = new Date(filters.departureFrom + "T00:00:00");
     const end = new Date(filters.departureTo + "T23:59:59");
-    const map = new Map<number, Repair[]>();
-
-    for (const r of repairsPaged?.items || []) {
+    const map = new Map<string, Repair[]>();
+    for (const r of allRepairs || []) {
       const dep = new Date(r.departureDate ?? "");
       if (!isNaN(dep.getTime()) && dep >= start && dep <= end) {
-        const key = r.applicationNumber ?? 0;
+        const key = `${r.applicationNumber ?? 0}_${r.busId}`;
         if (!map.has(key)) map.set(key, []);
         map.get(key)!.push(r);
       }
     }
-    return Array.from(map.entries()).sort((a, b) => b[0] - a[0]);
-  }, [repairsPaged, filters.departureFrom, filters.departureTo]);
+    // сортируем по номеру заявки (desc), затем по дате (desc)
+    return Array.from(map.entries()).sort((a, b) => {
+      const aFirst = a[1][0];
+      const bFirst = b[1][0];
+      const aNum = aFirst?.applicationNumber ?? 0;
+      const bNum = bFirst?.applicationNumber ?? 0;
+      if (bNum !== aNum) return bNum - aNum;
+      const aDate = new Date(aFirst?.departureDate ?? 0).getTime();
+      const bDate = new Date(bFirst?.departureDate ?? 0).getTime();
+      return bDate - aDate;
+    });
+  }, [allRepairs, filters.departureFrom, filters.departureTo]);
 
-  // --- источник (сход/плановый) ---
-  function getSource(r: Repair): { label: string; match: boolean } {
+  // серверная пагинация
+  const totalGroups = grouped.length;
+  const totalPages = Math.max(1, Math.ceil(totalGroups / (filters.pageSize || 10)));
+  const safePage = Math.min(filters.page || 1, totalPages);
+
+  useEffect(() => {
+    if (repairsPaged && filters.page > totalPages) {
+      setFilters((f) => ({ ...f, page: totalPages }));
+    }
+  }, [repairsPaged, totalPages, filters.page]);
+
+  // Пагинация по группам (без пустых строк)
+  const pagedGrouped = useMemo(
+    () =>
+      grouped.slice(
+        (safePage - 1) * (filters.pageSize || 10),
+        safePage * (filters.pageSize || 10)
+      ),
+    [grouped, safePage, filters.pageSize]
+  );
+  
+
+  // источник
+  function getSource(r: Repair) {
     const depDate = r.departureDate?.slice(0, 10);
     if (!depDate) return { label: "—", match: false };
-
     const matchExit = exits.find(
       (e) => e.bus?.id === r.busId && e.startDate?.slice(0, 10) === depDate
     );
@@ -235,14 +345,10 @@ export default function MechanicHomePage() {
         match: true,
       };
     }
-
     const matchPlan = planned.find(
       (p) => p.bus?.id === r.busId && p.date?.slice(0, 10) === depDate
     );
-    if (matchPlan) {
-      return { label: "Плановый ремонт", match: true };
-    }
-
+    if (matchPlan) return { label: "Плановый ремонт", match: true };
     return { label: "—", match: false };
   }
 
@@ -264,7 +370,7 @@ export default function MechanicHomePage() {
       </div>
 
       {/* KPI */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -280,7 +386,7 @@ export default function MechanicHomePage() {
               {loading ? "…" : `${kpi.totalAll.toLocaleString("ru-RU")} ₸`}
             </div>
             <div className="text-sm text-muted-foreground mt-2">
-              Заявок: {repairsPaged?.totalCount ?? 0}
+              Заявок: {totalGroups}
             </div>
           </CardContent>
         </Card>
@@ -304,42 +410,47 @@ export default function MechanicHomePage() {
               Запчасти
             </CardTitle>
           </CardHeader>
+          <CardContent className="text-3xl font-bold">
+            {loading ? "…" : `${kpi.totalSpare.toLocaleString("ru-RU")} ₸`}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-indigo-600" />
+              Структура затрат
+            </CardTitle>
+          </CardHeader>
           <CardContent className="flex flex-col items-center">
             {loading ? (
               "…"
             ) : (
-              <>
-                <ResponsiveContainer width={220} height={160}>
-                  <PieChart>
-                    <Pie
-                      data={kpi.chartData}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius={50}
-                      outerRadius={70}
-                      labelLine={false}
-                    >
-                      <Cell fill="#10b981" />
-                      <Cell fill="#6366f1" />
-                    </Pie>
-                    <Tooltip
-                      formatter={(val: number, name: string) =>
-                        `${name}: ${val.toLocaleString("ru-RU")} ₸`
-                      }
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex justify-center gap-6 mt-2 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-                    Работы: {kpi.totalWork.toLocaleString("ru-RU")} ₸
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="w-3 h-3 rounded-full bg-indigo-500"></span>
-                    Запчасти: {kpi.totalSpare.toLocaleString("ru-RU")} ₸
-                  </div>
-                </div>
-              </>
+              <ResponsiveContainer width={220} height={160}>
+                <PieChart>
+                  <Pie
+                    data={kpi.chartData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={50}
+                    outerRadius={70}
+                    labelLine={false}
+                  >
+                    <Cell fill="#10b981" />
+                    <Cell fill="#6366f1" />
+                  </Pie>
+                  <Tooltip
+                    formatter={(val: number, name: string) =>
+                      `${name}: ${val.toLocaleString("ru-RU")} ₸`
+                    }
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+            {!loading && (
+              <div className="mt-3 text-sm text-muted-foreground">
+                Работы: {kpi.totalWork.toLocaleString("ru-RU")} ₸ · Запчасти: {kpi.totalSpare.toLocaleString("ru-RU")} ₸
+              </div>
             )}
           </CardContent>
         </Card>
@@ -363,7 +474,7 @@ export default function MechanicHomePage() {
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={stats}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tickFormatter={(date) => format(parseISO(date), "dd.MM")} />
+                <XAxis dataKey="date" tickFormatter={(d) => format(parseISO(d), "dd.MM")} />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
                 <Legend />
@@ -392,18 +503,19 @@ export default function MechanicHomePage() {
       {/* Таблица заявок */}
       <Card>
         <CardHeader>
-          <CardTitle>Заявки ({grouped.length})</CardTitle>
+          <CardTitle>Заявки ({totalGroups})</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="text-sm text-muted-foreground">Загрузка…</div>
-          ) : grouped.length === 0 ? (
+          ) : pagedGrouped.length === 0 ? (
             <div className="text-sm text-muted-foreground">Нет данных</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="text-left text-muted-foreground">
+                    <th className="py-2 pr-4">#</th>
                     <th className="py-2 pr-4">№ заявки</th>
                     <th className="py-2 pr-4">Автобус</th>
                     <th className="py-2 pr-4">Первая запись</th>
@@ -413,73 +525,82 @@ export default function MechanicHomePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {grouped.map(([appNum, group]) => {
-                    const totalSum = group.reduce((s, x) => s + (x.allSum ?? 0), 0);
-                    const first = group[0];
-                    const source = getSource(first);
+                {pagedGrouped.map(([compositeKey, group], idx) => {
+                  const appNum = group[0]?.applicationNumber ?? 0;
+                  const totalSum = group.reduce((s: number, x: Repair) => s + (x.workSum ?? 0) + (x.sparePartSum ?? 0), 0);
+                  const first = group[0];
+                  const source = getSource(first);
 
-                    return (
-                      <tr
-                        key={appNum}
-                        className={`border-t ${source.match ? "bg-green-50" : "bg-red-50"}`}
-                      >
-                        <td className="py-2 pr-4">
-                          <Link
-                            className="text-sky-600 hover:underline"
-                            href={`/dashboard/mechanic/repairs/bus/${first.busId}?appNum=${appNum}`}
-                          >
-                            {appNum}
-                          </Link>
-                        </td>
-                        <td className="py-2 pr-4">
-                          {first.garageNumber || "—"} / {first.govNumber || "—"}
-                        </td>
-                        <td className="py-2 pr-4">
-                          {first.workName || first.sparePart || "—"}
-                        </td>
-                        <td className="py-2 pr-4">
-                          {totalSum.toLocaleString("ru-RU")} ₸
-                        </td>
-                        <td className="py-2">{fmtDate(first.departureDate)}</td>
-                        <td className="py-2">{source.label}</td>
-                      </tr>
-                    );
-                  })}
+                  return (
+                    <tr
+                      key={compositeKey}
+                      className={`border-t ${source.match ? "bg-green-50" : "bg-red-50"}`}
+                    >
+                      <td className="py-2 pr-4 text-muted-foreground">
+                        {(safePage - 1) * filters.pageSize + idx + 1}
+                      </td>
+                      <td className="py-2 pr-4">
+                        <Link
+                          className="text-sky-600 hover:underline"
+                          href={`/dashboard/mechanic/repairs/bus/${first.busId}?appNum=${appNum}`}
+                        >
+                          {appNum}
+                        </Link>
+                      </td>
+                      <td className="py-2 pr-4">
+                        {first.garageNumber || "—"} / {first.govNumber || "—"}
+                      </td>
+                      <td className="py-2 pr-4">
+                        {first.workName || first.sparePart || "—"}
+                      </td>
+                      <td className="py-2 pr-4">
+                        {totalSum.toLocaleString("ru-RU")} ₸
+                      </td>
+                      <td className="py-2">{fmtDate(first.departureDate)}</td>
+                      <td className="py-2">{source.label}</td>
+                    </tr>
+                  );
+                })}
                 </tbody>
               </table>
             </div>
           )}
 
+          {/* Пагинация */}
           <Pagination className="mt-4">
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious onClick={() => setFilters((f) => ({ ...f, page: Math.max(1, f.page - 1) }))} />
+                <PaginationPrevious
+                  onClick={() =>
+                    setFilters((f) => ({ ...f, page: Math.max(1, f.page - 1) }))
+                  }
+                >
+                  Предыдущая
+                </PaginationPrevious>
               </PaginationItem>
-              {Array.from(
-                { length: Math.ceil((repairsPaged?.totalCount || 0) / filters.pageSize) },
-                (_, i) => (
-                  <PaginationItem key={i}>
-                    <PaginationLink
-                      isActive={filters.page === i + 1}
-                      onClick={() => setFilters((f) => ({ ...f, page: i + 1 }))}
-                    >
-                      {i + 1}
-                    </PaginationLink>
-                  </PaginationItem>
-                )
-              )}
+
+              {Array.from({ length: totalPages }, (_, i) => (
+                <PaginationItem key={i}>
+                  <PaginationLink
+                    isActive={safePage === i + 1}
+                    onClick={() => setFilters((f) => ({ ...f, page: i + 1 }))}
+                  >
+                    {i + 1}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+
               <PaginationItem>
                 <PaginationNext
                   onClick={() =>
                     setFilters((f) => ({
                       ...f,
-                      page:
-                        f.page < Math.ceil((repairsPaged?.totalCount || 0) / filters.pageSize)
-                          ? f.page + 1
-                          : f.page,
+                      page: f.page < totalPages ? f.page + 1 : f.page,
                     }))
                   }
-                />
+                >
+                  Следующая
+                </PaginationNext>
               </PaginationItem>
             </PaginationContent>
           </Pagination>
@@ -559,6 +680,8 @@ export default function MechanicHomePage() {
               />
             </div>
 
+            {/* Размер страницы зафиксирован: 10 заявок на страницу */}
+
             <div className="flex justify-between pt-4">
               <Button
                 variant="outline"
@@ -571,9 +694,9 @@ export default function MechanicHomePage() {
                   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
                     .toISOString()
                     .slice(0, 10);
-                  const reset = {
-                    ...filters,
+                  const reset: Filters = {
                     page: 1,
+                    pageSize: 10,
                     departureFrom: start,
                     departureTo: end,
                     garageNumber: "",
@@ -591,7 +714,12 @@ export default function MechanicHomePage() {
               </Button>
               <Button
                 onClick={() => {
-                  setFilters(draftFilters);
+                  setFilters((prev) => ({
+                    ...prev,
+                    ...draftFilters,
+                    pageSize: 10, // фиксированный размер страницы
+                    page: 1,
+                  }));
                   setFilterOpen(false);
                 }}
               >
