@@ -11,12 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 import { repairBusService } from "@/service/repairBusService";
 import { sparePartsService } from "@/service/sparePartsService";
@@ -25,7 +20,6 @@ import type { SparePart, LaborTime } from "@/types/spareParts.types";
 
 import SearchInput from "./SearchInput";
 
-// --- Хелперы ---
 function parseDec(value?: string): number {
   if (!value) return 0;
   const normalized = value.replace(",", ".").trim();
@@ -38,19 +32,18 @@ function roundSparePrice(price: number): number {
   return frac >= 0.5 ? Math.ceil(price) : Math.floor(price);
 }
 
-// --- Локальный тип строки ---
 type RowDraft = {
-  sparePartId?: string | null;
+  id?: string;
+  type: "work" | "spare";
   laborTimeId?: string | null;
-
-  workName?: string;
-  sparePart?: string;
+  sparePartId?: string | null;
   workCode?: string;
-  sparePartArticle?: string;
-
+  workName?: string;
   workCount?: string;
   workHour?: string;
   workPrice?: string;
+  sparePart?: string;
+  sparePartArticle?: string;
   sparePartCount?: string;
   sparePartPrice?: string;
 };
@@ -62,109 +55,111 @@ export default function EditRepairDialog({
 }: {
   repair: Repair;
   onClose: () => void;
-  onUpdated: (updated: Repair) => void;
+  onUpdated: () => void;
 }) {
+  const [rows, setRows] = useState<RowDraft[]>([]);
   const [saving, setSaving] = useState(false);
-  const [draft, setDraft] = useState<RowDraft>({});
 
   useEffect(() => {
     if (repair) {
-      setDraft({
+      const initial: RowDraft = {
+        id: repair.id,
+        type: repair.workName ? "work" : "spare",
         laborTimeId: repair.laborTimeId ?? null,
         sparePartId: repair.sparePartId ?? null,
         workCode: repair.workCode ?? "",
         workName: repair.workName ?? "",
-        sparePart: repair.sparePart ?? "",
-        sparePartArticle: repair.sparePartArticle ?? "",
         workCount: repair.workCount ? String(repair.workCount) : "",
         workHour: repair.workHour ? String(repair.workHour) : "",
         workPrice: repair.workPrice ? String(repair.workPrice) : "",
+        sparePart: repair.sparePart ?? "",
+        sparePartArticle: repair.sparePartArticle ?? "",
         sparePartCount: repair.sparePartCount
           ? String(repair.sparePartCount)
           : "",
         sparePartPrice: repair.sparePartPrice
           ? String(repair.sparePartPrice)
           : "",
-      });
+      };
+      setRows([initial]);
     }
   }, [repair]);
 
-  function update(field: keyof RowDraft, value: string | null) {
-    setDraft((prev) => ({ ...prev, [field]: value ?? undefined }));
+  function updateRow(index: number, field: keyof RowDraft, value: string | null) {
+    setRows((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value ?? undefined };
+      return next;
+    });
   }
 
-  function removeWork() {
-    setDraft((prev) => ({
-      ...prev,
-      laborTimeId: null,
-      workCode: "",
-      workName: "",
-      workCount: "",
-      workHour: "",
-      workPrice: "",
-    }));
+  async function removeRow(index: number) {
+    const row = rows[index];
+    if (row.id) {
+      if (!confirm("Удалить запись ремонта?")) return;
+      await repairBusService.remove(row.id);
+      setRows((prev) => prev.filter((_, i) => i !== index));
+      onUpdated();
+    } else {
+      setRows((prev) => prev.filter((_, i) => i !== index));
+    }
   }
 
-  function removeSpare() {
-    setDraft((prev) => ({
+  function addRow(type: "work" | "spare") {
+    setRows((prev) => [
       ...prev,
-      sparePartId: null,
-      sparePartArticle: "",
-      sparePart: "",
-      sparePartCount: "",
-      sparePartPrice: "",
-    }));
+      { type, workCount: "1", workHour: "0", workPrice: "0", sparePartCount: "1", sparePartPrice: "0" },
+    ]);
   }
 
   async function submit() {
-    if (!repair) return;
     setSaving(true);
     try {
-      const payload: CreateRepairRequest = {
-        busId: repair.busId,
-        applicationNumber: repair.applicationNumber ?? 0,
-        departureDate:
-          repair.departureDate ?? new Date().toISOString().slice(0, 10),
-        entryDate: repair.entryDate ?? new Date().toISOString().slice(0, 10),
-
-        sparePartId: draft.sparePartId ?? null,
-        sparePartCount: parseDec(draft.sparePartCount),
-
-        laborTimeId: draft.laborTimeId ?? null,
-        workCount: parseDec(draft.workCount),
-        workHour: parseDec(draft.workHour),
-      };
-
-      const res = await repairBusService.update(repair.id, payload);
-      if (res.isSuccess && res.value) {
-        onUpdated(res.value);
-        onClose();
-      } else {
-        console.error("Ошибка обновления ремонта:", res.error);
+      const newRows = rows.filter((r) => !r.id);
+      if (newRows.length > 0) {
+        const payload: CreateRepairRequest[] = newRows.map((r) => ({
+          busId: repair.busId,
+          applicationNumber: repair.applicationNumber ?? 0,
+          departureDate:
+            repair.departureDate ?? new Date().toISOString().slice(0, 10),
+          entryDate:
+            repair.entryDate ?? new Date().toISOString().slice(0, 10),
+          laborTimeId: r.laborTimeId ?? null,
+          workCount: parseDec(r.workCount),
+          workHour: parseDec(r.workHour),
+          sparePartId: r.sparePartId ?? null,
+          sparePartCount: parseDec(r.sparePartCount),
+        }));
+        await repairBusService.createBatch(payload);
       }
+      onUpdated();
+      onClose();
     } finally {
       setSaving(false);
     }
   }
 
-  const totals = {
-    work:
-      parseDec(draft.workCount) *
-      parseDec(draft.workHour) *
-      parseDec(draft.workPrice),
-    parts:
-      parseDec(draft.sparePartCount) * parseDec(draft.sparePartPrice),
-  };
+  const totals = rows.reduce(
+    (acc, r) => {
+      if (r.type === "work") {
+        acc.work +=
+          parseDec(r.workCount) * parseDec(r.workHour) * parseDec(r.workPrice);
+      } else {
+        acc.parts += parseDec(r.sparePartCount) * parseDec(r.sparePartPrice);
+      }
+      return acc;
+    },
+    { work: 0, parts: 0 }
+  );
   const totalSum = totals.work + totals.parts;
 
   return (
     <Dialog open={!!repair} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Редактировать ремонт</DialogTitle>
+          <DialogTitle>Редактировать заказ-наряд</DialogTitle>
         </DialogHeader>
 
-        {/* Tabs */}
         <Tabs defaultValue="works" className="mt-2">
           <TabsList>
             <TabsTrigger value="works">🔧 Работы</TabsTrigger>
@@ -173,152 +168,177 @@ export default function EditRepairDialog({
 
           {/* Работы */}
           <TabsContent value="works" className="space-y-4 mt-4">
-            <SearchInput<LaborTime>
-              label="Код операции"
-              placeholder="Введите код операции"
-              value={draft.workCode || ""}
-              onChange={(val) => update("workCode", val)}
-              fetchOptions={async (q) => {
-                const res = await sparePartsService.searchLaborTime(q);
-                return res.isSuccess && res.value ? res.value : [];
-              }}
-              renderOption={(l) => (
-                <div>
-                  <div className="font-medium">
-                    {l.operationCode} — {l.operationName}
+            {rows
+              .map((r, i) => ({ ...r, index: i }))
+              .filter((r) => r.type === "work")
+              .map((r) => (
+                <div key={r.index} className="border rounded-md p-3 space-y-2">
+                  <SearchInput<LaborTime>
+                    label="Код операции"
+                    placeholder="Введите код операции"
+                    value={r.workCode || ""}
+                    onChange={(val) => updateRow(r.index, "workCode", val)}
+                    fetchOptions={async (q) => {
+                      const res = await sparePartsService.searchLaborTime(q);
+                      return res.isSuccess && res.value ? res.value : [];
+                    }}
+                    renderOption={(l) => (
+                      <div>
+                        <div className="font-medium">
+                          {l.operationCode} — {l.operationName}
+                        </div>
+                        <div className="text-xs text-gray-500">{l.busModel}</div>
+                      </div>
+                    )}
+                    onSelect={(l) => {
+                      updateRow(r.index, "laborTimeId", l.id);
+                      updateRow(r.index, "workCode", l.operationCode);
+                      updateRow(r.index, "workName", l.operationName);
+                      updateRow(r.index, "workCount", String(l.quantity ?? 1));
+                      updateRow(r.index, "workHour", String(l.hours ?? 0));
+                      updateRow(r.index, "workPrice", "9000");
+                    }}
+                  />
+                  <Input
+                    value={r.workName || ""}
+                    onChange={(e) =>
+                      updateRow(r.index, "workName", e.target.value)
+                    }
+                    placeholder="Наименование работы"
+                  />
+                  <div className="grid grid-cols-4 gap-2">
+                    <Input
+                      value={r.workCount || ""}
+                      onChange={(e) => updateRow(r.index, "workCount", e.target.value)}
+                      placeholder="Кол-во"
+                    />
+                    <Input
+                      value={r.workHour || ""}
+                      onChange={(e) => updateRow(r.index, "workHour", e.target.value)}
+                      placeholder="Часы"
+                    />
+                    <Input
+                      value={r.workPrice || ""}
+                      onChange={(e) => updateRow(r.index, "workPrice", e.target.value)}
+                      placeholder="Цена"
+                    />
+                    <Input
+                      value={String(
+                        parseDec(r.workCount) *
+                          parseDec(r.workHour) *
+                          parseDec(r.workPrice)
+                      )}
+                      readOnly
+                    />
                   </div>
-                  <div className="text-xs text-gray-500">{l.busModel}</div>
+                  <Button
+                    variant="ghost"
+                    className="text-red-600"
+                    onClick={() => removeRow(r.index)}
+                  >
+                    Удалить
+                  </Button>
                 </div>
-              )}
-              onSelect={(l) => {
-                update("laborTimeId", l.id);
-                update("workCode", l.operationCode);
-                update("workName", l.operationName);
-                update("workCount", l.quantity != null ? String(l.quantity) : "1");
-                update("workHour", l.hours != null ? String(l.hours) : "0");
-                update("workPrice", "9000");
-              }}
-            />
-            <div>
-              <Label>Наименование работы</Label>
-              <Input
-                value={draft.workName || ""}
-                onChange={(e) => update("workName", e.target.value)}
-              />
-            </div>
-            <div className="grid grid-cols-4 gap-2">
-              <div>
-                <Label>Кол-во (ед.)</Label>
-                <Input
-                  value={draft.workCount || ""}
-                  onChange={(e) => update("workCount", e.target.value)}
-                />
-              </div>
-              <div>
-                <Label>Часы</Label>
-                <Input
-                  value={draft.workHour || ""}
-                  onChange={(e) => update("workHour", e.target.value)}
-                />
-              </div>
-              <div>
-                <Label>Цена работы (₸)</Label>
-                <Input
-                  value={draft.workPrice || ""}
-                  onChange={(e) => update("workPrice", e.target.value)}
-                />
-              </div>
-              <div>
-                <Label>Сумма работы (₸)</Label>
-                <Input
-                  value={String(totals.work)}
-                  readOnly
-                  className="bg-gray-50"
-                />
-              </div>
-            </div>
-
+              ))}
             <Button
-              variant="ghost"
-              className="text-red-600 mt-2"
-              onClick={removeWork}
+              variant="outline"
+              className="w-full"
+              onClick={() => addRow("work")}
             >
-              Удалить работу
+              ➕ Добавить работу
             </Button>
           </TabsContent>
 
           {/* Запчасти */}
           <TabsContent value="spares" className="space-y-4 mt-4">
-            <SearchInput<SparePart>
-              label="Артикул"
-              placeholder="Введите артикул"
-              value={draft.sparePartArticle || ""}
-              onChange={(val) => update("sparePartArticle", val)}
-              fetchOptions={async (q) => {
-                const res = await sparePartsService.searchByArticle(q);
-                return res.isSuccess && res.value ? res.value : [];
-              }}
-              renderOption={(p) => (
-                <div>
-                  <div className="font-medium">
-                    {p.article} — {p.name}
+            {rows
+              .map((r, i) => ({ ...r, index: i }))
+              .filter((r) => r.type === "spare")
+              .map((r) => (
+                <div key={r.index} className="border rounded-md p-3 space-y-2">
+                  <SearchInput<SparePart>
+                    label="Артикул"
+                    placeholder="Введите артикул"
+                    value={r.sparePartArticle || ""}
+                    onChange={(val) =>
+                      updateRow(r.index, "sparePartArticle", val)
+                    }
+                    fetchOptions={async (q) => {
+                      const res = await sparePartsService.searchByArticle(q);
+                      return res.isSuccess && res.value ? res.value : [];
+                    }}
+                    renderOption={(p) => (
+                      <div>
+                        <div className="font-medium">
+                          {p.article} — {p.name}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {p.busModel} · {roundSparePrice(p.unitPrice)} ₸
+                        </div>
+                      </div>
+                    )}
+                    onSelect={(p) => {
+                      updateRow(r.index, "sparePartId", p.id);
+                      updateRow(r.index, "sparePartArticle", p.article);
+                      updateRow(r.index, "sparePart", p.name);
+                      updateRow(
+                        r.index,
+                        "sparePartPrice",
+                        String(roundSparePrice(p.unitPrice))
+                      );
+                      updateRow(r.index, "sparePartCount", "1");
+                    }}
+                  />
+                  <Input
+                    value={r.sparePart || ""}
+                    onChange={(e) =>
+                      updateRow(r.index, "sparePart", e.target.value)
+                    }
+                    placeholder="Наименование запчасти"
+                  />
+                  <div className="grid grid-cols-3 gap-2">
+                    <Input
+                      value={r.sparePartCount || ""}
+                      onChange={(e) =>
+                        updateRow(r.index, "sparePartCount", e.target.value)
+                      }
+                      placeholder="Кол-во"
+                    />
+                    <Input
+                      value={r.sparePartPrice || ""}
+                      onChange={(e) =>
+                        updateRow(r.index, "sparePartPrice", e.target.value)
+                      }
+                      placeholder="Цена"
+                    />
+                    <Input
+                      value={String(
+                        parseDec(r.sparePartCount) *
+                          parseDec(r.sparePartPrice)
+                      )}
+                      readOnly
+                    />
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {p.busModel} · {roundSparePrice(p.unitPrice)} ₸
-                  </div>
+                  <Button
+                    variant="ghost"
+                    className="text-red-600"
+                    onClick={() => removeRow(r.index)}
+                  >
+                    Удалить
+                  </Button>
                 </div>
-              )}
-              onSelect={(p) => {
-                update("sparePartId", p.id);
-                update("sparePartArticle", p.article);
-                update("sparePart", p.name);
-                update("sparePartPrice", String(roundSparePrice(p.unitPrice)));
-                update("sparePartCount", "1");
-              }}
-            />
-            <div>
-              <Label>Наименование запчасти</Label>
-              <Input
-                value={draft.sparePart || ""}
-                onChange={(e) => update("sparePart", e.target.value)}
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <Label>Кол-во (шт.)</Label>
-                <Input
-                  value={draft.sparePartCount || ""}
-                  onChange={(e) => update("sparePartCount", e.target.value)}
-                />
-              </div>
-              <div>
-                <Label>Цена з/ч (₸)</Label>
-                <Input
-                  value={draft.sparePartPrice || ""}
-                  onChange={(e) => update("sparePartPrice", e.target.value)}
-                />
-              </div>
-              <div>
-                <Label>Сумма запчастей (₸)</Label>
-                <Input
-                  value={String(totals.parts)}
-                  readOnly
-                  className="bg-gray-50"
-                />
-              </div>
-            </div>
-
+              ))}
             <Button
-              variant="ghost"
-              className="text-red-600 mt-2"
-              onClick={removeSpare}
+              variant="outline"
+              className="w-full"
+              onClick={() => addRow("spare")}
             >
-              Удалить запчасть
+              ➕ Добавить запчасть
             </Button>
           </TabsContent>
         </Tabs>
 
-        {/* Общая сумма */}
+        {/* Итог */}
         <div className="mt-6 bg-slate-50 border rounded-md p-4">
           <div className="flex justify-between text-sm font-medium">
             <span className="text-blue-600">
