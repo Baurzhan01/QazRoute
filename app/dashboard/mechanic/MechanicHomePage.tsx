@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -56,31 +56,32 @@ const FILTER_KEY = "mechanic_filters";
 export default function MechanicHomePage() {
   const router = useRouter();
 
+  // --- состояния ---
   const [repairsPaged, setRepairsPaged] = useState<PagedResult<Repair> | null>(null);
   const [loading, setLoading] = useState(false);
   const [depotId, setDepotId] = useState<string | null>(null);
 
-  // сходы и плановые
   const [exits, setExits] = useState<RouteExitRepairDto[]>([]);
   const [planned, setPlanned] = useState<(RepairRecord & { date: string })[]>([]);
-
-  // статистика
   const [stats, setStats] = useState<any[]>([]);
   const [showStats, setShowStats] = useState(false);
 
-  // фильтры
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(25);
-  const [departureFrom, setDepartureFrom] = useState("");
-  const [departureTo, setDepartureTo] = useState("");
-  const [garageNumber, setGarageNumber] = useState("");
-  const [govNumber, setGovNumber] = useState("");
-  const [workName, setWorkName] = useState("");
-  const [sparePartName, setSparePartName] = useState("");
-  const [appNumber, setAppNumber] = useState("");
+  // --- фильтры ---
+  const [filters, setFilters] = useState({
+    page: 1,
+    pageSize: 25,
+    departureFrom: "",
+    departureTo: "",
+    garageNumber: "",
+    govNumber: "",
+    workName: "",
+    sparePartName: "",
+    appNumber: "",
+  });
+  const [draftFilters, setDraftFilters] = useState(filters);
   const [filterOpen, setFilterOpen] = useState(false);
 
-  // depotId
+  // --- depotId ---
   useEffect(() => {
     const auth = localStorage.getItem("authData");
     if (auth) {
@@ -89,19 +90,13 @@ export default function MechanicHomePage() {
     }
   }, []);
 
-  // загрузка фильтров из localStorage
+  // --- загрузка сохранённых фильтров ---
   useEffect(() => {
     const saved = localStorage.getItem(FILTER_KEY);
     if (saved) {
-      const f = JSON.parse(saved);
-      setDepartureFrom(f.departureFrom || "");
-      setDepartureTo(f.departureTo || "");
-      setGarageNumber(f.garageNumber || "");
-      setGovNumber(f.govNumber || "");
-      setWorkName(f.workName || "");
-      setSparePartName(f.sparePartName || "");
-      setAppNumber(f.appNumber || "");
-      setPage(f.page || 1);
+      const parsed = JSON.parse(saved);
+      setFilters(parsed);
+      setDraftFilters(parsed);
       return;
     }
     // автоподстановка текущего месяца
@@ -112,98 +107,88 @@ export default function MechanicHomePage() {
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
       .toISOString()
       .slice(0, 10);
-    setDepartureFrom(start);
-    setDepartureTo(end);
+    const initial = { ...filters, departureFrom: start, departureTo: end };
+    setFilters(initial);
+    setDraftFilters(initial);
   }, []);
 
-  // сохраняем фильтры в localStorage
+  // --- сохраняем фильтры в localStorage ---
   useEffect(() => {
-    const f = {
-      page,
-      departureFrom,
-      departureTo,
-      garageNumber,
-      govNumber,
-      workName,
-      sparePartName,
-      appNumber,
-    };
-    localStorage.setItem(FILTER_KEY, JSON.stringify(f));
-  }, [page, departureFrom, departureTo, garageNumber, govNumber, workName, sparePartName, appNumber]);
+    localStorage.setItem(FILTER_KEY, JSON.stringify(filters));
+  }, [filters]);
 
-  // подгрузка данных
-  useEffect(() => {
-    if (!depotId || !departureFrom || !departureTo) return;
+  // --- загрузка данных ---
+  const reload = useCallback(async () => {
+    if (!depotId || !filters.departureFrom || !filters.departureTo) return;
+
+    setLoading(true);
 
     const params: Record<string, string | number> = {
-      page,
-      pageSize,
-      DepartureFrom: departureFrom,
-      DepartureTo: departureTo,
+      page: filters.page,
+      pageSize: filters.pageSize,
+      DepartureFrom: filters.departureFrom,
+      DepartureTo: filters.departureTo,
     };
-    if (garageNumber) params.garageNumber = garageNumber;
-    if (govNumber) params.govNumber = govNumber;
-    if (workName) params.workName = workName;
-    if (sparePartName) params.sparePartName = sparePartName;
-    if (appNumber) params.appNumber = appNumber;
+    if (filters.garageNumber) params.garageNumber = filters.garageNumber;
+    if (filters.govNumber) params.govNumber = filters.govNumber;
+    if (filters.workName) params.workName = filters.workName;
+    if (filters.sparePartName) params.sparePartName = filters.sparePartName;
+    if (filters.appNumber) params.appNumber = filters.appNumber;
 
     // обновляем URL
     const qs = new URLSearchParams(params as any).toString();
     router.replace(`?${qs}`);
 
-    (async () => {
-      try {
-        setLoading(true);
-
-        // основная таблица ремонтов
-        const main = await repairBusService.getByDepotId(depotId, params);
-
-        // сходы через filter
-        const exitRes = await routeExitRepairService.filter({
-          startDate: departureFrom,
-          endDate: departureTo,
+    try {
+      const [main, exitRes, planRes, stat] = await Promise.all([
+        repairBusService.getByDepotId(depotId, params),
+        routeExitRepairService.filter({
+          startDate: filters.departureFrom,
+          endDate: filters.departureTo,
           depotId,
           repairTypes: "all",
-        });
-
-        // плановые ремонты через новый filter
-        const planRes = await repairService.filter({
-          StartDate: departureFrom,
-          EndDate: departureTo,
+        }),
+        repairService.filter({
+          StartDate: filters.departureFrom,
+          EndDate: filters.departureTo,
           Page: 1,
           PageSize: 1000,
-          BusGovNumber: govNumber || undefined,
-          BusGarageNumber: garageNumber || undefined,
-        });
-
-        if (exitRes.isSuccess && exitRes.value) {
-          setExits(exitRes.value.filter((e) => e.repairType === "Unscheduled"));
-        }
-
-        if (planRes.isSuccess && planRes.value) {
-          setPlanned(
-            planRes.value.map((p) => ({
-              ...p,
-              date: (p.departureDate || p.date || "").slice(0, 10),
-            }))
-          );
-        }        
-
-        const stat = await statisticService.getDispatchRepairStats(
+          BusGovNumber: filters.govNumber || undefined,
+          BusGarageNumber: filters.garageNumber || undefined,
+        }),
+        statisticService.getDispatchRepairStats(
           depotId,
-          departureFrom,
-          departureTo
-        );
+          filters.departureFrom,
+          filters.departureTo
+        ),
+      ]);
 
-        setRepairsPaged(main.value);
-        setStats(stat ?? []);
-      } finally {
-        setLoading(false);
+      setRepairsPaged(main.value);
+
+      if (exitRes.isSuccess && exitRes.value) {
+        setExits(exitRes.value.filter((e) => e.repairType === "Unscheduled"));
       }
-    })();
-  }, [depotId, page, pageSize, departureFrom, departureTo, garageNumber, govNumber, workName, sparePartName, appNumber, router]);
 
-  // KPI
+      if (planRes.isSuccess && planRes.value) {
+        setPlanned(
+          planRes.value.map((p) => ({
+            ...p,
+            date: (p.departureDate || p.date || "").slice(0, 10),
+          }))
+        );
+      }
+
+      setStats(stat ?? []);
+    } finally {
+      setLoading(false);
+    }
+  }, [depotId, filters, router]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  // --- KPI ---
   const kpi = useMemo(() => {
     const totalAll = repairsPaged?.totalAllSum ?? 0;
     const totalWork = repairsPaged?.totalWorkSum ?? 0;
@@ -217,10 +202,10 @@ export default function MechanicHomePage() {
     return { totalAll, totalWork, totalSpare, chartData };
   }, [repairsPaged]);
 
-  // группировка заявок
+  // --- группировка заявок ---
   const grouped = useMemo(() => {
-    const start = new Date(departureFrom + "T00:00:00");
-    const end = new Date(departureTo + "T23:59:59");
+    const start = new Date(filters.departureFrom + "T00:00:00");
+    const end = new Date(filters.departureTo + "T23:59:59");
     const map = new Map<number, Repair[]>();
 
     for (const r of repairsPaged?.items || []) {
@@ -232,9 +217,9 @@ export default function MechanicHomePage() {
       }
     }
     return Array.from(map.entries()).sort((a, b) => b[0] - a[0]);
-  }, [repairsPaged, departureFrom, departureTo]);
+  }, [repairsPaged, filters.departureFrom, filters.departureTo]);
 
-  // проверка совпадений
+  // --- источник (сход/плановый) ---
   function getSource(r: Repair): { label: string; match: boolean } {
     const depDate = r.departureDate?.slice(0, 10);
     if (!depDate) return { label: "—", match: false };
@@ -287,7 +272,7 @@ export default function MechanicHomePage() {
               Общая сумма
             </CardTitle>
             <div className="text-sm text-muted-foreground">
-              {departureFrom} — {departureTo}
+              {filters.departureFrom} — {filters.departureTo}
             </div>
           </CardHeader>
           <CardContent>
@@ -468,15 +453,15 @@ export default function MechanicHomePage() {
           <Pagination className="mt-4">
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious onClick={() => setPage((p) => Math.max(1, p - 1))} />
+                <PaginationPrevious onClick={() => setFilters((f) => ({ ...f, page: Math.max(1, f.page - 1) }))} />
               </PaginationItem>
               {Array.from(
-                { length: Math.ceil((repairsPaged?.totalCount || 0) / pageSize) },
+                { length: Math.ceil((repairsPaged?.totalCount || 0) / filters.pageSize) },
                 (_, i) => (
                   <PaginationItem key={i}>
                     <PaginationLink
-                      isActive={page === i + 1}
-                      onClick={() => setPage(i + 1)}
+                      isActive={filters.page === i + 1}
+                      onClick={() => setFilters((f) => ({ ...f, page: i + 1 }))}
                     >
                       {i + 1}
                     </PaginationLink>
@@ -486,11 +471,13 @@ export default function MechanicHomePage() {
               <PaginationItem>
                 <PaginationNext
                   onClick={() =>
-                    setPage((p) =>
-                      p < Math.ceil((repairsPaged?.totalCount || 0) / pageSize)
-                        ? p + 1
-                        : p
-                    )
+                    setFilters((f) => ({
+                      ...f,
+                      page:
+                        f.page < Math.ceil((repairsPaged?.totalCount || 0) / filters.pageSize)
+                          ? f.page + 1
+                          : f.page,
+                    }))
                   }
                 />
               </PaginationItem>
@@ -510,37 +497,66 @@ export default function MechanicHomePage() {
               <Label>Дата выезда с</Label>
               <Input
                 type="date"
-                value={departureFrom}
-                onChange={(e) => setDepartureFrom(e.target.value)}
+                value={draftFilters.departureFrom}
+                onChange={(e) =>
+                  setDraftFilters((f) => ({ ...f, departureFrom: e.target.value }))
+                }
               />
             </div>
             <div>
               <Label>Дата выезда по</Label>
               <Input
                 type="date"
-                value={departureTo}
-                onChange={(e) => setDepartureTo(e.target.value)}
+                value={draftFilters.departureTo}
+                onChange={(e) =>
+                  setDraftFilters((f) => ({ ...f, departureTo: e.target.value }))
+                }
               />
             </div>
             <div>
               <Label>№ заявки</Label>
-              <Input value={appNumber} onChange={(e) => setAppNumber(e.target.value)} />
+              <Input
+                value={draftFilters.appNumber}
+                onChange={(e) =>
+                  setDraftFilters((f) => ({ ...f, appNumber: e.target.value }))
+                }
+              />
             </div>
             <div>
               <Label>Гаражный номер</Label>
-              <Input value={garageNumber} onChange={(e) => setGarageNumber(e.target.value)} />
+              <Input
+                value={draftFilters.garageNumber}
+                onChange={(e) =>
+                  setDraftFilters((f) => ({ ...f, garageNumber: e.target.value }))
+                }
+              />
             </div>
             <div>
               <Label>Госномер</Label>
-              <Input value={govNumber} onChange={(e) => setGovNumber(e.target.value)} />
+              <Input
+                value={draftFilters.govNumber}
+                onChange={(e) =>
+                  setDraftFilters((f) => ({ ...f, govNumber: e.target.value }))
+                }
+              />
             </div>
             <div>
               <Label>Работа</Label>
-              <Input value={workName} onChange={(e) => setWorkName(e.target.value)} />
+              <Input
+                value={draftFilters.workName}
+                onChange={(e) =>
+                  setDraftFilters((f) => ({ ...f, workName: e.target.value }))
+                }
+              />
             </div>
             <div>
               <Label>Запчасть</Label>
-              <Input value={sparePartName} onChange={(e) => setSparePartName(e.target.value)} />
+              <Input
+                value={draftFilters.sparePartName}
+                onChange={(e) =>
+                  setDraftFilters((f) => ({ ...f, sparePartName: e.target.value }))
+                }
+              />
             </div>
 
             <div className="flex justify-between pt-4">
@@ -555,22 +571,32 @@ export default function MechanicHomePage() {
                   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
                     .toISOString()
                     .slice(0, 10);
-                  setDepartureFrom(start);
-                  setDepartureTo(end);
-                  setAppNumber("");
-                  setGarageNumber("");
-                  setGovNumber("");
-                  setWorkName("");
-                  setSparePartName("");
-                  setPage(1);
-                  router.replace(
-                    `?page=1&pageSize=${pageSize}&departureFrom=${start}&departureTo=${end}`
-                  );
+                  const reset = {
+                    ...filters,
+                    page: 1,
+                    departureFrom: start,
+                    departureTo: end,
+                    garageNumber: "",
+                    govNumber: "",
+                    workName: "",
+                    sparePartName: "",
+                    appNumber: "",
+                  };
+                  setFilters(reset);
+                  setDraftFilters(reset);
+                  setFilterOpen(false);
                 }}
               >
                 Сбросить все фильтры
               </Button>
-              <Button onClick={() => setFilterOpen(false)}>Применить</Button>
+              <Button
+                onClick={() => {
+                  setFilters(draftFilters);
+                  setFilterOpen(false);
+                }}
+              >
+                Применить
+              </Button>
             </div>
           </div>
         </DialogContent>
