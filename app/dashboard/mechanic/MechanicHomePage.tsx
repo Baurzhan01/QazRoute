@@ -257,7 +257,17 @@ export default function MechanicHomePage() {
     } finally {
       setLoading(false);
     }
-  }, [depotId, filters, router]);
+  }, [
+    depotId,
+    filters.departureFrom,
+    filters.departureTo,
+    filters.garageNumber,
+    filters.govNumber,
+    filters.workName,
+    filters.sparePartName,
+    filters.appNumber,
+    router,
+  ]);
 
   useEffect(() => {
     reload();
@@ -520,7 +530,8 @@ export default function MechanicHomePage() {
                     <th className="py-2 pr-4">Автобус</th>
                     <th className="py-2 pr-4">Первая запись</th>
                     <th className="py-2 pr-4">Сумма</th>
-                    <th className="py-2 pr-4">Заезд</th>
+                    <th className="py-2 pr-4">Въезд</th>
+                    <th className="py-2 pr-4">Выезд</th>
                     <th className="py-2 pr-4">Источник</th>
                   </tr>
                 </thead>
@@ -556,6 +567,7 @@ export default function MechanicHomePage() {
                       <td className="py-2 pr-4">
                         {totalSum.toLocaleString("ru-RU")} ₸
                       </td>
+                      <td className="py-2">{fmtDate(first.entryDate)}</td>
                       <td className="py-2">{fmtDate(first.departureDate)}</td>
                       <td className="py-2">{source.label}</td>
                     </tr>
