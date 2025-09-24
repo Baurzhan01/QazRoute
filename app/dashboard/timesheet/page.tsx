@@ -1,7 +1,7 @@
 // TimesheetPage.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { useTimesheet } from "@/hooks/useTimesheet";
 import TimesheetGrid from "@/components/timesheet/TimesheetGrid";
@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { getAuthData } from "@/lib/auth-utils";
 import { driverService } from "@/service/driverService";
 import { convoyService } from "@/service/convoyService";
-import type { DisplayDriver } from "@/types/driver.types";
+import type { DisplayDriver, DriverStatus } from "@/types/driver.types";
 
 export default function TimesheetPage() {
   const now = new Date();
@@ -49,6 +49,9 @@ export default function TimesheetPage() {
 
   const canViewAll = auth.role === "Admin" || auth.role === "DispatcherAdmin";
   const [viewAll, setViewAll] = useState(false);
+  const [searchDraft, setSearchDraft] = useState("");
+  const [searchApplied, setSearchApplied] = useState("");
+  const [statusFilter, setStatusFilter] = useState<DriverStatus | "All">("All");
 
   useEffect(() => {
     if (!authLoaded) return;
@@ -63,17 +66,22 @@ export default function TimesheetPage() {
           convoyId = res.value?.[0]?.id ?? "";
         }
 
+        const trimmedSearch = searchApplied.trim();
+        const isServiceNumber = /^\d+$/.test(trimmedSearch);
+        const fullName = trimmedSearch && !isServiceNumber ? trimmedSearch : null;
+        const serviceNumber = trimmedSearch && isServiceNumber ? trimmedSearch : null;
+        const driverStatus = statusFilter === "All" ? null : statusFilter;
+
         const res = await driverService.filter({
           convoyId: viewAll ? null : convoyId,
-          fullName: null,
-          serviceNumber: null,
+          fullName,
+          serviceNumber,
           address: null,
           phone: null,
-          driverStatus: null,
+          driverStatus,
           page,
           pageSize,
         });
-        
 
         setDrivers(
           (res.value?.items || []).map((d) => ({
@@ -90,7 +98,7 @@ export default function TimesheetPage() {
     }
 
     loadDrivers();
-  }, [authLoaded, viewAll, page, pageSize, auth.busDepotId, auth.convoyId]);
+  }, [authLoaded, viewAll, page, pageSize, auth.busDepotId, auth.convoyId, searchApplied, statusFilter]);
 
   const { rows, days, loading, monthlyTotals } = useTimesheet({
     drivers,
@@ -122,6 +130,19 @@ export default function TimesheetPage() {
     setMonth0(d.getMonth());
   }
 
+  function handleFiltersSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSearchApplied(searchDraft.trim());
+    setPage(1);
+  }
+
+  function resetFilters() {
+    setSearchDraft("");
+    setSearchApplied("");
+    setStatusFilter("All");
+    setPage(1);
+  }
+
   return (
     <div className="container mx-auto p-6 space-y-4">
       <div className="flex flex-wrap gap-3 items-center justify-between">
@@ -139,8 +160,15 @@ export default function TimesheetPage() {
         </div>
         {canViewAll && (
           <div className="flex items-center gap-2">
-            <Switch id="viewAll" checked={viewAll} onCheckedChange={(v) => { setViewAll(v); setPage(1); }} />
-            <Label htmlFor="viewAll">Показать весь парк</Label>
+            <Switch
+              id="viewAll"
+              checked={viewAll}
+              onCheckedChange={(value) => {
+                setViewAll(value);
+                setPage(1);
+              }}
+            />
+            <Label htmlFor="viewAll">Показать все колонны</Label>
           </div>
         )}
         <div className="flex items-center gap-2">
@@ -148,14 +176,16 @@ export default function TimesheetPage() {
           <select
             id="pageSize"
             value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
+            onChange={(event) => {
+              setPageSize(Number(event.target.value));
               setPage(1);
             }}
             className="h-9 px-2 border rounded"
           >
             {Array.from({ length: 10 }, (_, i) => (i + 1) * 10).map((n) => (
-              <option key={n} value={n}>{n}</option>
+              <option key={n} value={n}>
+                {n}
+              </option>
             ))}
           </select>
         </div>
@@ -176,33 +206,80 @@ export default function TimesheetPage() {
         </Button>
       </div>
 
-      <BulkActionsBar
-        rows={rows}
-        year={year}
-        month0={month0}
-        onDone={() => setReloadKey((k) => k + 1)}
-      />
+      <form onSubmit={handleFiltersSubmit} className="flex flex-wrap items-end gap-3">
+        <div className="grid gap-1">
+          <Label htmlFor="search">Поиск</Label>
+          <input
+            id="search"
+            type="text"
+            className="h-9 px-3 border rounded"
+            placeholder="ФИО или таб. номер"
+            value={searchDraft}
+            onChange={(event) => setSearchDraft(event.target.value)}
+            autoComplete="off"
+          />
+        </div>
+        <div className="grid gap-1">
+          <Label htmlFor="status">Статус</Label>
+          <select
+            id="status"
+            value={statusFilter}
+            onChange={(event) => {
+              setStatusFilter(event.target.value as DriverStatus | "All");
+              setPage(1);
+            }}
+            className="h-9 px-2 border rounded"
+          >
+            <option value="All">Все статусы</option>
+            <option value="OnWork">На линии</option>
+            <option value="DayOff">Выходной</option>
+            <option value="OnVacation">Отпуск</option>
+            <option value="OnSickLeave">Больничный</option>
+            <option value="Intern">Стажировка</option>
+            <option value="Fired">Уволен</option>
+          </select>
+        </div>
+        <div className="flex gap-2">
+          <Button type="submit">Применить</Button>
+          {(searchApplied || statusFilter !== "All") && (
+            <Button type="button" variant="ghost" onClick={resetFilters}>
+              Сбросить
+            </Button>
+          )}
+        </div>
+      </form>
+
+      <BulkActionsBar rows={rows} year={year} month0={month0} onDone={() => setReloadKey((k) => k + 1)} />
 
       {(loading || loadingDrivers) ? (
-        <div className="text-gray-500">Загрузка…</div>
+        <div className="text-gray-500">Загрузка...</div>
       ) : rows.length === 0 ? (
         <div className="text-gray-500">Нет данных</div>
       ) : (
         <>
           <TimesheetGrid
-              rows={rows}
-              days={days}
-              year={year}
-              month0={month0}
-              onSavedReload={() => setReloadKey((k) => k + 1)}
-            />
+            rows={rows}
+            days={days}
+            year={year}
+            month0={month0}
+            startIndex={(page - 1) * pageSize}
+            onSavedReload={() => setReloadKey((k) => k + 1)}
+          />
           <div className="flex items-center justify-between mt-3">
             <div className="text-sm text-gray-600">
               Всего водителей: {totalDrivers}. Стр. {page} / {totalPages}
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Назад</Button>
-              <Button variant="outline" disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Вперёд</Button>
+              <Button variant="outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                Назад
+              </Button>
+              <Button
+                variant="outline"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Вперед
+              </Button>
             </div>
           </div>
           <div className="grid grid-cols-6 gap-2 text-sm mt-2">
@@ -217,9 +294,7 @@ export default function TimesheetPage() {
       )}
     </div>
   );
-}
-
-function SummaryItem({ label, value }: { label: string; value: number }) {
+}function SummaryItem({ label, value }: { label: string; value: number }) {
   return (
     <div className="border rounded p-2 flex items-center justify-between">
       <div className="text-gray-600">{label}</div>
@@ -227,3 +302,4 @@ function SummaryItem({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
+

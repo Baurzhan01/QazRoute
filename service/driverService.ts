@@ -12,12 +12,15 @@ import type {
   DriverStatus, // ← добавили
   DepotDriverWithAssignment, // ← переносим импорт сюда, можно из того же файла типов
 } from "@/types/driver.types"
+import type { TimesheetDayStatus } from "@/lib/utils/timesheet"
 
 // 👇 Этот тип локальный для истории работы — оставляем здесь (или перенеси в общий types при желании)
+export type DriverWorkHistoryStatus = DriverStatus | TimesheetDayStatus | string
+
 export interface DriverWorkHistoryItem {
   date: string // "YYYY-MM-DD"
-  routeAndExit: string | null // например "4А/16"
-  status: "Работал" | "Выходной"
+  routeAndExit: string | null // например "4/16"
+  status: DriverWorkHistoryStatus
 }
 
 export const driverService = {
@@ -146,3 +149,4 @@ export const driverService = {
     return response.data
   },
 }
+

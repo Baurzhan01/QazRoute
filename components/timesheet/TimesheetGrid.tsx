@@ -17,12 +17,14 @@ export default function TimesheetGrid({
   days,
   year,
   month0,
+  startIndex = 0,
   onSavedReload,
 }: {
   rows: TimesheetRow[];
   days: number[];
   year: number;
   month0: number;
+  startIndex?: number;
   onSavedReload?: () => void;
 }) {
   const [modal, setModal] = useState<{
@@ -69,7 +71,7 @@ export default function TimesheetGrid({
       {rows.map((r, idx) => (
         <div key={r.driver.id} className="flex border-b hover:bg-gray-50/40">
           <div className="min-w-[40px] px-2 py-2 text-sm text-center border-r text-gray-500">
-            {idx + 1}
+            {startIndex + idx + 1}
           </div>
           <div className="min-w-[240px] px-3 py-2 border-r sticky left-10 bg-white z-10">
             <div className="font-medium">{shortFIO(r.driver.fullName)}</div>
@@ -82,26 +84,21 @@ export default function TimesheetGrid({
             {days.map((d) => {
               const cell = r.days[d];
               const st = cell?.status ?? "Empty";
+              const isWorked = st === "Worked";
               const label = dayLabel[st] ?? "";
-              const routeText =
-                cell?.routeAndExit?.includes("/") && st === "Worked"
-                  ? `Маршрут: ${cell.routeAndExit.split("/")[0]}\nВыход: ${cell.routeAndExit.split("/")[1]}`
-                  : "";
-              const title =
-                st === "Worked"
-                  ? `Работал${routeText ? `\n${routeText}` : ""}`
-                  : labelFor(st);
+              const { route, exit } = parseRouteAndExit(cell?.routeAndExit);
+              const title = isWorked
+                ? `Рабочий день${route || exit ? `\nМаршрут: ${route ?? "-"}\nВыход: ${exit ?? "-"}` : ""}`
+                : labelFor(st);
 
               return (
                 <button
                   key={d}
                   title={title}
-                  onClick={() =>
-                    openEdit(r.driver.id, d, st)
-                  }
+                  onClick={() => openEdit(r.driver.id, d, st)}
                   className={clsx(
-                    "min-w-[42px] h-9 rounded border text-xs font-bold flex items-center justify-center",
-                    st === "Worked" && "bg-green-100 border-green-300 text-green-800",
+                    "min-w-[42px] h-9 rounded border text-xs font-semibold flex items-center justify-center",
+                    isWorked && "bg-green-100 border-green-300 text-green-800",
                     st === "DayOff" && "bg-red-100 border-red-300 text-red-700",
                     st === "OnVacation" && "bg-yellow-100 border-yellow-300 text-yellow-800",
                     st === "OnSickLeave" && "bg-blue-100 border-blue-300 text-blue-800",
@@ -110,7 +107,14 @@ export default function TimesheetGrid({
                     st === "Empty" && "bg-white border-gray-200 text-gray-700"
                   )}
                 >
-                  {label}
+                  {isWorked && (route || exit) ? (
+                    <span className="flex flex-col items-center leading-tight">
+                      <span>{route ?? label}</span>
+                      {exit && <span className="text-[10px] font-normal">вых. {exit}</span>}
+                    </span>
+                  ) : (
+                    label
+                  )}
                 </button>
               );
             })}
@@ -151,6 +155,15 @@ export default function TimesheetGrid({
     setModal({ open: true, driverId, date, status });
   }
 
+  function parseRouteAndExit(value?: string | null) {
+    if (!value) return { route: null, exit: null };
+    const [rawRoute = null, rawExit = null] = value.split("/").map((part) => part.trim());
+    return {
+      route: rawRoute && rawRoute.length ? rawRoute : null,
+      exit: rawExit && rawExit.length ? rawExit : null,
+    };
+  }
+
   function labelFor(s: TimesheetDayStatus) {
     switch (s) {
       case "DayOff":
@@ -170,3 +183,5 @@ export default function TimesheetGrid({
     }
   }
 }
+
+

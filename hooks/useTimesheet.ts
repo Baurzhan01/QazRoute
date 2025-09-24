@@ -30,8 +30,8 @@ export function useTimesheet({
   drivers,
   year,
   month0,
-  page,
-  pageSize,
+  page: _page,
+  pageSize: _pageSize,
   reloadKey,
 }: {
   drivers: DisplayDriver[];
@@ -46,15 +46,8 @@ export function useTimesheet({
 
   const days = useMemo(() => getMonthDays(year, month0), [year, month0]);
 
-  // ВАЖНО: drivers уже приходят постранично с сервера — но если вдруг придут все,
-  // этот slice не повредит.
-  const pageDrivers = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return drivers.slice(start, start + pageSize);
-  }, [drivers, page, pageSize]);
-
   useEffect(() => {
-    if (!pageDrivers.length) {
+    if (!drivers.length) {
       setRows([]);
       return;
     }
@@ -67,19 +60,17 @@ export function useTimesheet({
       setLoading(true);
       try {
         const results = await Promise.all(
-          pageDrivers.map(async (driver) => {
+          drivers.map(async (driver) => {
             // 🔧 Унифицированное чтение ответа: массив ИЛИ { value: [...] }
             const res = await driverService.getWorkHistory(driver.id, startDate, days.length);
-            const value: DriverWorkHistoryItem[] = Array.isArray(res)
-              ? res
-              : (res?.value ?? []);
+            const history = extractHistory(res);
 
             const map: TimesheetRow["days"] = {};
             days.forEach((d) => {
               map[d] = { status: "Empty", raw: null };
             });
 
-            value.forEach((item) => {
+            history.forEach((item) => {
               const dateObj = new Date(item.date);
               if (dateObj.getFullYear() === year && dateObj.getMonth() === month0) {
                 const n = dateObj.getDate();
@@ -105,7 +96,7 @@ export function useTimesheet({
     return () => {
       cancelled = true;
     };
-  }, [pageDrivers, year, month0, days, reloadKey]);
+  }, [drivers, year, month0, days, reloadKey]);
 
   const monthlyTotals = useMemo(() => {
     return rows.reduce(
@@ -229,3 +220,10 @@ function calcTotals(map: TimesheetRow["days"], days: number[]) {
   }
   return { worked, dayOff, vacation, sick, intern, fired, empty };
 }
+function extractHistory(res: unknown): DriverWorkHistoryItem[] {
+  if (!res) return [];
+  if (Array.isArray(res)) return res as DriverWorkHistoryItem[];
+  const value = (res as { value?: unknown }).value;
+  return Array.isArray(value) ? (value as DriverWorkHistoryItem[]) : [];
+}
+

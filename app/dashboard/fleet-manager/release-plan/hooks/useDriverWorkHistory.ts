@@ -21,7 +21,7 @@ export function useDriverWorkHistory(
       try {
         setLoading(true);
         const res = await driverService.getWorkHistory(driverId, startDate, days);
-        if (!cancelled) setData(Array.isArray(res) ? res : []);
+        if (!cancelled) setData(Array.isArray(res) ? res : (res?.value ?? []));
       } catch {
         if (!cancelled) toast({ title: "Не удалось загрузить историю работы", variant: "destructive" });
       } finally {
@@ -34,3 +34,4 @@ export function useDriverWorkHistory(
 
   return { data, loading };
 }
+
