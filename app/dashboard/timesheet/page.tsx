@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { useTimesheet } from "@/hooks/useTimesheet";
-import TimesheetGrid from "@/components/timesheet/TimesheetGrid";
+import TimesheetGrid from "../../../components/timesheet/TimesheetGrid";
 import { exportTimesheetToExcel } from "@/lib/export/exportTimesheetToExcel";
 import BulkActionsBar from "@/components/timesheet/BulkActionsBar";
 import { Switch } from "@/components/ui/switch";

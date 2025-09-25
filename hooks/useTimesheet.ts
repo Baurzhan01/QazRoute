@@ -52,8 +52,8 @@ export function useTimesheet({
       return;
     }
 
-    const startDate = new Date(year, month0, 1).toISOString().split("T")[0];
-
+    const lastDay = new Date(year, month0 + 1, 0).getDate();
+    const startDate = `${year}-${String(month0 + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
     let cancelled = false;
 
     (async () => {
@@ -62,7 +62,7 @@ export function useTimesheet({
         const results = await Promise.all(
           drivers.map(async (driver) => {
             // 🔧 Унифицированное чтение ответа: массив ИЛИ { value: [...] }
-            const res = await driverService.getWorkHistory(driver.id, startDate, days.length);
+            const res = await driverService.getWorkHistory(driver.id, startDate, lastDay);
             const history = extractHistory(res);
 
             const map: TimesheetRow["days"] = {};
@@ -72,10 +72,12 @@ export function useTimesheet({
 
             history.forEach((item) => {
               const dateObj = new Date(item.date);
+              if (Number.isNaN(dateObj.getTime())) return;
               if (dateObj.getFullYear() === year && dateObj.getMonth() === month0) {
                 const n = dateObj.getDate();
+                const normalized = normalizeStatus(item.status, item.routeAndExit);
                 map[n] = {
-                  status: normalizeStatus(item.status),
+                  status: normalized === "Empty" && item.routeAndExit ? "Worked" : normalized,
                   routeAndExit: item.routeAndExit,
                   raw: item,
                 };
@@ -135,10 +137,9 @@ export function useTimesheet({
  * Приводим статус из бэкенда/истории к enum таблицы.
  * Поддерживаем и EN-коды бэкенда, и RU подписи.
  */
-function normalizeStatus(s: string | null | undefined): TimesheetDayStatus {
-  if (!s) return "Empty";
+function normalizeStatus(s: string | null | undefined, routeAndExit?: string | null): TimesheetDayStatus {
+  if (!s) return routeAndExit ? "Worked" : "Empty";
 
-  // Сразу отдаём, если уже одно из целевых значений
   switch (s) {
     case "Worked":
     case "DayOff":
@@ -150,7 +151,7 @@ function normalizeStatus(s: string | null | undefined): TimesheetDayStatus {
       return s;
   }
 
-  // EN-коды бэкенда
+  // EN-строки от бэкенда
   switch (s) {
     case "OnWork":
       return "Worked";
@@ -166,23 +167,16 @@ function normalizeStatus(s: string | null | undefined): TimesheetDayStatus {
       return "Fired";
   }
 
-  // RU-строки (если где-то ещё могут прийти)
-  switch (s) {
-    case "Работал":
-      return "Worked";
-    case "Выходной":
-      return "DayOff";
-    case "Отпуск":
-      return "OnVacation";
-    case "Больничный":
-      return "OnSickLeave";
-    case "Стажировка":
-      return "Intern";
-    case "Уволен":
-      return "Fired";
-    default:
-      return "Empty";
-  }
+  // RU-строки (идём по подстрокам, чтобы не зависеть от падежей)
+  const lower = s.toLowerCase();
+  if (lower.includes("работ")) return "Worked";
+  if (lower.includes("выход")) return "DayOff";
+  if (lower.includes("отп")) return "OnVacation";
+  if (lower.includes("бол")) return "OnSickLeave";
+  if (lower.includes("стаж")) return "Intern";
+  if (lower.includes("увол")) return "Fired";
+
+  return routeAndExit ? "Worked" : "Empty";
 }
 
 function calcTotals(map: TimesheetRow["days"], days: number[]) {
@@ -226,4 +220,7 @@ function extractHistory(res: unknown): DriverWorkHistoryItem[] {
   const value = (res as { value?: unknown }).value;
   return Array.isArray(value) ? (value as DriverWorkHistoryItem[]) : [];
 }
+
+
+
 

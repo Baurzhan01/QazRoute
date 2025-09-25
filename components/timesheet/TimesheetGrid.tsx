@@ -1,15 +1,47 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { clsx } from "clsx";
-import type { TimesheetDayStatus } from "@/lib/utils/timesheet";
-import { dayLabel, ymd } from "@/lib/utils/timesheet";
-import type { TimesheetRow } from "@/hooks/useTimesheet";
+import { useState } from "react";
+import clsx from "clsx";
 import EditDayStatusDialog from "./EditDayStatusDialog";
+import {
+  TimesheetDayStatus,
+  dayLabel,
+  ymd,
+  statusToColor,
+} from "../../lib/utils/timesheet";
 
-function shortFIO(fullName: string): string {
-  const [last, first = "", middle = ""] = fullName.split(" ");
-  return `${last} ${first[0] ?? ""}.${middle[0] ?? ""}.`;
+// типы для входных данных
+interface Driver {
+  id: string;
+  fullName: string;
+  serviceNumber?: string | null;
+}
+
+interface DayCell {
+  status: TimesheetDayStatus;
+  routeAndExit?: string | null;
+}
+
+interface Row {
+  driver: Driver;
+  days: Record<number, DayCell | undefined>;
+  totals: {
+    worked: number;
+    dayOff: number;
+    vacation: number;
+    sick: number;
+    intern: number;
+    fired: number;
+  };
+}
+
+interface TimesheetGridProps {
+  rows: Row[];
+  days: number[];
+  year: number;
+  month0: number;
+  startIndex: number;
+  onSavedReload?: () => void;
 }
 
 export default function TimesheetGrid({
@@ -17,51 +49,48 @@ export default function TimesheetGrid({
   days,
   year,
   month0,
-  startIndex = 0,
+  startIndex,
   onSavedReload,
-}: {
-  rows: TimesheetRow[];
-  days: number[];
-  year: number;
-  month0: number;
-  startIndex?: number;
-  onSavedReload?: () => void;
-}) {
+}: TimesheetGridProps) {
   const [modal, setModal] = useState<{
     open: boolean;
-    driverId: string;
-    date: string;
+    driverId: string | null;
+    date: string | null;
     status: TimesheetDayStatus;
-  }>({ open: false, driverId: "", date: "", status: "Empty" });
-
-  const headerDays = useMemo(
-    () =>
-      days.map((d) => (
-        <div key={d} className="min-w-[42px] text-center text-xs font-medium text-gray-600">
-          {d}
-        </div>
-      )),
-    [days]
-  );
+  }>({
+    open: false,
+    driverId: null,
+    date: null,
+    status: "Empty",
+  });
 
   return (
-    <div className="border rounded-md overflow-auto">
+    <div className="overflow-x-auto border rounded">
       {/* Header */}
-      <div className="flex sticky top-0 bg-white z-10 border-b">
-        <div className="min-w-[40px] px-2 py-2 text-xs font-semibold text-gray-600 border-r text-center">
+      <div className="flex sticky top-0 bg-gray-50 z-10 border-b">
+        <div className="min-w-[40px] px-2 py-2 text-sm text-center border-r font-semibold text-gray-700">
           №
         </div>
-        <div className="min-w-[240px] px-3 py-2 font-semibold text-gray-700 border-r">
+        <div className="min-w-[240px] px-3 py-2 border-r font-semibold text-gray-700 sticky left-10 bg-gray-50 z-10">
           Водитель
         </div>
-        <div className="flex gap-1 px-2 py-2">{headerDays}</div>
-        <div className="flex gap-1 px-2 py-2 sticky right-0 bg-white border-l">
-          {["Итог Р", "Итог В", "Отп", "Бол", "Стаж", "Ув"].map((t) => (
+        <div className="flex gap-1 px-2 py-2">
+          {days.map((t) => (
             <div
               key={t}
-              className="min-w-[52px] text-center text-xs font-semibold text-gray-700"
+              className="min-w-[42px] h-9 rounded border text-xs font-semibold flex items-center justify-center bg-gray-100"
             >
               {t}
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-1 px-2 py-2 sticky right-0 bg-gray-50 border-l">
+          {["Раб.", "Вых.", "Отп.", "Бол.", "Стаж.", "Увол."].map((h, i) => (
+            <div
+              key={i}
+              className="min-w-[52px] h-9 rounded border text-xs font-semibold flex items-center justify-center"
+            >
+              {h}
             </div>
           ))}
         </div>
@@ -84,12 +113,16 @@ export default function TimesheetGrid({
             {days.map((d) => {
               const cell = r.days[d];
               const st = cell?.status ?? "Empty";
-              const isWorked = st === "Worked";
               const label = dayLabel[st] ?? "";
               const { route, exit } = parseRouteAndExit(cell?.routeAndExit);
-              const title = isWorked
-                ? `Рабочий день${route || exit ? `\nМаршрут: ${route ?? "-"}\nВыход: ${exit ?? "-"}` : ""}`
-                : labelFor(st);
+              const title =
+                st === "Worked"
+                  ? `Рабочий день${
+                      route || exit
+                        ? `\nМаршрут: ${route ?? "-"}\nВыход: ${exit ?? "-"}`
+                        : ""
+                    }`
+                  : labelFor(st);
 
               return (
                 <button
@@ -98,48 +131,40 @@ export default function TimesheetGrid({
                   onClick={() => openEdit(r.driver.id, d, st)}
                   className={clsx(
                     "min-w-[42px] h-9 rounded border text-xs font-semibold flex items-center justify-center",
-                    isWorked && "bg-green-100 border-green-300 text-green-800",
-                    st === "DayOff" && "bg-red-100 border-red-300 text-red-700",
-                    st === "OnVacation" && "bg-yellow-100 border-yellow-300 text-yellow-800",
-                    st === "OnSickLeave" && "bg-blue-100 border-blue-300 text-blue-800",
-                    st === "Intern" && "bg-purple-100 border-purple-300 text-purple-800",
-                    st === "Fired" && "bg-gray-200 border-gray-300 text-gray-700",
-                    st === "Empty" && "bg-white border-gray-200 text-gray-700"
+                    statusToColor(st)
                   )}
                 >
-                  {isWorked && (route || exit) ? (
-                    <span className="flex flex-col items-center leading-tight">
-                      <span>{route ?? label}</span>
-                      {exit && <span className="text-[10px] font-normal">вых. {exit}</span>}
-                    </span>
-                  ) : (
-                    label
-                  )}
+                  {label}
                 </button>
               );
             })}
           </div>
 
           <div className="flex gap-1 px-2 py-1 sticky right-0 bg-white border-l">
-            {[r.totals.worked, r.totals.dayOff, r.totals.vacation, r.totals.sick, r.totals.intern, r.totals.fired].map(
-              (v, i) => (
-                <div
-                  key={i}
-                  className="min-w-[52px] h-9 rounded border text-xs flex items-center justify-center"
-                >
-                  {v}
-                </div>
-              )
-            )}
+            {[
+              r.totals.worked,
+              r.totals.dayOff,
+              r.totals.vacation,
+              r.totals.sick,
+              r.totals.intern,
+              r.totals.fired,
+            ].map((v, i) => (
+              <div
+                key={i}
+                className="min-w-[52px] h-9 rounded border text-xs flex items-center justify-center"
+              >
+                {v}
+              </div>
+            ))}
           </div>
         </div>
       ))}
 
       <EditDayStatusDialog
         open={modal.open}
-        onOpenChange={(v) => setModal((m) => ({ ...m, open: v }))}
-        driverId={modal.driverId}
-        date={modal.date}
+        onOpenChange={(v: boolean) => setModal((m) => ({ ...m, open: v }))}
+        driverId={modal.driverId ?? ""}
+        date={modal.date ?? ""}
         initial={modal.status}
         onSaved={() => onSavedReload?.()}
       />
@@ -157,7 +182,9 @@ export default function TimesheetGrid({
 
   function parseRouteAndExit(value?: string | null) {
     if (!value) return { route: null, exit: null };
-    const [rawRoute = null, rawExit = null] = value.split("/").map((part) => part.trim());
+    const [rawRoute = null, rawExit = null] = value
+      .split("/")
+      .map((part) => part.trim());
     return {
       route: rawRoute && rawRoute.length ? rawRoute : null,
       exit: rawExit && rawExit.length ? rawExit : null,
@@ -184,4 +211,8 @@ export default function TimesheetGrid({
   }
 }
 
-
+function shortFIO(fullName: string): string {
+  const [last, first = "", middle = ""] = fullName.split(" ");
+  const initials = `${first?.charAt(0)}.${middle?.charAt(0)}.`;
+  return `${last} ${initials}`;
+}
