@@ -19,11 +19,13 @@ export interface CreateRepairRequest {
   // Запчасти
   sparePartId?: string | null;
   sparePartCount?: number;
+  sparePartPrice?: number;   // 👈 добавить
 
   // Работы
   laborTimeId?: string | null;
   workCount?: number;
   workHour?: number;
+  workPrice?: number;        // 👈 добавить
 }
 
 // --- Модель ремонта ---

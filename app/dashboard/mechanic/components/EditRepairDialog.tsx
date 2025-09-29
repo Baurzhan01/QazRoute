@@ -115,29 +115,51 @@ export default function EditRepairDialog({
   async function submit() {
     setSaving(true);
     try {
+      // новые строки (createBatch)
       const newRows = rows.filter((r) => !r.id);
       if (newRows.length > 0) {
         const payload: CreateRepairRequest[] = newRows.map((r) => ({
           busId: repair.busId,
           applicationNumber: repair.applicationNumber ?? 0,
-          departureDate:
-            repair.departureDate ?? new Date().toISOString().slice(0, 10),
-          entryDate:
-            repair.entryDate ?? new Date().toISOString().slice(0, 10),
+          departureDate: repair.departureDate ?? new Date().toISOString().slice(0, 10),
+          entryDate: repair.entryDate ?? new Date().toISOString().slice(0, 10),
           laborTimeId: r.laborTimeId ?? null,
           workCount: parseDec(r.workCount),
           workHour: parseDec(r.workHour),
+          workPrice: parseDec(r.workPrice),
           sparePartId: r.sparePartId ?? null,
           sparePartCount: parseDec(r.sparePartCount),
+          sparePartPrice: parseDec(r.sparePartPrice),
         }));
         await repairBusService.createBatch(payload);
       }
+  
+      // обновляем существующие строки
+      const existingRows = rows.filter((r) => r.id);
+      for (const r of existingRows) {
+        const payload: CreateRepairRequest = {
+          busId: repair.busId,
+          applicationNumber: repair.applicationNumber ?? 0,
+          departureDate: repair.departureDate ?? new Date().toISOString().slice(0, 10),
+          entryDate: repair.entryDate ?? new Date().toISOString().slice(0, 10),
+          laborTimeId: r.laborTimeId ?? null,
+          workCount: parseDec(r.workCount),
+          workHour: parseDec(r.workHour),
+          workPrice: parseDec(r.workPrice),
+          sparePartId: r.sparePartId ?? null,
+          sparePartCount: parseDec(r.sparePartCount),
+          sparePartPrice: parseDec(r.sparePartPrice),
+        };
+        await repairBusService.update(r.id!, payload);
+      }
+  
       onUpdated();
       onClose();
     } finally {
       setSaving(false);
     }
   }
+  
 
   const totals = rows.reduce(
     (acc, r) => {

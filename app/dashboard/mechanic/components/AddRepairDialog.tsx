@@ -153,39 +153,44 @@ export default function AddRepairDialog({
   }  
 
   async function submit() {
-    const isValid = await validateApplicationNumber(applicationNumber);
-    if (!isValid) return;
-
     if (!busId || (works.length === 0 && spares.length === 0)) return;
     setSaving(true);
     try {
       const payload: CreateRepairRequest[] = [
         ...works.map((w) => ({
           busId,
-          applicationNumber: Number(applicationNumber),
+          applicationNumber:
+            applicationNumber === "" ? 0 : Number(applicationNumber),
           departureDate:
             departureDateStr || new Date().toISOString().slice(0, 10),
           entryDate: entryDateStr || new Date().toISOString().slice(0, 10),
           laborTimeId: w.laborTimeId || null,
           workCount: parseDec(w.workCount),
           workHour: parseDec(w.workHour),
+          workPrice: parseDec(w.workPrice),   // 👈 добавляем цену работы
           sparePartId: null,
           sparePartCount: 0,
+          sparePartPrice: 0,                  // 👈 обязательно, даже если 0
         })),
         ...spares.map((s) => ({
           busId,
-          applicationNumber: Number(applicationNumber),
+          applicationNumber:
+            applicationNumber === "" ? 0 : Number(applicationNumber),
           departureDate:
             departureDateStr || new Date().toISOString().slice(0, 10),
           entryDate: entryDateStr || new Date().toISOString().slice(0, 10),
           sparePartId: s.sparePartId || null,
+          sparePartArticle: s.sparePartArticle || null, // 👈 если сервер принимает артикул
+          sparePart: s.sparePart || null,               // 👈 если сервер принимает имя
           sparePartCount: parseDec(s.sparePartCount),
+          sparePartPrice: parseDec(s.sparePartPrice),   // 👈 добавляем цену запчасти
           laborTimeId: null,
           workCount: 0,
           workHour: 0,
+          workPrice: 0,
         })),
       ];
-
+  
       const res = await repairBusService.createBatch(payload);
       onCreated(res.value ?? []);
       setOpen(false);
@@ -198,6 +203,7 @@ export default function AddRepairDialog({
       setSaving(false);
     }
   }
+  
 
   const totals = {
     work: works.reduce(
