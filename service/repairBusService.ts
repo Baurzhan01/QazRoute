@@ -76,4 +76,10 @@ export const repairBusService = {
     const res = await apiClient.delete(`/repairs/${id}`);
     return res.data;
   },
+  checkApplicationNumber: async (
+    number: number
+  ): Promise<ApiResponse<boolean>> => {
+    const res = await apiClient.get(`/repairs/check/number/${number}`);
+    return res.data;
+  },
 };

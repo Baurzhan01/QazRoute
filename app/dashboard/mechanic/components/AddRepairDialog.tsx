@@ -25,6 +25,7 @@ import type { CreateRepairRequest, Repair } from "@/types/repairBus.types";
 import type { SparePart, LaborTime } from "@/types/spareParts.types";
 
 import SearchInput from "./SearchInput";
+import { log } from "console";
 
 // --- Хелперы ---
 function parseDec(value?: string): number {
@@ -67,6 +68,9 @@ export default function AddRepairDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [applicationNumber, setApplicationNumber] = useState<string>("");
+  const [appNumberError, setAppNumberError] = useState<string | null>(null);
+  const [checkingAppNumber, setCheckingAppNumber] = useState(false);
+
   const [departureDateStr, setDepartureDateStr] = useState("");
   const [entryDateStr, setEntryDateStr] = useState("");
   const [saving, setSaving] = useState(false);
@@ -107,15 +111,58 @@ export default function AddRepairDialog({
     );
   }
 
+  async function validateApplicationNumber(num: string) {
+    if (!num) {
+      setAppNumberError("Введите номер заявки");
+      return false;
+    }
+    setCheckingAppNumber(true);
+    try {
+      const res = await repairBusService.checkApplicationNumber(Number(num));
+  
+      // ✅ 200 → номер свободен
+      if (res.isSuccess) {
+        setAppNumberError(null);
+        return true;
+      }
+  
+      // ❌ сервер ответил isSuccess:false → номер занят
+      if (!res.isSuccess && [400, 404, 409].includes(res.statusCode)) {
+        setAppNumberError(res.error || "Такой номер заявки уже существует");
+        return false;
+      }
+  
+      setAppNumberError("Не удалось проверить номер заявки");
+      return false;
+    } catch (err: any) {
+      console.error("Ошибка проверки номера заявки:", err);
+  
+      const status = err.response?.status;
+      const message = err.response?.data?.error;
+  
+      if ([400, 404, 409].includes(status)) {
+        setAppNumberError(message || "Такой номер заявки уже существует");
+        return false;
+      }
+  
+      setAppNumberError("Не удалось проверить номер заявки");
+      return false;
+    } finally {
+      setCheckingAppNumber(false);
+    }
+  }  
+
   async function submit() {
+    const isValid = await validateApplicationNumber(applicationNumber);
+    if (!isValid) return;
+
     if (!busId || (works.length === 0 && spares.length === 0)) return;
     setSaving(true);
     try {
       const payload: CreateRepairRequest[] = [
         ...works.map((w) => ({
           busId,
-          applicationNumber:
-            applicationNumber === "" ? 0 : Number(applicationNumber),
+          applicationNumber: Number(applicationNumber),
           departureDate:
             departureDateStr || new Date().toISOString().slice(0, 10),
           entryDate: entryDateStr || new Date().toISOString().slice(0, 10),
@@ -127,8 +174,7 @@ export default function AddRepairDialog({
         })),
         ...spares.map((s) => ({
           busId,
-          applicationNumber:
-            applicationNumber === "" ? 0 : Number(applicationNumber),
+          applicationNumber: Number(applicationNumber),
           departureDate:
             departureDateStr || new Date().toISOString().slice(0, 10),
           entryDate: entryDateStr || new Date().toISOString().slice(0, 10),
@@ -184,14 +230,23 @@ export default function AddRepairDialog({
           <div>
             <Label>№ заявки</Label>
             <Input
-              type="text"
-              inputMode="numeric"
-              value={applicationNumber}
-              onChange={(e) =>
-                setApplicationNumber(e.target.value.replace(/\D/g, ""))
-              }
-              placeholder="Напр. 51636"
-            />
+                type="text"
+                inputMode="numeric"
+                value={applicationNumber}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  setApplicationNumber(val);
+                  if (!val) setAppNumberError("Введите номер заявки");
+                  else setAppNumberError(null);
+                }}
+                onBlur={() => {
+                  if (applicationNumber) validateApplicationNumber(applicationNumber);
+                }}
+                placeholder="Напр. 51636"
+              />
+              {appNumberError && (
+                <p className="text-red-600 text-sm mt-1">{appNumberError}</p>
+              )}
           </div>
           <div>
             <Label>Дата выезда</Label>
@@ -452,7 +507,7 @@ export default function AddRepairDialog({
           <Button variant="outline" onClick={() => setOpen(false)}>
             Отмена
           </Button>
-          <Button onClick={submit} disabled={saving}>
+          <Button onClick={submit} disabled={saving || !!appNumberError || checkingAppNumber}>
             {saving ? "Сохранение…" : "Сохранить"}
           </Button>
         </DialogFooter>

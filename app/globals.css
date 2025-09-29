@@ -33,6 +33,11 @@ body, table, th, td {
   --ring: 0 0% 3.9%;
   --radius: 0.5rem;
 }
+@keyframes gradientShift {
+  0% { background-position: 0% 50% }
+  50% { background-position: 100% 50% }
+  100% { background-position: 0% 50% }
+}
 
 /* 🌚 Тёмная тема */
 .dark {

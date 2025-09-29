@@ -362,6 +362,27 @@ export default function MechanicHomePage() {
     return { label: "—", match: false };
   }
 
+  function getPageNumbers(current: number, total: number, maxVisible = 10) {
+    const pages: (number | string)[] = []
+  
+    if (total <= maxVisible) {
+      for (let i = 1; i <= total; i++) pages.push(i)
+    } else {
+      const left = Math.max(2, current - 2)
+      const right = Math.min(total - 1, current + 2)
+  
+      pages.push(1)
+      if (left > 2) pages.push("...")
+  
+      for (let i = left; i <= right; i++) pages.push(i)
+  
+      if (right < total - 1) pages.push("...")
+      pages.push(total)
+    }
+  
+    return pages
+  }  
+
   return (
     <div className="space-y-6">
       {/* Заголовок */}
@@ -578,7 +599,7 @@ export default function MechanicHomePage() {
             </div>
           )}
 
-          {/* Пагинация */}
+       {/* Пагинация */}
           <Pagination className="mt-4">
             <PaginationContent>
               <PaginationItem>
@@ -591,16 +612,22 @@ export default function MechanicHomePage() {
                 </PaginationPrevious>
               </PaginationItem>
 
-              {Array.from({ length: totalPages }, (_, i) => (
-                <PaginationItem key={i}>
-                  <PaginationLink
-                    isActive={safePage === i + 1}
-                    onClick={() => setFilters((f) => ({ ...f, page: i + 1 }))}
-                  >
-                    {i + 1}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
+              {getPageNumbers(safePage, totalPages).map((p, i) =>
+                typeof p === "number" ? (
+                  <PaginationItem key={i}>
+                    <PaginationLink
+                      isActive={safePage === p}
+                      onClick={() => setFilters((f) => ({ ...f, page: p }))}
+                    >
+                      {p}
+                    </PaginationLink>
+                  </PaginationItem>
+                ) : (
+                  <PaginationItem key={i}>
+                    <span className="px-2">…</span>
+                  </PaginationItem>
+                )
+              )}
 
               <PaginationItem>
                 <PaginationNext
