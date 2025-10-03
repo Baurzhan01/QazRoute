@@ -43,11 +43,12 @@ export default function Sidebar() {
     const authData = localStorage.getItem("authData");
     if (authData) {
       const user = JSON.parse(authData);
-      const roleKey = user.role;              // 👈 оставляем как есть
+      const roleKey = user.role?.toLowerCase();   // 👈 всегда приводим к нижнему регистру
       setRole(roleKey || "default");
       setDashboardPath(`/dashboard/${getRolePath(user.role)}`);
     }
-  }, []);  
+  }, []);
+  
 
   // --- добавлено меню для механика ---
   const mechanicNavItems: NavItem[] = [
@@ -124,15 +125,16 @@ const seniorDispatcherNavItems: NavItem[] = [
   { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
 ];
 
-  const navItems =
-    role === "mechanic" ? mechanicNavItems :
-    role === "mcc" ? mccNavItems :
-    role === "cts" || role === "on-duty-mechanic" ? ctsNavItems :
-    role === "dispatcher" ? dispatcherNavItems :
-    role === "senior-dispatcher" || role === "seniorDispatcher" ? seniorDispatcherNavItems :   // 👈 добавлено
-    role === "lrt" ? lrtNavItems :
-    role === "guide" ? guideNavItems :
-    defaultNavItems;
+const navItems: NavItem[] =
+role === "mechanic" ? mechanicNavItems :
+role === "mcc" ? mccNavItems :
+role === "cts" || role === "on-duty-mechanic" ? ctsNavItems :
+role === "dispatcher" ? dispatcherNavItems :
+role === "senior-dispatcher" || role === "seniordispatcher" ? seniorDispatcherNavItems : // 👈 добавил ? :
+role === "lrt" ? lrtNavItems :
+role === "guide" ? guideNavItems :
+defaultNavItems;
+
 
   return (
     <aside className="hidden md:flex w-66 flex-col bg-white border-r">
