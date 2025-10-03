@@ -59,6 +59,7 @@ export default function EditRepairDialog({
 }) {
   const [rows, setRows] = useState<RowDraft[]>([]);
   const [saving, setSaving] = useState(false);
+  const [registerNumber, setRegisterNumber] = useState<string>("");
 
   useEffect(() => {
     if (repair) {
@@ -82,6 +83,7 @@ export default function EditRepairDialog({
           : "",
       };
       setRows([initial]);
+      setRegisterNumber((repair as any).registerNumber ?? ""); // 👈 загружаем из repair
     }
   }, [repair]);
 
@@ -113,6 +115,10 @@ export default function EditRepairDialog({
   }
 
   async function submit() {
+    if (!registerNumber) {
+      alert("Укажите номер реестра");
+      return;
+    }
     setSaving(true);
     try {
       // новые строки (createBatch)
@@ -120,6 +126,7 @@ export default function EditRepairDialog({
       if (newRows.length > 0) {
         const payload: CreateRepairRequest[] = newRows.map((r) => ({
           busId: repair.busId,
+          registerNumber, // 👈 добавили в payload
           applicationNumber: repair.applicationNumber ?? 0,
           departureDate: repair.departureDate ?? new Date().toISOString().slice(0, 10),
           entryDate: repair.entryDate ?? new Date().toISOString().slice(0, 10),
@@ -133,12 +140,13 @@ export default function EditRepairDialog({
         }));
         await repairBusService.createBatch(payload);
       }
-  
+
       // обновляем существующие строки
       const existingRows = rows.filter((r) => r.id);
       for (const r of existingRows) {
         const payload: CreateRepairRequest = {
           busId: repair.busId,
+          registerNumber, // 👈 обязательно
           applicationNumber: repair.applicationNumber ?? 0,
           departureDate: repair.departureDate ?? new Date().toISOString().slice(0, 10),
           entryDate: repair.entryDate ?? new Date().toISOString().slice(0, 10),
@@ -152,14 +160,13 @@ export default function EditRepairDialog({
         };
         await repairBusService.update(r.id!, payload);
       }
-  
+
       onUpdated();
       onClose();
     } finally {
       setSaving(false);
     }
   }
-  
 
   const totals = rows.reduce(
     (acc, r) => {
@@ -181,6 +188,28 @@ export default function EditRepairDialog({
         <DialogHeader>
           <DialogTitle>Редактировать заказ-наряд</DialogTitle>
         </DialogHeader>
+
+        {/* Верхние поля */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <Label>№ реестра</Label>
+            <Input
+              type="text"
+              value={registerNumber}
+              onChange={(e) => setRegisterNumber(e.target.value)}
+              placeholder="Напр. R-2025-01"
+            />
+          </div>
+          <div>
+            <Label>№ заявки</Label>
+            <Input
+              type="text"
+              value={String(repair.applicationNumber ?? "")}
+              readOnly
+              className="bg-gray-100"
+            />
+          </div>
+        </div>
 
         <Tabs defaultValue="works" className="mt-2">
           <TabsList>
@@ -360,8 +389,8 @@ export default function EditRepairDialog({
           </TabsContent>
         </Tabs>
 
-        {/* Итог */}
-        <div className="mt-6 bg-slate-50 border rounded-md p-4">
+      {/* Итог */}
+      <div className="mt-6 bg-slate-50 border rounded-md p-4">
           <div className="flex justify-between text-sm font-medium">
             <span className="text-blue-600">
               Работы: {totals.work.toLocaleString("ru-RU")} ₸

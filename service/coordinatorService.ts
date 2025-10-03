@@ -49,7 +49,7 @@ export const coordinatorService = {
     month: number
   ): Promise<ApiResponse<UserWorkShift[]>> => {
     const response = await apiClient.get<ApiResponse<UserWorkShift[]>>(
-      `/api/coordinator/work-shift/by-depot`,
+      `/coordinator/work-shift/by-depot`,
       { params: { depotId, year, month } }
     )
     return response.data

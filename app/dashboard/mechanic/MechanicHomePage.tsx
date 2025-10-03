@@ -393,7 +393,7 @@ export default function MechanicHomePage() {
             <Filter className="mr-2 h-4 w-4" /> Фильтрация
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/dashboard/mechanic/repairs">
+            <Link href="/dashboard/mechanic/repair-registers">
               <ClipboardList className="mr-2 h-4 w-4" /> Реестр ремонтов
             </Link>
           </Button>

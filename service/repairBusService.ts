@@ -1,7 +1,7 @@
 // service/repairBusService.ts
 import apiClient from "@/app/api/apiClient";
 import type { ApiResponse } from "@/types/api.types";
-import type { Repair, CreateRepairRequest, PagedResult } from "@/types/repairBus.types";
+import type { Repair, CreateRepairRequest, PagedResult, RepairRegister, RepairRegisterDetail } from "@/types/repairBus.types";
 
 export const repairBusService = {
   // Получить все ремонты
@@ -24,6 +24,23 @@ export const repairBusService = {
     const res = await apiClient.get(`/repairs/by-bus/${busId}`, { params });
     return res.data;
   },
+
+  // Получить список реестров ремонтов
+  getRegisters: async (params: { page: number; pageSize: number }) => {
+    const res = await apiClient.get(`/repairs/registers`, { params });
+    return res.data as ApiResponse<PagedResult<RepairRegister> & {
+      grandTotalWorkSum: number;
+      grandTotalSpareSum: number;
+      grandTotalAllSum: number;
+    }>;
+  },
+
+// Получить ремонты по номеру реестра (с фильтрацией и пагинацией)
+getByRegister: async (registerNumber: string, params?: any) => {
+  const res = await apiClient.get(`/repairs/by-register/${registerNumber}`, { params });
+  return res.data as ApiResponse<RepairRegisterDetail>;
+},
+
 
   // Получить ремонты по автопарку (с фильтрацией/пагинацией)
   getByDepotId: async (

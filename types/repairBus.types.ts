@@ -15,6 +15,7 @@ export interface CreateRepairRequest {
 
   departureDate: string;     // "YYYY-MM-DD"
   entryDate: string;         // "YYYY-MM-DD"
+  registerNumber: string;
 
   // Запчасти
   sparePartId?: string | null;
@@ -28,11 +29,64 @@ export interface CreateRepairRequest {
   workPrice?: number;        // 👈 добавить
 }
 
+export interface RepairRegister {
+  registerNumber: string;
+  applicationsCount: number;
+  totalWorkSum: number;
+  totalSpareSum: number;
+  totalAllSum: number;
+  firstInputDate: string;
+  lastInputDate: string;
+}
+export interface RepairRegisterApplication {
+  applicationNumber: number;
+  busId: string;
+  garageNumber: string;
+  govNumber: string;
+  workSum: number;
+  workCount: number;
+  workHourTotal: number;
+  workPriceAvg: number;
+  spareSum: number;
+  sparePartCount: number;
+  sparePartPriceAvg: number;
+  allSum: number;
+  firstDepartureDate: string;
+  lastEntryDate: string;
+  createdAtMin: string;
+  createdAtMax: string;
+  registerNumber: string;
+}
+
+export interface RepairRegisterDetail {
+  registerNumber: string;
+  applicationNumbers: number[];
+  applications: RepairRegisterApplication[];
+  totalWorkSum: number;
+  totalSpareSum: number;
+  totalAllSum: number;
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
+
+export interface PagedResult<T> {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  items: T[];
+  totalAllSum?: number;
+  totalWorkSum?: number;
+  totalSpareSum?: number;
+}
+
 // --- Модель ремонта ---
 export interface Repair {
   id: string;
   busId: string;
   applicationNumber: number;
+  registerNumber: string;
 
   // Запчасти
   sparePartId: string | null;

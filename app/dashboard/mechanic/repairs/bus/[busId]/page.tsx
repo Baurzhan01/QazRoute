@@ -68,6 +68,7 @@ export default function BusHistoryPage() {
   const [editAppNum, setEditAppNum] = useState<string>("");
   const [editDeparture, setEditDeparture] = useState<string>("");
   const [editEntry, setEditEntry] = useState<string>("");
+  const [editRegister, setEditRegister] = useState<string>(""); // 👈 добавлено
   const [savingGroup, setSavingGroup] = useState(false);
 
   const [bus, setBus] = useState<Bus | null>(null);
@@ -175,18 +176,23 @@ export default function BusHistoryPage() {
       const newNumber = Number(editAppNum) || 0;
       const newDep = editDeparture || new Date().toISOString().slice(0, 10);
       const newEntry = editEntry || newDep;
+      const newRegister = editRegister.trim();
+
       await Promise.all(
         editingGroup.repairs.map((r) =>
           repairBusService.update(r.id, {
             busId: r.busId,
+            registerNumber: newRegister, // 👈 добавили
             applicationNumber: newNumber,
             departureDate: newDep,
             entryDate: newEntry,
             laborTimeId: r.laborTimeId ?? null,
             workCount: r.workCount,
             workHour: r.workHour,
+            workPrice: r.workPrice,
             sparePartId: r.sparePartId ?? null,
             sparePartCount: r.sparePartCount,
+            sparePartPrice: r.sparePartPrice,
           })
         )
       );
@@ -338,8 +344,8 @@ export default function BusHistoryPage() {
         </CardContent>
       </Card>
 
-      {/* Заказ-наряды */}
-      <Card>
+        {/* Заказ-наряды */}
+        <Card>
         <CardHeader>
           <CardTitle>Заказ-наряды ({repairsPaged.totalCount || 0})</CardTitle>
         </CardHeader>
@@ -353,7 +359,6 @@ export default function BusHistoryPage() {
               {grouped.map(([appNum, group]) => {
                 const parts = group.filter((g) => (g.sparePart ?? "").trim() !== "");
                 const works = group.filter((g) => (g.workName ?? "").trim() !== "");
-
                 const partsSum = parts.reduce(
                   (s, x) => s + safeSum(x.sparePartSum, 0),
                   0
@@ -366,13 +371,14 @@ export default function BusHistoryPage() {
                   (s, x) => s + safeSum(x.allSum, 0),
                   0
                 );
+                const registerNum = group[0]?.registerNumber || "—";
 
                 return (
                   <div key={appNum} className="border rounded-lg overflow-hidden">
                     <div className="flex items-center justify-between bg-slate-50 px-4 py-2 border-b">
                       <div>
                         <div className="font-semibold">
-                          Заказ-наряд № {appNum || "—"}
+                          Заказ-наряд № {appNum || "—"} (Реестр: {registerNum})
                         </div>
                         <div className="text-sm text-muted-foreground">
                           выезд: {fmtDate(group[0]?.departureDate)} · въезд:{" "}
@@ -391,6 +397,7 @@ export default function BusHistoryPage() {
                             setEditAppNum(String(appNum));
                             setEditDeparture((group[0]?.departureDate || "").slice(0, 10));
                             setEditEntry((group[0]?.entryDate || "").slice(0, 10));
+                            setEditRegister(registerNum);
                           }}
                         >
                           Изменить
@@ -607,8 +614,8 @@ export default function BusHistoryPage() {
         </CardContent>
       </Card>
 
-      {/* Диалог редактирования шапки заказ-наряда */}
-      <Dialog open={!!editingGroup} onOpenChange={() => setEditingGroup(null)}>
+     {/* Диалог редактирования шапки заказ-наряда */}
+     <Dialog open={!!editingGroup} onOpenChange={() => setEditingGroup(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Изменить заказ-наряд</DialogTitle>
@@ -617,6 +624,10 @@ export default function BusHistoryPage() {
             <div>
               <span className="text-sm text-muted-foreground">№ заявки</span>
               <Input value={editAppNum} onChange={(e) => setEditAppNum(e.target.value)} />
+            </div>
+            <div>
+              <span className="text-sm text-muted-foreground">№ реестра</span>
+              <Input value={editRegister} onChange={(e) => setEditRegister(e.target.value)} />
             </div>
             <div>
               <span className="text-sm text-muted-foreground">Дата выезда</span>

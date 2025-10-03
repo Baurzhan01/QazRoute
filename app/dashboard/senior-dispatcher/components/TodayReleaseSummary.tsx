@@ -11,7 +11,6 @@ import { getAuthData } from "@/lib/auth-utils"
 import { coordinatorService } from "@/service/coordinatorService"
 import type { ConvoyCoordinatorCard } from "@/types/coordinator.types"
 
-
 export function TodayReleaseSummary() {
   const [convoys, setConvoys] = useState<ConvoyCoordinatorCard[]>([])
   const [loading, setLoading] = useState(true)
@@ -29,7 +28,7 @@ export function TodayReleaseSummary() {
           setLoading(false)
           return
         }
-        
+
         const date = new Date().toISOString().split("T")[0]
         const response = await coordinatorService.getConvoysByDepot(auth.busDepotId, date)
         setConvoys(response.value || [])
@@ -52,8 +51,8 @@ export function TodayReleaseSummary() {
   }
 
   const getTotalStats = () => {
-    const planned = convoys.reduce((sum, c) => sum + c.planned, 0)
-    const released = convoys.reduce((sum, c) => sum + c.released, 0)
+    const planned = convoys.reduce((sum, c) => sum + (c.planned ?? 0), 0)
+    const released = convoys.reduce((sum, c) => sum + (c.released ?? 0), 0)
     const completion = planned > 0 ? Math.round((released / planned) * 100) : 0
     return { planned, released, completion }
   }
@@ -78,7 +77,12 @@ export function TodayReleaseSummary() {
               })}
             </CardDescription>
           </div>
-          <Button variant="outline" size="sm" className="flex items-center gap-1" onClick={handleViewDailyReport}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-1"
+            onClick={handleViewDailyReport}
+          >
             Дневной отчет
             <ArrowUpRight className="h-4 w-4" />
           </Button>
@@ -114,36 +118,57 @@ export function TodayReleaseSummary() {
             </TableHeader>
             <TableBody>
               {loading
-                ? Array(5).fill(0).map((_, index) => (
-                    <TableRow key={index}>
-                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                      <TableCell className="text-right"><Skeleton className="h-5 w-10 ml-auto" /></TableCell>
-                      <TableCell className="text-right"><Skeleton className="h-5 w-10 ml-auto" /></TableCell>
-                      <TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
-                    </TableRow>
-                  ))
-                : convoys.map((convoy) => (
-                    <TableRow
-                      key={convoy.convoyId}
-                      className="cursor-pointer hover:bg-slate-50"
-                      onClick={() =>
-                        router.push(
-                          `/dashboard/senior-dispatcher/reports/daily/${convoy.convoyId}?date=${new Date().toISOString().split("T")[0]}`
-                        )
-                      }
-                    >
-                      <TableCell className="font-medium">{convoy.convoyName}</TableCell>
-                      <TableCell className="text-right">{convoy.planned}</TableCell>
-                      <TableCell className="text-right">{convoy.released}</TableCell>
-                      <TableCell className="text-right">
-                        <span
-                          className={`px-2 py-1 rounded-md text-xs font-medium ${getCompletionColor(convoy.completion)}`}
-                        >
-                          {convoy.completion}%
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                ? Array(5)
+                    .fill(0)
+                    .map((_, index) => (
+                      <TableRow key={index}>
+                        <TableCell>
+                          <Skeleton className="h-5 w-32" />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Skeleton className="h-5 w-10 ml-auto" />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Skeleton className="h-5 w-10 ml-auto" />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Skeleton className="h-5 w-16 ml-auto" />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                : convoys.map((convoy) => {
+                    const planned = convoy.planned ?? 0
+                    const released = convoy.released ?? 0
+                    const completion =
+                      convoy.completion ?? (planned > 0 ? Math.round((released / planned) * 100) : 0)
+
+                    return (
+                      <TableRow
+                        key={convoy.convoyId}
+                        className="cursor-pointer hover:bg-slate-50"
+                        onClick={() =>
+                          router.push(
+                            `/dashboard/senior-dispatcher/reports/daily/${convoy.convoyId}?date=${
+                              new Date().toISOString().split("T")[0]
+                            }`
+                          )
+                        }
+                      >
+                        <TableCell className="font-medium">{convoy.convoyName}</TableCell>
+                        <TableCell className="text-right">{planned}</TableCell>
+                        <TableCell className="text-right">{released}</TableCell>
+                        <TableCell className="text-right">
+                          <span
+                            className={`px-2 py-1 rounded-md text-xs font-medium ${getCompletionColor(
+                              completion
+                            )}`}
+                          >
+                            {completion}%
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
             </TableBody>
           </Table>
         </div>
