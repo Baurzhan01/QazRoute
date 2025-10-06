@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -74,6 +74,13 @@ export default function AddRepairDialog({
 
   const [works, setWorks] = useState<WorkDraft[]>([{}]);
   const [spares, setSpares] = useState<SpareDraft[]>([{}]);
+   // --- ссылки для автоскролла ---
+  const worksEndRef = useRef<HTMLDivElement | null>(null);
+  const sparesEndRef = useRef<HTMLDivElement | null>(null);
+
+  function scrollToEnd(ref: React.RefObject<HTMLDivElement | null>) {
+    setTimeout(() => ref.current?.scrollIntoView({ behavior: "smooth" }), 50);
+  }
 
   function updateWork(index: number, field: keyof WorkDraft, value: string) {
     setWorks((prev) => {
@@ -92,9 +99,11 @@ export default function AddRepairDialog({
 
   function addWorkRow() {
     setWorks((prev) => [...prev, {}]);
+    scrollToEnd(worksEndRef);
   }
   function addSpareRow() {
     setSpares((prev) => [...prev, {}]);
+    scrollToEnd(sparesEndRef);
   }
 
   function removeWorkRow(index: number) {
@@ -260,7 +269,7 @@ export default function AddRepairDialog({
           </TabsList>
 
           {/* Работы */}
-          <TabsContent value="works" className="mt-4">
+          <TabsContent value="works" className="mt-4 max-h-[50vh] overflow-y-auto">
             {works.map((w, idx) => {
               const workSum = parseDec(w.workCount) * parseDec(w.workHour) * parseDec(w.workPrice) || 0;
               return (
@@ -321,6 +330,7 @@ export default function AddRepairDialog({
                 </div>
               );
             })}
+            <div ref={worksEndRef} /> {/* 👈 сюда прокручивает */}
             <Button variant="outline" onClick={addWorkRow}>+ Добавить работу</Button>
           </TabsContent>
 
@@ -381,6 +391,7 @@ export default function AddRepairDialog({
                 </div>
               );
             })}
+            <div ref={sparesEndRef} /> {/* 👈 сюда прокручивает */}
             <Button variant="outline" onClick={addSpareRow}>+ Добавить запчасть</Button>
           </TabsContent>
         </Tabs>
