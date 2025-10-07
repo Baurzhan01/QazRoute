@@ -335,7 +335,7 @@ export default function AddRepairDialog({
           </TabsContent>
 
           {/* Запчасти */}
-          <TabsContent value="works" className="mt-4 max-h-[50vh] overflow-y-auto">
+          <TabsContent value="spares"  className="mt-4 max-h-[50vh] overflow-y-auto">
             {spares.map((s, idx) => {
               const partSum = parseDec(s.sparePartCount) * parseDec(s.sparePartPrice) || 0;
               return (
