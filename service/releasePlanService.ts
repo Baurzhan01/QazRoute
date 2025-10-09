@@ -67,36 +67,48 @@ export const releasePlanService = {
     replacementType: string,
     newDriverId: string,
     newBusId: string,
-    isSwap: boolean = false // добавлено
+    isSwap: boolean = false,
+    revolutionCount?: number, // <== 1. Added new parameter
+    actionStatus?: string     // <== 2. Added new parameter
   ): Promise<ApiResponse<boolean>> => {
     const date = new Date().toISOString().split("T")[0];
-  
+
+    // 3. Dynamically build the params object
+    const params: any = {
+      newDriverId,
+      newBusId,
+      isSwap,
+    };
+
+    if (revolutionCount !== undefined && revolutionCount !== null) {
+      params.RevolutionCount = revolutionCount;
+    }
+    if (actionStatus) {
+      params.ActionStatus = actionStatus;
+    }
+
     const { data } = await apiClient.put(
       `/dispatches/replace/${dispatchBusLineId}/${isFirstShift}/${replacementType}`,
       null,
-      {
-        params: {
-          newDriverId,
-          newBusId,
-          isSwap, // передаём флаг
-        },
-      }
-    )
-  
+      { params } // <== 4. Use the new params object
+    );
+
+    // This part of the logic might need adjustment later.
+    // For now, it remains as is.
     if (data?.isSuccess) {
       try {
         await apiClient.put(`/dispatches/update-description`, {
           dispatchBusLineId,
           date,
           description: "Снят с маршрута",
-        })
+        });
       } catch (err) {
-        console.warn("⚠️ Ошибка при добавлении описания:", err)
+        console.warn("⚠️ Ошибка при добавлении описания:", err);
       }
     }
-  
-    return data
-  },  
+
+    return data;
+  },
 
   getExtendedAssignmentsByDepot: async (
     date: string,

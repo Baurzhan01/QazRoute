@@ -208,7 +208,6 @@ export default function ConvoyDispatchTable(props: ConvoyDispatchTableProps) {
           }}
           selectedAssignment={selectedAssignment}
           date={data.date}
-          convoyId={convoyId ?? ""}
           onReload={onReload}
           onReplaceSuccess={onReplaceSuccess}
         />

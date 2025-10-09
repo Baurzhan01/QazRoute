@@ -13,6 +13,12 @@ import { releasePlanService } from "@/service/releasePlanService"
 import { statementsService } from "@/service/statementsService"
 import { countUniqueAssignments } from "@/app/dashboard/dispatcher/convoy/[id]/release-plan/utils/countUtils"
 import { getDayTypeFromDate } from "@/app/dashboard/dispatcher/convoy/[id]/release-plan/utils/dateUtils"
+import {
+  DispatchBusLineStatus,
+  type FullStatementData,
+  type StatementRoute,
+} from "@/types/releasePlanTypes"
+import type { Statement } from "@/types/statement.types"
 
 type DayType = "workday" | "saturday" | "sunday" | "holiday"
 
@@ -29,6 +35,20 @@ interface AssignmentSummary {
   driversAssigned: number
   busesAssigned: number
   dispatchId: string | null
+  routesCount: number
+  busesOnLine: number
+  existingStatementId: string | null
+}
+
+const RELEASED_STATUS_TEXT = "Released"
+
+const isLineReleased = (line: StatementRoute["busLines"][number]) => {
+  const status = line.status
+  const releasedByStatus =
+    status === RELEASED_STATUS_TEXT ||
+    (typeof status === "number" && status === DispatchBusLineStatus.Released)
+
+  return releasedByStatus || Boolean(line.isRealsed)
 }
 
 export default function FinalDispatchMainPage() {
@@ -49,52 +69,37 @@ export default function FinalDispatchMainPage() {
 
   useEffect(() => {
     const load = async () => {
-      if (!depotId) return
+      if (!depotId) {
+        setSummaries([])
+        setLoading(false)
+        return
+      }
+
       setLoading(true)
       try {
         const convoysRes = await convoyService.getByDepotId(depotId)
         const convoys: { id: string; number: number }[] = convoysRes.value || []
-
         const routeStatus = routeStatusMap[dayType]
 
         const results = await Promise.all(
-          convoys.map(async (convoy) => {
+          convoys.map(async convoy => {
             try {
-              // Новая ручка ведомости
-              const dispatchRes = await releasePlanService.getFullStatementByDate(
-                todayStr,
-                convoy.id,
-                routeStatus
-              )
+              const [dispatchRes, statementsRes] = await Promise.all([
+                releasePlanService.getFullStatementByDate(todayStr, convoy.id, routeStatus),
+                statementsService.getByConvoyAndDate(convoy.id, todayStr),
+              ])
 
-              const v: any = dispatchRes.value ?? {}
-              const dispatchId: string | null =
-                v?.id ?? v?.dispatchId ?? v?.dispatch?.id ?? null
+              const statementData: FullStatementData | null = dispatchRes.value ?? null
+              const routes: StatementRoute[] = statementData?.routes ?? []
+              const dispatchId = statementData?.id ?? null
 
-              const rawRoutes = (v?.routes ?? []) as any[]
-              const routeGroups = rawRoutes.map((route: any) => ({
-                routeId: route.routeId,
-                routeNumber: route.routeNumber,
-                assignments: (route.busLines ?? []).map((bl: any) => ({
-                  dispatchBusLineId: bl.dispatchBusLineId,
-                  busLineNumber: bl.busLineNumber ?? "—",
-                  garageNumber: bl.bus?.garageNumber ?? "—",
-                  stateNumber: bl.bus?.govNumber ?? "—",
-                  driver: bl.firstDriver ?? null,
-                  shift2Driver: bl.secondDriver ?? undefined,
-                  departureTime: bl.exitTime ?? "—",
-                  scheduleTime: bl.scheduleStart ?? "—",
-                  endTime: bl.endTime ?? "—",
-                  additionalInfo: bl.description ?? "",
-                  routeNumber: route.routeNumber,
-                  bus: bl.bus ?? undefined,
-                })),
-              }))
+              const statements: Statement[] = statementsRes.value ?? []
+              const existingStatementId = statements[0]?.id ?? null
 
-              const { driversAssigned, busesAssigned } = countUniqueAssignments(
-                routeGroups,
-                []
-              )
+              const { driversAssigned, busesAssigned } = countUniqueAssignments(routes, [])
+              const busesOnLine = routes.reduce((acc, route) => {
+                return acc + route.busLines.filter(isLineReleased).length
+              }, 0)
 
               return {
                 convoyId: convoy.id,
@@ -102,15 +107,21 @@ export default function FinalDispatchMainPage() {
                 driversAssigned,
                 busesAssigned,
                 dispatchId,
+                routesCount: routes.length,
+                busesOnLine,
+                existingStatementId,
               } as AssignmentSummary
-            } catch (e) {
-              console.error("load convoy error:", e)
+            } catch (error) {
+              console.error("load convoy error:", error)
               return {
                 convoyId: convoy.id,
                 convoyNumber: convoy.number,
                 driversAssigned: 0,
                 busesAssigned: 0,
                 dispatchId: null,
+                routesCount: 0,
+                busesOnLine: 0,
+                existingStatementId: null,
               } as AssignmentSummary
             }
           })
@@ -122,32 +133,33 @@ export default function FinalDispatchMainPage() {
       }
     }
 
-    load()
-  }, [depotId, dayType, todayStr])
+    void load()
+  }, [dayType, depotId, todayStr])
 
   const handleGenerateStatement = async (summary: AssignmentSummary) => {
     try {
       if (!summary.dispatchId) {
         toast({
-          title: "Не найден dispatchId",
-          description: "Сначала откройте/обновите разнарядку по этой колонне.",
+          title: "Нет dispatchId",
+          description: "Не удалось найти план выпуска для выбранной автоколонны.",
           variant: "destructive",
         })
         return
       }
+
       setGeneratingId(summary.convoyId)
       await statementsService.generate(summary.dispatchId)
-      toast({ title: "Ведомость сформирована" })
+      toast({ title: "Ведомость создана" })
       router.push(`/dashboard/dispatcher/convoy/${summary.convoyId}/final-dispatch`)
-    } catch (e: any) {
+    } catch (error: any) {
       const msg =
-        e?.response?.data?.message ||
-        e?.response?.data?.error ||
-        e?.message ||
-        "Попробуйте позже"
-      console.error("generate statement error:", e?.response || e)
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        "Не удалось создать ведомость"
+      console.error("generate statement error:", error?.response || error)
       toast({
-        title: "Ошибка при формировании",
+        title: "Ошибка при создании ведомости",
         description: msg,
         variant: "destructive",
       })
@@ -158,38 +170,51 @@ export default function FinalDispatchMainPage() {
 
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-2xl font-bold text-sky-700 mb-6">Ведомость по автоколоннам</h1>
+      <h1 className="text-2xl font-bold text-sky-700 mb-6">Итоговые ведомости по автоколоннам</h1>
 
       {loading ? (
-        <div className="text-gray-500">Загрузка колонн…</div>
+        <div className="text-gray-500">Загрузка данных...</div>
       ) : summaries.length === 0 ? (
-        <div className="text-gray-500">Нет доступных колонн</div>
+        <div className="text-gray-500">Нет доступных автоколонн</div>
       ) : (
         <div className="space-y-6">
-          {summaries.map((s) => (
+          {summaries.map(s => (
             <div key={s.convoyId} className="border p-4 rounded-lg shadow-sm bg-white">
               <h2 className="text-lg font-semibold text-gray-800 mb-2">
                 Автоколонна №{s.convoyNumber}
               </h2>
-              <p className="text-sm text-gray-600 mb-1">📅 Сегодня: {formattedDate}</p>
-              <p className="text-sm text-gray-600 mb-1">👨‍✈️ Назначено водителей: {s.driversAssigned}</p>
-              <p className="text-sm text-gray-600 mb-3">🚌 Назначено автобусов: {s.busesAssigned}</p>
+              <p className="text-sm text-gray-600 mb-3">Сегодня: {formattedDate}</p>
+
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-gray-700 mb-4">
+                <p>Маршрутов: <strong>{s.routesCount}</strong></p>
+                <p>На линии: <strong>{s.busesOnLine}</strong></p>
+                <p>Назначено автобусов: <strong>{s.busesAssigned}</strong></p>
+                <p>Назначено водителей: <strong>{s.driversAssigned}</strong></p>
+              </div>
 
               <div className="flex flex-wrap gap-2">
                 <Button onClick={() => router.push(`/dashboard/dispatcher/convoy/${s.convoyId}/final-dispatch`)}>
-                  ➡ Открыть ведомость
+                  Открыть итоговую ведомость
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => handleGenerateStatement(s)}
-                  disabled={!s.dispatchId || generatingId === s.convoyId}
-                >
-                  {generatingId === s.convoyId ? "Формируем…" : "Сформировать ведомость"}
-                </Button>
+                {!s.existingStatementId && (
+                  <Button
+                    variant="outline"
+                    onClick={() => handleGenerateStatement(s)}
+                    disabled={!s.dispatchId || generatingId === s.convoyId}
+                  >
+                    {generatingId === s.convoyId ? "Создаем..." : "Сформировать ведомость"}
+                  </Button>
+                )}
               </div>
+
+              {s.existingStatementId && (
+                <p className="mt-2 text-xs text-emerald-600">
+                  Ведомость на выбранную дату уже сформирована.
+                </p>
+              )}
               {!s.dispatchId && (
                 <p className="mt-2 text-xs text-amber-600">
-                  Для этой колонны не найден текущий dispatchId — проверьте план выпуска на сегодня.
+                  Не найден dispatchId для текущего плана выпуска — генерация может быть недоступна.
                 </p>
               )}
             </div>

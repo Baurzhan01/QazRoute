@@ -1,297 +1,165 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback } from "react"
+import { Printer } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
-import { format } from "date-fns"
-import { ru } from "date-fns/locale"
+
 import { Button } from "@/components/ui/button"
-import { toast } from "@/components/ui/use-toast"
+import { Input } from "@/components/ui/input"
 
-import { releasePlanService } from "@/service/releasePlanService"
-import { convoyService } from "@/service/convoyService"
-import { getDayTypeFromDate } from "@/app/dashboard/dispatcher/convoy/[id]/release-plan/utils/dateUtils"
+import ReplaceAssignmentModal from "@/app/dashboard/dispatcher/components/ReplaceAssignmentModal"
 
-type DayType = "workday" | "saturday" | "sunday" | "holiday"
+import StatementRoutesTable from "./components/StatementRoutesTable"
+import RemovedRoutesTable from "./components/RemovedRoutesTable"
+import StatementActionModal from "./components/StatementActionModal"
+import StatementEventLogModal from "./components/StatementEventLogModal"
+import StatementActionLogList from "./components/StatementActionLogList"
+import { useStatementConvoy } from "./hooks/useStatementConvoy"
+import { StatementAction } from "./utils/constants"
+import type { StatementRow } from "./types"
 
-const routeStatusMap: Record<DayType, string> = {
-  workday: "Workday",
-  saturday: "Saturday",
-  sunday: "Sunday",
-  holiday: "Holiday",
-}
-
-type NormalizedAssignment = {
-  dispatchBusLineId: string
-  routeNumber: string | number
-  busLineNumber: string | number
-  govNumber: string
-  garageNumber: string
-  tabNumber: string
-  planRevolutions?: number | null
-  factRevolutions?: number | null
-  spokenRevolutions?: number | null // «со слов водителей»
-  dropNotes?: string | null
-  ob?: string | null
-  note?: string | null
-}
-
-type RouteBlock = {
-  routeNumber: string | number
-  rows: NormalizedAssignment[]
-  totals: {
-    plan: number
-    fact: number
-    spoken: number
-  }
-}
-
-/* ===== helpers ===== */
-
-function sumNums(arr: ReadonlyArray<number | null | undefined>): number {
-  let total = 0
-  for (const v of arr) {
-    const n = typeof v === "number" && Number.isFinite(v) ? v : 0
-    total += n
-  }
-  return total
-}
-
-function fmtNum(x?: number | null): string {
-  if (x == null || Number.isNaN(Number(x))) return ""
-  return String(x).replace(".", ",")
-}
-
-/** Делает подпись вида "Автоколонна №X" из summary */
-function getAKTitle(summary: any): string {
-  const direct = summary?.convoyNumber ?? summary?.number ?? summary?.convoy?.number
-  if (direct != null && direct !== "") return `Автоколонна №${direct}`
-
-  const nameCandidate =
-    summary?.convoyName ?? summary?.name ?? summary?.convoy?.name ?? ""
-
-  const m = String(nameCandidate).match(
-    /Автоколонна\s*№\s*(\d+)|№\s*(\d+)|\bAK?-?\s*(\d+)/i
-  )
-  const num = m?.[1] || m?.[2] || m?.[3]
-  if (num) return `Автоколонна №${num}`
-
-  return ""
-}
-
-/* ===== page ===== */
-
-export default function StatementConvoyPage() {
+const StatementConvoyPage = () => {
   const router = useRouter()
   const params = useParams()
   const convoyId = (params?.id as string) || ""
 
-  const [date, setDate] = useState(() => new Date())
-  const dateStr = useMemo(() => format(date, "yyyy-MM-dd"), [date])
-  const dayType = useMemo<DayType>(() => getDayTypeFromDate(dateStr) as DayType, [dateStr])
+  const {
+    date,
+    setDate,
+    dateStr,
+    prettyDate,
+    loading,
+    title,
+    convoyLabel,
+    activeRoutes,
+    removedRows,
+    pendingInputs,
+    savingRows,
+    scheduleAutoSave,
+    handleStatementAction,
+    handleStatusSubmit,
+    statusSubmitting,
+    replaceState,
+    selectedAssignment,
+    closeReplaceModal,
+    statusModalState,
+    closeStatusModal,
+    eventLogState,
+    closeLogModal,
+    handleReturnToLine,
+    depotId,
+    refresh,
+  } = useStatementConvoy({ convoyId })
 
-  const [loading, setLoading] = useState(true)
-  const [blocks, setBlocks] = useState<RouteBlock[]>([])
-  const [title, setTitle] = useState<string>("Ведомость")
-  const [convoyLabel, setConvoyLabel] = useState<string>("") // "Автоколонна №X"
-
-  const prettyDate = useMemo(
-    () => format(date, "d MMMM yyyy (EEEE)", { locale: ru }),
-    [date]
+  const handleRoutesAction = useCallback(
+    (action: StatementAction, row: StatementRow) => {
+      handleStatementAction(action, row)
+    },
+    [handleStatementAction]
   )
 
-  useEffect(() => {
-    const load = async () => {
-      if (!convoyId) return
-      setLoading(true)
-      try {
-        const [statementRes, summaryRes] = await Promise.all([
-          releasePlanService.getFullStatementByDate(
-            dateStr,
-            convoyId,
-            routeStatusMap[dayType]
-          ),
-          convoyService.getConvoySummary(convoyId, dateStr).catch(() => null),
-        ])
+  const handleRemovedReturn = useCallback(
+    (row: StatementRow) => {
+      handleStatementAction(StatementAction.ReturnToLine, row)
+    },
+    [handleStatementAction]
+  )
 
-        const sVal: any = summaryRes?.value ?? summaryRes ?? {}
-        const akTitle = getAKTitle(sVal)
-        setConvoyLabel(akTitle)
+  const handleRemovedLog = useCallback(
+    (row: StatementRow) => {
+      handleStatementAction(StatementAction.ViewLog, row)
+    },
+    [handleStatementAction]
+  )
 
-        const v: any = statementRes.value ?? {}
-        const rawRoutes: any[] = v.routes ?? []
-
-        const allRows: NormalizedAssignment[] = []
-        for (const r of rawRoutes) {
-          const rn = r.routeNumber
-          for (const bl of r.busLines ?? []) {
-            allRows.push({
-              dispatchBusLineId: bl.dispatchBusLineId,
-              routeNumber: rn,
-              busLineNumber: bl.busLineNumber ?? "—",
-              govNumber: bl.bus?.govNumber ?? "—",
-              garageNumber: bl.bus?.garageNumber ?? "—",
-              tabNumber: bl.firstDriver?.serviceNumber ?? "",
-              planRevolutions: bl.planRevolutions ?? null,
-              factRevolutions: bl.factRevolutions ?? null,
-              spokenRevolutions: bl.revolutions ?? null,
-              dropNotes: bl.dropNotes ?? null,
-              ob: bl.ob ?? null,
-              note: bl.description ?? null,
-            })
-          }
-        }
-
-        // группировка по маршруту
-        const byRoute = new Map<string | number, NormalizedAssignment[]>()
-        for (const r of allRows) {
-          const key = r.routeNumber
-          if (!byRoute.has(key)) byRoute.set(key, [])
-          byRoute.get(key)!.push(r)
-        }
-
-        const blocksData: RouteBlock[] = Array.from(byRoute.entries())
-          .sort((a, b) => String(a[0]).localeCompare(String(b[0]), "ru", { numeric: true }))
-          .map<RouteBlock>(([routeNumber, rows]) => {
-            const sorted = [...rows].sort((a, b) =>
-              String(a.busLineNumber).localeCompare(String(b.busLineNumber), "ru", { numeric: true })
-            )
-            const totals = {
-              plan: sumNums(sorted.map(x => x.planRevolutions)),
-              fact: sumNums(sorted.map(x => x.factRevolutions)),
-              spoken: sumNums(sorted.map(x => x.spokenRevolutions)),
-            }
-            return { routeNumber, rows: sorted, totals }
-          })
-
-        setBlocks(blocksData)
-
-        const company = "АО АП-1"
-        const akText = akTitle ? ` (${akTitle})` : ""
-        setTitle(`Ведомость ${company}${akText} на ${format(date, "d MMMM yyyy", { locale: ru })}`)
-      } catch (e: any) {
-        console.error(e)
-        toast({
-          title: "Не удалось загрузить ведомость",
-          description: e?.message || "Попробуйте позже",
-          variant: "destructive",
-        })
-        setBlocks([])
-        setTitle(`Ведомость АО АП-1 на ${format(date, "d MMMM yyyy", { locale: ru })}`)
-      } finally {
-        setLoading(false)
-      }
+  const handleDateChange = (value: string) => {
+    const parsed = new Date(`${value}T00:00:00`)
+    if (!Number.isNaN(parsed.getTime())) {
+      setDate(parsed)
     }
+  }
 
-    load()
-  }, [convoyId, dateStr, dayType])
-
-  useEffect(() => {
-    if (!loading) {
-      const company = "АО АП-1"
-      const akText = convoyLabel ? ` (${convoyLabel})` : ""
-      setTitle(`Ведомость ${company}${akText} на ${format(date, "d MMMM yyyy", { locale: ru })}`)
-    }
-  }, [convoyLabel, date, loading])
+  const handlePrint = useCallback(() => {
+    if (!convoyId) return
+    const printUrl = `/dashboard/dispatcher/convoy/${convoyId}/final-dispatch/print?date=${dateStr}`
+    window.open(printUrl, "_blank", "noopener")
+  }, [convoyId, dateStr])
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => router.back()}>&larr; Назад</Button>
-          <h1 className="text-2xl font-bold text-sky-700">{title}</h1>
+    <div className="container mx-auto p-6 space-y-6">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={() => router.back()}>
+            ← Назад
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-sky-700">{title}</h1>
+            {convoyLabel && <p className="text-sm text-muted-foreground">{convoyLabel}</p>}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <input
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-muted-foreground">{prettyDate}</div>
+          <Input
             type="date"
             value={dateStr}
-            onChange={(e) => {
-              const v = e.target.value // "YYYY-MM-DD"
-              setDate(new Date(v + "T00:00:00"))
-            }}
-            className="border rounded-md px-2 py-1 text-sm"
+            onChange={event => handleDateChange(event.target.value)}
+            className="w-[160px]"
           />
-          <Button variant="outline" onClick={() => window.print()}>Печать</Button>
+          <Button variant="outline" onClick={handlePrint} disabled={!convoyId}>
+            <Printer className="mr-2 h-4 w-4" />
+            Печать
+          </Button>
         </div>
-      </div>
-
-      <p className="text-gray-600 mb-4">Сегодня: {prettyDate}</p>
+      </header>
 
       {loading ? (
-        <div className="text-gray-500">Загрузка…</div>
-      ) : blocks.length === 0 ? (
-        <div className="text-gray-500">Нет данных по ведомости на выбранную дату.</div>
+        <div className="text-muted-foreground">Загрузка данных...</div>
+      ) : activeRoutes.length === 0 ? (
+        <div className="text-muted-foreground">Нет актуальных выходов на выбранную дату.</div>
       ) : (
-        <div className="space-y-8 print:space-y-4">
-          {blocks.map((block) => {
-            const rows = block.rows
-            const rowSpanForRoute = rows.length + 1 // + строка "Итого"
-
-            return (
-              <div
-                key={`route-${block.routeNumber}`}
-                className="bg-white rounded-lg overflow-hidden border print:rounded-none print:border-black"
-              >
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm border-collapse">
-                    <thead className="bg-gray-50">
-                      <tr className="text-left">
-                        <th className="border px-2 py-1 w-12"></th>
-                        <th className="border px-2 py-1">№</th>
-                        <th className="border px-2 py-1">Гос. номер</th>
-                        <th className="border px-2 py-1">Гар. номер</th>
-                        <th className="border px-2 py-1">Таб. номер</th>
-                        <th className="border px-2 py-1 text-right" title="Плановые обороты">План</th>
-                        <th className="border px-2 py-1 text-right" title="Фактические обороты">Факт</th>
-                        <th className="border px-2 py-1 text-right" title="Со слов водителей">Вод.</th>
-                        <th className="border px-2 py-1 text-right">Сходы</th>
-                        <th className="border px-2 py-1 text-right">ОБ</th>
-                        <th className="border px-2 py-1">Примечание</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {rows.map((r, idx) => (
-                        <tr key={r.dispatchBusLineId ?? `${block.routeNumber}-${idx}`} className="odd:bg-white even:bg-gray-50">
-                          {idx === 0 && (
-                            <td
-                              rowSpan={rowSpanForRoute}
-                              className="border font-bold text-xl text-center align-middle px-2"
-                              style={{ width: 48 }}
-                            >
-                              {block.routeNumber}
-                            </td>
-                          )}
-
-                          <td className="border px-2 py-1 text-center w-20">{r.busLineNumber}</td>
-                          <td className="border px-2 py-1">{r.govNumber}</td>
-                          <td className="border px-2 py-1">{r.garageNumber}</td>
-                          <td className="border px-2 py-1">{r.tabNumber}</td>
-
-                          <td className="border px-2 py-1 text-right tabular-nums">{fmtNum(r.planRevolutions)}</td>
-                          <td className="border px-2 py-1 text-right tabular-nums">{fmtNum(r.factRevolutions)}</td>
-                          <td className="border px-2 py-1 text-right tabular-nums">{fmtNum(r.spokenRevolutions)}</td>
-
-                          <td className="border px-2 py-1 text-right">{r.dropNotes ?? ""}</td>
-                          <td className="border px-2 py-1 text-right">{r.ob ?? ""}</td>
-                          <td className="border px-2 py-1">{r.note ?? ""}</td>
-                        </tr>
-                      ))}
-
-                      <tr className="bg-gray-100 font-semibold">
-                        <td className="border px-2 py-1 text-right" colSpan={5}>Итого</td>
-                        <td className="border px-2 py-1 text-right tabular-nums">{fmtNum(block.totals.plan)}</td>
-                        <td className="border px-2 py-1 text-right tabular-nums">{fmtNum(block.totals.fact)}</td>
-                        <td className="border px-2 py-1 text-right tabular-nums">{fmtNum(block.totals.spoken)}</td>
-                        <td className="border px-2 py-1" colSpan={3}></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+        <StatementRoutesTable
+          routes={activeRoutes}
+          pendingInputs={pendingInputs}
+          savingRows={savingRows}
+          onInputChange={scheduleAutoSave}
+          onAction={handleRoutesAction}
+        />
       )}
+
+      <RemovedRoutesTable
+        rows={removedRows}
+        onReturn={handleRemovedReturn}
+        onViewLog={handleRemovedLog}
+        statusSubmitting={statusSubmitting}
+      />
+
+      {selectedAssignment && (
+        <ReplaceAssignmentModal
+          open={replaceState.open && Boolean(selectedAssignment)}
+          onClose={closeReplaceModal}
+          selectedAssignment={selectedAssignment}
+          date={dateStr}
+          depotId={depotId}
+          onReload={refresh}
+          onReplaceSuccess={() => {
+            void refresh()
+            closeReplaceModal()
+          }}
+        />
+      )}
+
+      <StatementActionModal
+        state={statusModalState}
+        submitting={statusSubmitting}
+        onClose={closeStatusModal}
+        onSubmit={handleStatusSubmit}
+      />
+
+      <StatementEventLogModal state={eventLogState} onClose={closeLogModal} />
     </div>
   )
 }
+
+export default StatementConvoyPage
+
+

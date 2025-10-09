@@ -1,10 +1,11 @@
 // types/releasePlan/releasePlan.types.ts
 
 import type { DisplayDriver } from "@/types/driver.types"
+import type { ActionLogStatus } from "@/types/actionLog.types"
 import type { DisplayBus } from "@/types/bus.types"
 import type { RepairRecord } from "../app/dashboard/repairs/planned/hooks/usePlannedRepairs"
 
-
+// ✅ Тип дня
 export type ValidDayType = "workday" | "saturday" | "sunday" | "holiday"
 
 // 📅 Дата без времени
@@ -14,6 +15,7 @@ export interface DateDto {
   day: number
 }
 
+// 🚍 Заказ (Order)
 export interface OrderAssignment {
   id: string
   sequenceNumber: number
@@ -29,9 +31,9 @@ export interface OrderAssignment {
     serviceNumber: string
   }
   additionalInfo: string
-  
 }
 
+// 🔄 История замен
 export interface DispatchReplacementHistoryDto {
   type: "REPAIR" | "REPLACEMENT"
   status?: string
@@ -52,7 +54,6 @@ export interface DispatchReplacementHistoryDto {
   repairText?: string
   repairType?: string
 }
-
 
 // 📋 Общая дьюти разнарядка (Duty)
 export interface DispatchDutyRecord {
@@ -79,6 +80,7 @@ export interface DutyApiResponse {
   }[]
 }
 
+// 🧩 Назначение/замена выхода
 export interface AssignmentReplacement {
   exitNumber: string
   routeNumber: string
@@ -114,12 +116,52 @@ export interface AssignmentReplacement {
   historyReplace: any
 }
 
-
-// Создание разнарядки
+// 🧾 Создание разнарядки
 export interface DispatchRouteCreateRequest {
   convoyId: string
   date: string
 }
+
+// 🚌 DTO выхода маршрута
+export interface BusLineDto {
+  id: string
+  busId: string | null
+  driver1Id: string | null
+  driver2Id: string | null
+  departureTime: string
+  endTime: string
+  scheduleStart?: string | null
+  scheduleShiftChange?: string | null
+}
+
+// 🧭 Обновление разнарядки
+export interface DispatchRouteUpdateRequest {
+  dispatchRouteId: string
+  busLines: BusLineDto[]
+}
+
+// 🧩 DTO для назначения водителей и автобусов
+export interface DispatchBusLineDto {
+  dispatchBusLineId: string
+  driver1Id: string | null
+  driver2Id: string | null
+  busId: string | null
+}
+
+export interface BusLineAssignmentRequest {
+  dispatchBusLineId: string
+  driver1Id: string | null
+  driver2Id: string | null
+  busId: string | null
+}
+
+// 🧍 Резерв
+export interface ReserveAssignmentDto {
+  driverId?: string | null
+  busId?: string | null
+  description?: string | null
+}
+
 export interface ReserveAssignmentUI {
   id: string
   sequenceNumber: number
@@ -139,50 +181,7 @@ export interface ReserveAssignmentUI {
   isReplace: boolean
 }
 
-
-// Обновление разнарядки
-export interface DispatchRouteUpdateRequest {
-  dispatchRouteId: string
-  busLines: BusLineDto[]
-}
-
-// DTO выхода маршрута
-export interface BusLineDto {
-  id: string
-  busId: string | null
-  driver1Id: string | null
-  driver2Id: string | null
-  departureTime: string
-  endTime: string
-  scheduleStart?: string | null   // опционально
-  scheduleShiftChange?: string | null
-}
-
-// DTO для назначения водителей и автобусов на выход
-export interface DispatchBusLineDto {
-  dispatchBusLineId: string
-  driver1Id: string | null
-  driver2Id: string | null
-  busId: string | null
-}
-
-// DTO для редактирования назначений на выход
-export interface BusLineAssignmentRequest {
-  dispatchBusLineId: string
-  driver1Id: string | null
-  driver2Id: string | null
-  busId: string | null
-}
-
-// Назначение в резерв
-export interface ReserveAssignmentDto {
-  driverId?: string | null
-  busId?: string | null
-  description?: string | null
-}
-
-
-// 🚌 Выход маршрута (Departure)
+// 🚌 Выход маршрута
 export interface Departure {
   id: string
   departureNumber: number
@@ -192,31 +191,28 @@ export interface Departure {
   endTime: string
   shift2Time?: string
   shift2AdditionalInfo?: string
-  startShiftChangeTime?:string | null;
+  startShiftChangeTime?: string | null
   isModified?: boolean
-
   bus?: DisplayBus
   driver?: DisplayDriver
   shift2Driver?: DisplayDriver
-  shiftChangeTime?: string | null; // ← добавить вот это
-
+  shiftChangeTime?: string | null
   busLine?: {
     id: string
     number: string
     exitTime?: string | null
     endTime?: string | null
-    shiftChangeTime?: string | null; // ← добавить вот это
+    shiftChangeTime?: string | null
   }
 }
 
-// ➕ Локальная копия Departure с метками изменений
 export type LocalDeparture = Departure & {
   shift2AdditionalInfo: string
   shift2Time: string
   isModified?: boolean
 }
 
-// 📋 Структура маршрута внутри плана выпуска
+// 📋 Маршрут в плане выпуска
 export interface DispatchRoute {
   routeId: string
   routeNumber: string
@@ -229,7 +225,7 @@ export interface DispatchRoute {
   }[]
 }
 
-// 🔵 Водитель в резерве
+// 🧍 Водитель в резерве
 export interface ReserveDriver {
   id: string
   personnelNumber: string
@@ -238,13 +234,14 @@ export interface ReserveDriver {
   middleName?: string
 }
 
-// 📅 План выпуска на конкретный день
+// 📅 План выпуска
 export interface DayPlan {
   date: string
   routes: DispatchRoute[]
   reserves: ReserveDriver[]
 }
 
+// 🧩 Назначение резерва
 export interface AssignReserveItem {
   id: string
   driverId: string
@@ -284,27 +281,27 @@ export interface AssignUnplannedDispatchResponse {
   }[]
 }
 
+// 🧰 Для ремонта
 export interface FinalDispatchForRepair {
-  date: string;
+  date: string
   routes: {
-    routeId: string;
-    routeNumber: string;
+    routeId: string
+    routeNumber: string
     busLines: {
-      dispatchBusLineId: string;
+      dispatchBusLineId: string
       bus?: {
-        id: string; // ← 🔧 добавь это
-        govNumber: string;
-        garageNumber: string;
-      };
+        id: string
+        govNumber: string
+        garageNumber: string
+      }
       firstDriver?: {
-        id: string; // ← 🔧 добавь это
-        fullName: string;
-      };
-    }[];
-  }[];
-  reserves: any[];
+        id: string
+        fullName: string
+      }
+    }[]
+  }[]
+  reserves: any[]
 }
-
 
 // 🏁 Итоговая разнарядка
 export interface FinalDispatchData {
@@ -320,15 +317,14 @@ export interface FinalDispatchData {
     Intern?: string[]
     total?: number
   }
-  // 🆕 Добавленные поля для замены (optional — чтобы не ломать другие места)
   buses?: DisplayBus[]
   drivers?: DisplayDriver[]
   reserve?: ReserveReplacementCandidate[]
-  orders: OrderAssignment[] // ✅ правильно // или OrderAssignment[] если у тебя он отдельно
+  orders: OrderAssignment[]
   scheduledRepairs: RepairRecord[]
 }
 
-// ——— Statement (итоговая ведомость) ———
+// 🧾 Итоговая ведомость (Statement)
 export type StatementStatusText =
   | "Undefined"
   | "Released"
@@ -339,6 +335,11 @@ export type StatementStatusText =
   | "RearrangementRenovation"
   | "Oder"
   | "LaunchedFromGarage"
+  | "OnWork"
+  | "GotOff"
+  | "OnOrder"
+  | "Completed"
+  | "Rejected"
 
 export interface StatementBus {
   id: string
@@ -353,6 +354,29 @@ export interface StatementDriver {
   serviceNumber: string
 }
 
+export interface StatementBusShort {
+  id: string
+  garageNumber: string
+  govNumber: string
+  mileage?: number | null
+}
+
+export interface StatementDriverShort {
+  id: string
+  fullName: string
+  serviceNumber: string
+}
+
+export interface StatementActionLogEntry {
+  time: string | TimeObject
+  description: string | null
+  id?: string
+  status?: ActionLogStatus | null
+  replacementType: string | null
+  driver?: StatementDriverShort | null
+  bus?: StatementBusShort | null
+}
+
 export interface StatementBusLine {
   busLineId: string
   dispatchBusLineId: string
@@ -361,7 +385,6 @@ export interface StatementBusLine {
   endTime: string
   scheduleStart: TimeObject | null
   scheduleShiftChange: TimeObject | null
-  // сервер присылает строку ("Undefined", ...), но на всякий добавим и enum
   status: StatementStatusText | DispatchBusLineStatus
   description: string | null
   bus: StatementBus | null
@@ -374,6 +397,8 @@ export interface StatementBusLine {
   planRevolutions: number
   revolutions: number
   factRevolutions: number
+  onOrder?: StatementActionLogEntry[]
+  removed?: StatementActionLogEntry[]
 }
 
 export interface StatementRoute {
@@ -386,6 +411,8 @@ export interface FullStatementData {
   id: string
   date: string
   routes: StatementRoute[]
+  onOrder?: StatementActionLogEntry[]
+  removed?: StatementActionLogEntry[]
 }
 
 export interface ReserveReplacementCandidate {
@@ -401,18 +428,16 @@ export interface ReserveReplacementCandidate {
   isReplace: boolean
 }
 
-
 export enum DispatchBusLineStatus {
   Undefined = 0,
-  Released = 1,                     // Выпущено
-  Replaced = 2,                     // Замена — из резерва
-  Permutation = 3,                  // Перестановка — в выходной
-  Removed = 4,                      // Снято
-
-  RearrangingRoute = 5,            // Перестановка по маршруту
-  RearrangementRenovation = 6,     // Перестановка с ремонта
-  Oder = 7,                         // С заказа (возможно Order?)
-  LaunchedFromGarage = 8,           // Сход с гаража
+  Released = 1,
+  Replaced = 2,
+  Permutation = 3,
+  Removed = 4,
+  RearrangingRoute = 5,
+  RearrangementRenovation = 6,
+  Oder = 7,
+  LaunchedFromGarage = 8,
 }
 
 export interface RouteGroup {
@@ -422,57 +447,43 @@ export interface RouteGroup {
 }
 
 export interface RouteAssignment {
-  dispatchBusLineId: string;
-  busLineNumber: string;
-  routeNumber?: string;
-
-  // общая доп. инфо на обе смены
-  description?: string;
-  additionalInfo?: string;
-
-  garageNumber: string;
-  stateNumber: string;
-
+  dispatchBusLineId: string
+  busLineNumber: string
+  routeNumber?: string
+  description?: string
+  additionalInfo?: string
+  garageNumber: string
+  stateNumber: string
   bus?: {
     id: string
     garageNumber: string
     govNumber: string
   }
-
   driver: {
     id: string
     serviceNumber: string
     fullName: string
   } | null
-
-  // первая смена
   departureTime: string
   scheduleTime: string
   endTime: string
-
-  // статус/прочее
   status?: DispatchBusLineStatus
   isRealsed: boolean
   fuelAmount?: string
   releasedTime?: string
-
-  // вторая смена
   shift2Driver?: {
     id: string
     serviceNumber: string
     fullName: string
   }
   shift2AdditionalInfo?: string
-
-  // 🆕 ДОБАВИТЬ:
-  shiftChangeTime?: string        // время пересменки (чч:мм или "—")
-  startShift2Time?: string        // старт 2-й смены (чч:мм или "—")
+  shiftChangeTime?: string
+  startShift2Time?: string
 }
 
-
 export interface ReserveAssignment {
-  id: string;
-  dispatchBusLineId: string;
+  id: string
+  dispatchBusLineId: string
   sequenceNumber: number
   garageNumber: string
   govNumber: string
@@ -484,8 +495,8 @@ export interface ReserveAssignment {
   departureTime: string
   scheduleTime: string
   status?: DispatchBusLineStatus
-  isReplace:boolean
-  time?: string | null  // ← вот это важно!
+  isReplace: boolean
+  time?: string | null
   additionalInfo?: string
   shift2Driver?: {
     id: string
@@ -503,16 +514,15 @@ export interface TimeObject {
 export interface FullDispatchResponse {
   routeNumber: string
   busLines: FullDispatchBusLine[]
-  // ✅ Добавить недостающие поля:
-  repairBuses?: string[];
-  dayOffBuses?: string[];
+  repairBuses?: string[]
+  dayOffBuses?: string[]
   driverStatuses?: {
-    DayOff?: string[];
-    OnVacation?: string[];
-    OnSickLeave?: string[];
-    Intern?: string[];
-    total?: number;
-  };
+    DayOff?: string[]
+    OnVacation?: string[]
+    OnSickLeave?: string[]
+    Intern?: string[]
+    total?: number
+  }
 }
 
 export interface FullDispatchBusLine {
@@ -542,3 +552,6 @@ export interface FullDispatchBusLine {
   status?: DispatchBusLineStatus
   scheduleShiftChange?: TimeObject
 }
+
+
+
