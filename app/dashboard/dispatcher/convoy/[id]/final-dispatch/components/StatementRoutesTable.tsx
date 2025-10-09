@@ -84,25 +84,18 @@ const StatementRoutesTable = ({
         const spokenTotal = displayedRows.reduce((acc, row) => acc + (row.spokenRevolutions ?? 0), 0)
 
         const removedSummaries = route.rows.flatMap(row =>
-          (row.raw.removed ?? [])
-            .map((entry, index) => ({ entry, index }))
-            .filter(({ entry }) => {
-              const hasDriver = Boolean(entry.driver?.fullName?.trim() || entry.driver?.serviceNumber?.trim());
-              const hasBus = Boolean(entry.bus?.garageNumber?.trim() || entry.bus?.govNumber?.trim());
-              const hasComment = Boolean(entry.description?.trim());
-              return hasDriver || hasBus || hasComment;
-            })
-            .map(({ entry, index }) => ({
-              key: `${row.dispatchBusLineId}-removed-${index}`,
-              exitNumber: row.busLineNumber,
-              driver: formatDriverName(entry.driver?.fullName ?? row.driverName, entry.driver?.serviceNumber ?? row.driverServiceNumber),
-              bus: formatActionLogBus(entry.bus),
-              plan: row.planRevolutions ?? 0,
-              fact: row.factRevolutions ?? 0,
-              spoken: row.spokenRevolutions ?? 0,
-              reason: entry.description?.trim() || row.description?.trim() || "Без комментария",
-            }))
+          (row.raw.removed ?? []).map((entry, index) => ({
+            key: `${row.dispatchBusLineId}-removed-${index}`,
+            exitNumber: row.busLineNumber,
+            driver: formatDriverName(entry.driver?.fullName ?? row.driverName, entry.driver?.serviceNumber ?? row.driverServiceNumber),
+            bus: formatActionLogBus(entry.bus),
+            plan: row.planRevolutions ?? 0,
+            fact: row.factRevolutions ?? 0,
+            spoken: row.spokenRevolutions ?? 0,
+            reason: entry.description || row.description || "Без комментария",
+          }))
         )
+
         const orderSummaries = route.rows.flatMap(row =>
           (row.raw.onOrder ?? []).map((entry, index) => ({
             key: `${row.dispatchBusLineId}-order-${index}`,
