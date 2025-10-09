@@ -15,7 +15,7 @@ import { actionLogService } from "@/service/actionLogService"
 import { releasePlanService } from "@/service/releasePlanService"
 
 import type { EventLogModalState, EventLogTimelineEntry } from "../types"
-import { classNames, prettifyStatus } from "../utils/helpers"
+import { classNames, prettifyStatus, prettifyStatementStatus } from "../utils/helpers"
 
 interface StatementEventLogModalProps {
   state: EventLogModalState
@@ -53,11 +53,48 @@ const StatementEventLogModal = ({ state, onClose }: StatementEventLogModalProps)
         }
 
         for (const log of logsRes.value ?? []) {
-          const time = `${String(log.time.hour).padStart(2, "0")}:${String(log.time.minute).padStart(2, "0")}`
+          // Безопасное форматирование времени
+          const hour = log.time?.hour ?? 0
+          const minute = log.time?.minute ?? 0
+          const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
+          
+          // Создаем структурированное описание события
+          const descriptionParts = []
+          
+          // Добавляем статус действия как основной заголовок
+          if (log.actionStatus) {
+            descriptionParts.push(`🔸 ${prettifyStatus(log.actionStatus)}`)
+          }
+          
+          // Добавляем детали в структурированном виде
+          const details = []
+          
+          if (log.statementStatus) {
+            details.push(`Статус: ${prettifyStatementStatus(log.statementStatus)}`)
+          }
+          
+          if (log.revolutionCount != null) {
+            details.push(`Оборотов: ${log.revolutionCount}`)
+          }
+          
+          if (log.description) {
+            details.push(log.description)
+          }
+          
+          // Объединяем основное описание и детали
+          let description = descriptionParts.join("")
+          if (details.length > 0) {
+            description += "\n" + details.join(" • ")
+          }
+          
+          if (!description.trim()) {
+            description = "Системное событие"
+          }
+          
           items.push({
             id: log.id,
             time,
-            description: `${prettifyStatus(log.status)} - ${log.description}`,
+            description,
             type: "log",
           })
         }
@@ -74,35 +111,95 @@ const StatementEventLogModal = ({ state, onClose }: StatementEventLogModalProps)
 
   return (
     <Dialog open={open} onOpenChange={isOpen => !isOpen && onClose()}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>{"\u0416\u0443\u0440\u043d\u0430\u043b \u0441\u043e\u0431\u044b\u0442\u0438\u0439"}</DialogTitle>
+      <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogHeader className="pb-4">
+          <DialogTitle className="text-xl font-semibold text-slate-900">Журнал событий</DialogTitle>
           {row && (
-            <DialogDescription>{`\u041c\u0430\u0440\u0448\u0440\u0443\u0442 \u2116${row.routeNumber}, \u0432\u044b\u0445\u043e\u0434 ${row.busLineNumber}`}</DialogDescription>
+            <DialogDescription className="text-slate-600">
+              Маршрут №{row.routeNumber}, выход {row.busLineNumber}
+              {row.driverName && ` · Водитель: ${row.driverName}`}
+              {row.busGarageNumber && ` · Автобус: ${row.busGarageNumber}/${row.busGovNumber}`}
+            </DialogDescription>
           )}
         </DialogHeader>
 
         {loading ? (
-          <p className="text-muted-foreground">{"\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430..."}</p>
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+            <p className="text-muted-foreground">Загрузка журнала событий...</p>
+          </div>
         ) : history.length === 0 ? (
-          <p className="text-muted-foreground">{"\u0417\u0430\u043f\u0438\u0441\u0435\u0439 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442."}</p>
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="text-4xl mb-4">📋</div>
+            <p className="text-muted-foreground text-center">
+              Записей пока нет.<br />
+              <span className="text-xs">События появятся здесь при изменении статуса выхода</span>
+            </p>
+          </div>
         ) : (
-          <ScrollArea className="h-48 rounded-md border bg-muted/40 p-3">
-            <ul className="space-y-2 text-sm">
-              {history.map(entry => (
-                <li key={entry.id} className="flex items-start gap-3">
-                  <span className="mt-0.5 text-xs font-medium text-muted-foreground w-12">{entry.time}</span>
-                  <span className={classNames(entry.type === "log" ? "text-slate-700" : "text-muted-foreground")}>
-                    {entry.description}
-                  </span>
-                </li>
+          <ScrollArea className="h-96 rounded-lg border bg-slate-50/50 p-6">
+            <div className="space-y-4">
+              {history.map((entry, index) => (
+                <div key={entry.id} className="relative">
+                  {/* Timeline line */}
+                  {index < history.length - 1 && (
+                    <div className="absolute left-6 top-8 w-px h-8 bg-slate-200" />
+                  )}
+                  
+                  <div className="flex items-start gap-6 p-4 rounded-xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                    {/* Time indicator */}
+                    <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                      <div className={classNames(
+                        "w-4 h-4 rounded-full border-2 border-white shadow-sm",
+                        entry.type === "log" ? "bg-blue-500" : "bg-emerald-500"
+                      )} />
+                      <div className="text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-1 rounded">
+                        {entry.time}
+                      </div>
+                    </div>
+                    
+                    {/* Event content */}
+                    <div className="flex-1 min-w-0">
+                      <div className={classNames(
+                        "text-sm font-medium mb-2 whitespace-pre-line",
+                        entry.type === "log" ? "text-slate-900" : "text-emerald-900"
+                      )}>
+                        {entry.description}
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <div className={classNames(
+                          "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
+                          entry.type === "log" 
+                            ? "bg-blue-100 text-blue-700" 
+                            : "bg-emerald-100 text-emerald-700"
+                        )}>
+                          {entry.type === "log" ? "Системное событие" : "История замен"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
           </ScrollArea>
         )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>{"\u0417\u0430\u043a\u0440\u044b\u0442\u044c"}</Button>
+        <DialogFooter className="flex items-center justify-between pt-4 border-t">
+          <div className="text-sm text-muted-foreground">
+            {history.length > 0 && (
+              <span>
+                Всего событий: {history.length} 
+                {history.filter(e => e.type === "log").length > 0 && 
+                  ` (системных: ${history.filter(e => e.type === "log").length})`}
+                {history.filter(e => e.type === "history").length > 0 && 
+                  ` (замен: ${history.filter(e => e.type === "history").length})`}
+              </span>
+            )}
+          </div>
+          <Button variant="outline" onClick={onClose}>
+            Закрыть
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

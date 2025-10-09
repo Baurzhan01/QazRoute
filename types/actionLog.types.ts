@@ -28,6 +28,9 @@ export interface ActionLog {
   description: string
   status: ActionLogStatus
   actionStatus: string
+  statementStatus: string
+  busId?: string | null
+  driverId?: string | null
 }
 
 export interface ActionLogPayload {

@@ -84,6 +84,14 @@ export const ACTION_LOG_STATUS_LABELS: Record<ActionLogStatus, string> = {
   Replace: "Замена",
 };
 
+export const STATEMENT_STATUS_LABELS: Record<string, string> = {
+  OnWork: "На линии",
+  GotOff: "Временный сход",
+  OnOrder: "На заказе",
+  Completed: "Завершено",
+  Rejected: "Снят",
+};
+
 export const routeStatusMap: Record<DayType, string> = {
   workday: "Workday",
   saturday: "Saturday",

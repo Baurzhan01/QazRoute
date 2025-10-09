@@ -18,7 +18,7 @@ import type {
   StatementRow,
   WorkflowStatus,
 } from "../types"
-import { ACTION_LOG_STATUS_LABELS, STATEMENT_WORKFLOW_STATUSES } from "./constants"
+import { ACTION_LOG_STATUS_LABELS, STATEMENT_STATUS_LABELS, STATEMENT_WORKFLOW_STATUSES } from "./constants"
 
 export const formatTime = (value?: string | null): string => {
   if (!value) return "-"
@@ -46,6 +46,14 @@ export const classNames = (
 export const prettifyStatus = (status: string): string => {
   if (status in ACTION_LOG_STATUS_LABELS) {
     return ACTION_LOG_STATUS_LABELS[status as ActionLogStatus]
+  }
+
+  return status.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/([A-Z])(\d+)/g, "$1 $2")
+}
+
+export const prettifyStatementStatus = (status: string): string => {
+  if (status in STATEMENT_STATUS_LABELS) {
+    return STATEMENT_STATUS_LABELS[status]
   }
 
   return status.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/([A-Z])(\d+)/g, "$1 $2")
