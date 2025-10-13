@@ -4,6 +4,7 @@ import type { DisplayDriver } from "@/types/driver.types"
 import type { ActionLogStatus } from "@/types/actionLog.types"
 import type { DisplayBus } from "@/types/bus.types"
 import type { RepairRecord } from "../app/dashboard/repairs/planned/hooks/usePlannedRepairs"
+import type { StatementStatus } from "@/types/statement.types" // ← добавили
 
 // ✅ Тип дня
 export type ValidDayType = "workday" | "saturday" | "sunday" | "holiday"
@@ -379,6 +380,8 @@ export interface StatementActionLogEntry {
 
 export interface StatementBusLine {
   busLineId: string
+  actionStatus?: string | null            // статусовка действия (строка с бэка)
+  statementStatus?: StatementStatus | null // строгая типизация статуса ведомости
   dispatchBusLineId: string
   busLineNumber: string
   exitTime: string

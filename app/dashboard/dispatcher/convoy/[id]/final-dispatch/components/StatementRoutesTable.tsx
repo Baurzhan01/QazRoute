@@ -9,7 +9,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
 
 import type { RouteBucket, StatementRow } from "../types"
 import { StatementAction, actionsByStatus, statusMeta } from "../utils/constants"
@@ -127,17 +126,12 @@ const StatementRoutesTable = ({
                     <th className="border px-3 py-2 text-right">План</th>
                     <th className="border px-3 py-2 text-right">Факт</th>
                     <th className="border px-3 py-2 text-right">Со слов</th>
-                    <th className="border px-3 py-2 text-center">Статус</th>
-                    <th className="border px-3 py-2 text-center">Сходы</th>
-                    <th className="border px-3 py-2 text-center">Заказы</th>
                     <th className="border px-3 py-2">Примечание</th>
                     <th className="border px-3 py-2 text-center">Действия</th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayedRows.map((row, index) => {
-                    const inputValue = pendingInputs[row.dispatchBusLineId] ?? (row.spokenRevolutions ?? "")
-                    const isSaving = savingRows[row.dispatchBusLineId]
                     const actions = actionsByStatus[row.status] ?? []
                     const note = row.description?.trim() || row.raw.description?.trim() || "-"
                     const meta = statusMeta[row.status] ?? statusMeta.Unknown
@@ -151,25 +145,7 @@ const StatementRoutesTable = ({
                         <td className="border px-3 py-2 text-sm text-slate-700">{row.driverServiceNumber || "-"}</td>
                         <td className="border px-3 py-2 text-right text-sm tabular-nums text-slate-700">{row.planRevolutions ?? 0}</td>
                         <td className="border px-3 py-2 text-right text-sm tabular-nums text-slate-700">{row.factRevolutions ?? 0}</td>
-                        <td className="border px-3 py-2 text-right text-sm tabular-nums text-slate-700">
-                          <div className="flex items-center justify-end gap-2">
-                            <Input
-                              value={inputValue}
-                              onChange={event => onInputChange(row.dispatchBusLineId, event.target.value)}
-                              inputMode="numeric"
-                              className="h-8 w-20 border-slate-200 text-right"
-                              disabled={actionsDisabled}
-                            />
-                            {isSaving && <Loader2 className="h-4 w-4 animate-spin text-sky-500" />}
-                          </div>
-                        </td>
-                        <td className="border px-3 py-2 text-center text-sm">{renderStatusCell(row)}</td>
-                        <td className="border px-3 py-2 text-center text-sm text-slate-700">
-                          {row.status === "GotOff" ? "Да" : "-"}
-                        </td>
-                        <td className="border px-3 py-2 text-center text-sm text-slate-700">
-                          {row.status === "OnOrder" ? "Заказ" : "-"}
-                        </td>
+                        <td className="border px-3 py-2 text-right text-sm tabular-nums text-slate-700">{row.spokenRevolutions ?? 0}</td>
                         <td className="border px-3 py-2 text-sm text-slate-700">{note}</td>
                         <td className="border px-3 py-2 text-center">
                           {actions.length === 0 ? (

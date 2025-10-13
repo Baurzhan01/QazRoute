@@ -53,7 +53,7 @@ export const useStatementConvoy = ({ convoyId }: UseStatementConvoyParams) => {
   const dayType = useMemo<DayType>(() => getDayTypeFromDate(dateStr) as DayType, [dateStr])
 
   const [loading, setLoading] = useState(true)
-  const [title, setTitle] = useState("Итоговая ведомость")
+  const [title, setTitle] = useState("Ведомость")
   const [convoyLabel, setConvoyLabel] = useState("")
   const [routes, setRoutes] = useState<RouteBucket[]>([])
   const [removedRows, setRemovedRows] = useState<StatementRow[]>([])
@@ -77,9 +77,9 @@ export const useStatementConvoy = ({ convoyId }: UseStatementConvoyParams) => {
   }, [])
 
   const buildTitle = useCallback((label: string, targetDate: Date) => {
-    const company = "Транспортное предприятие"
+    const company = ""
     const suffix = label ? ` (${label})` : ""
-    return `Итоговая ведомость ${company}${suffix} на ${format(targetDate, "d MMMM yyyy", { locale: ru })}`
+    return `Ведомость ${company}${suffix} на ${format(targetDate, "d MMMM yyyy", { locale: ru })}`
   }, [])
 
   const fetchData = useCallback(async () => {
