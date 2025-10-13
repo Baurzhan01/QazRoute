@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import type { RouteBucket, StatementRow } from "../types"
-import { StatementAction, actionsByStatus, statusMeta } from "../utils/constants"
+import { ACTION_LOG_STATUS_LABELS, StatementAction, actionsByStatus, statusMeta } from "../utils/constants"
 import {
   formatActionLogBus,
   formatActionLogDriver,
@@ -132,21 +132,68 @@ const StatementRoutesTable = ({
                 </thead>
                 <tbody>
                   {displayedRows.map((row, index) => {
-                    const actions = actionsByStatus[row.status] ?? []
-                    const note = row.description?.trim() || row.raw.description?.trim() || "-"
-                    const meta = statusMeta[row.status] ?? statusMeta.Unknown
-                    const rowBackground = meta.rowClass ?? (index % 2 === 0 ? "bg-white" : "bg-slate-50/60")
-
+                   const hasLogs =
+                   (row.raw.onOrder && row.raw.onOrder.length > 0) ||
+                   (row.raw.removed && row.raw.removed.length > 0)
+               
+                // ✅ проверяем оба варианта поля
+                const isGotOff =
+                row.raw.statementStatus === "GotOff" ||
+                (row.raw as any).statemtStatus === "GotOff"
+                 const actionStatusLabel =
+                   isGotOff && row.raw.actionStatus
+                     ? ACTION_LOG_STATUS_LABELS[row.raw.actionStatus as keyof typeof ACTION_LOG_STATUS_LABELS]
+                     : null
+               
+                 // 🎨 Цвет строки
+                 const rowBackground = isGotOff
+                   ? "bg-yellow-200 hover:bg-yellow-100 transition-colors"
+                   : index % 2 === 0
+                   ? "bg-white"
+                   : "bg-slate-50/60"
+               
+                 // 📝 Примечание
+                 const note = isGotOff
+                   ? `Сход — ${actionStatusLabel || "Без причины"}`
+                   : row.description?.trim() ||
+                     row.raw.description?.trim() ||
+                     (hasLogs ? "Журнал событий" : "-")
+               
+                 // ⚙️ Действия
+                 const actions = actionsByStatus[row.status] ?? []
+                 
                     return (
                       <tr key={row.dispatchBusLineId} className={rowBackground}>
-                        <td className="border px-3 py-2 text-center text-sm font-medium text-slate-700">{index + 1}</td>
-                        <td className="border px-3 py-2 text-sm text-slate-700">{row.busGovNumber || "-"}</td>
-                        <td className="border px-3 py-2 text-sm text-slate-700">{row.busGarageNumber || "-"}</td>
-                        <td className="border px-3 py-2 text-sm text-slate-700">{row.driverServiceNumber || "-"}</td>
-                        <td className="border px-3 py-2 text-right text-sm tabular-nums text-slate-700">{row.planRevolutions ?? 0}</td>
-                        <td className="border px-3 py-2 text-right text-sm tabular-nums text-slate-700">{row.factRevolutions ?? 0}</td>
-                        <td className="border px-3 py-2 text-right text-sm tabular-nums text-slate-700">{row.spokenRevolutions ?? 0}</td>
-                        <td className="border px-3 py-2 text-sm text-slate-700">{note}</td>
+                         <td className="border px-3 py-2 text-center text-sm font-medium text-slate-700">
+                            {index + 1}
+                          </td>
+                          <td className="border px-3 py-2 text-sm text-slate-700">{row.busGovNumber || "-"}</td>
+                          <td className="border px-3 py-2 text-sm text-slate-700">{row.busGarageNumber || "-"}</td>
+                          <td className="border px-3 py-2 text-sm text-slate-700">{row.driverServiceNumber || "-"}</td>
+                          <td className="border px-3 py-2 text-right text-sm tabular-nums text-slate-700">
+                            {row.planRevolutions ?? 0}
+                          </td>
+                          <td className="border px-3 py-2 text-right text-sm tabular-nums text-slate-700">
+                            {row.factRevolutions ?? 0}
+                          </td>
+                          <td className="border px-3 py-2 text-right text-sm tabular-nums text-slate-700">
+                            {row.spokenRevolutions ?? 0}
+                          </td>
+                        {/* Примечание */}
+                        <td className="border px-3 py-2 text-sm text-slate-700">
+                          {hasLogs ? (
+                            <button
+                              onClick={() => onAction(StatementAction.ViewLog, row)}
+                              className="text-sky-600 hover:underline"
+                            >
+                              Журнал событий
+                            </button>
+                          ) : (
+                            note
+                          )}
+                        </td>
+
+                        {/* Действия */}
                         <td className="border px-3 py-2 text-center">
                           {actions.length === 0 ? (
                             <span className="text-xs text-muted-foreground">Нет действий</span>
@@ -163,14 +210,22 @@ const StatementRoutesTable = ({
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-56">
-                                {actions.map(action => (
-                                  <DropdownMenuItem
-                                    key={action}
-                                    onClick={() => onAction(action, row)}
-                                  >
-                                    {actionLabels[action]}
-                                  </DropdownMenuItem>
-                                ))}
+                                {actions
+                                  // 🟡 фильтруем "Вернуть на линию" — только если GotOff
+                                  .filter(action => {
+                                    if (action === StatementAction.ReturnToLine) {
+                                      return row.raw.statementStatus === "GotOff"
+                                    }
+                                    return true
+                                  })
+                                  .map(action => (
+                                    <DropdownMenuItem
+                                      key={action}
+                                      onClick={() => onAction(action, row)}
+                                    >
+                                      {actionLabels[action]}
+                                    </DropdownMenuItem>
+                                  ))}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           )}
@@ -178,7 +233,6 @@ const StatementRoutesTable = ({
                       </tr>
                     )
                   })}
-
                   <tr className="bg-slate-100 font-semibold text-slate-700">
                     <td className="border px-3 py-2 text-right" colSpan={4}>
                       Итого

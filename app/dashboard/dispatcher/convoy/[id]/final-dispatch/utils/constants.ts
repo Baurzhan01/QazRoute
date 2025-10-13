@@ -50,7 +50,9 @@ export const ACTION_LOG_STATUS_VALUES: ActionLogStatus[] = [
   "TechnicalIssue",
   "Emergency",
   "Replace",
+  "Return", // 👈 добавлено для возврата на линию
 ]
+
 export const ACTION_LOG_STATUS_LABELS: Record<ActionLogStatus, string> = {
   Code102: "Код 102",
   Gps: "Проблема GPS",
@@ -82,7 +84,8 @@ export const ACTION_LOG_STATUS_LABELS: Record<ActionLogStatus, string> = {
   TechnicalIssue: "Техническая неисправность",
   Emergency: "Чрезвычайная ситуация",
   Replace: "Замена",
-};
+  Return: "Возврат на линию",
+}
 
 export const STATEMENT_STATUS_LABELS: Record<string, string> = {
   OnWork: "На линии",
@@ -90,7 +93,7 @@ export const STATEMENT_STATUS_LABELS: Record<string, string> = {
   OnOrder: "На заказе",
   Completed: "Завершено",
   Rejected: "Снят",
-};
+}
 
 export const routeStatusMap: Record<DayType, string> = {
   workday: "Workday",
@@ -106,8 +109,9 @@ export const statusMeta: Record<WorkflowStatus, { label: string; className: stri
   },
   GotOff: {
     label: "Временный сход",
-    className: "bg-amber-50 text-amber-700 border border-amber-200",
-    rowClass: "bg-amber-50/60",
+    // 🟡 Яркий цвет для статуса "GotOff"
+    className: "bg-yellow-100 text-yellow-800 border border-yellow-300",
+    rowClass: "bg-yellow-100/90", // ярче, чем раньше
   },
   OnOrder: {
     label: "На заказе",
@@ -145,12 +149,21 @@ export const actionsByStatus: Record<WorkflowStatus, StatementAction[]> = {
     StatementAction.ViewLog,
   ],
   OnOrder: [
-    StatementAction.ReturnToLine,
+    StatementAction.Replace,
+    StatementAction.ReportGotOff,
+    StatementAction.SendToOrder,
+    StatementAction.Complete,
     StatementAction.Remove,
     StatementAction.ViewLog,
   ],
   Completed: [StatementAction.ViewLog],
-  Rejected: [StatementAction.ViewLog, StatementAction.ReturnToLine],
+  Rejected: [StatementAction.Replace,
+    StatementAction.ReportGotOff,
+    StatementAction.SendToOrder,
+    StatementAction.Complete,
+    StatementAction.Remove,
+    StatementAction.ViewLog,
+  ],
   Unknown: [
     StatementAction.Replace,
     StatementAction.ReportGotOff,
@@ -160,4 +173,3 @@ export const actionsByStatus: Record<WorkflowStatus, StatementAction[]> = {
     StatementAction.ViewLog,
   ],
 }
-

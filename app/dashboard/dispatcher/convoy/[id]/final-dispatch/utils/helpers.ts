@@ -111,6 +111,8 @@ export const toStatementRow = (
   spokenRevolutions: line.revolutions ?? null,
   busGarageNumber: line.bus?.garageNumber ?? null,
   busGovNumber: line.bus?.govNumber ?? null,
+  driverId: line.firstDriver?.id ?? null,        // 👈 добавлено
+  busId: line.bus?.id ?? null,                   // 👈 добавлено
   driverName: line.firstDriver?.fullName ?? null,
   driverServiceNumber: line.firstDriver?.serviceNumber ?? null,
   description: line.description ?? null,
@@ -284,8 +286,7 @@ export const formatActionLogBus = (bus?: StatementBusShort | null): string => {
     return "-"
   }
 
-  const mileageSuffix = bus.mileage != null ? ` · ${bus.mileage} км` : ""
-  return `${bus.garageNumber}/${bus.govNumber}${mileageSuffix}`
+  return `${bus.garageNumber}/${bus.govNumber}`
 }
 
 export const mapActionLogs = (

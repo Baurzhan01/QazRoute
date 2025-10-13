@@ -8,7 +8,7 @@ export type ActionLogStatus =
   | "NoCharging" | "NoRoute" | "LowFuel" | "ScheduleAhead" | "DriverDelay"
   | "Distraction" | "NoPassengers" | "Rearrangement" | "GlDeparture"
   | "PersonalReason" | "Order" | "MissedRevolution" | "NotDriverFault"
-  | "FromGarage" | "MidShift" | "TechnicalIssue" | "Emergency" | "Replace"
+  | "FromGarage" | "MidShift" | "TechnicalIssue" | "Emergency" | "Replace" |"Return"
 
 export interface ActionLogTimeResponse {
   hour: number

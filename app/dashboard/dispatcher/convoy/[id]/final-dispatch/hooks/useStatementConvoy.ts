@@ -134,6 +134,32 @@ export const useStatementConvoy = ({ convoyId }: UseStatementConvoyParams) => {
     }
   }, [buildTitle, convoyId, date, dateStr, dayType, syncRemoved])
 
+  // 🔄 Обновление данных без сброса состояния
+  const refreshRoutes = useCallback(async () => {
+    if (!convoyId) return
+    try {
+      const statementRes = await releasePlanService.getFullStatementByDate(
+        dateStr,
+        convoyId,
+        routeStatusMap[dayType]
+      )
+      const data = statementRes.value ?? null
+      const buckets = splitRoutes(data?.routes ?? [])
+      setRoutes(buckets)
+      routesRef.current = buckets
+      syncRemoved(buckets)
+      setOrderLogs(collectActionLogsFromBuckets(buckets, "onOrder"))
+      setRemovedLogs(collectActionLogsFromBuckets(buckets, "removed"))
+    } catch (error) {
+      console.error("refresh routes error", error)
+      toast({
+        title: "Не удалось обновить ведомость",
+        description: "Попробуйте обновить страницу",
+        variant: "destructive",
+      })
+    }
+  }, [convoyId, dateStr, dayType, syncRemoved])
+
   useEffect(() => {
     void fetchData()
   }, [fetchData])
@@ -270,55 +296,85 @@ export const useStatementConvoy = ({ convoyId }: UseStatementConvoyParams) => {
     setEventLogState({ open: false, row: null })
   }, [])
 
-  const handleReturnToLine = useCallback(
-    async (row: StatementRow) => {
-      if (!row.statementId) {
-        toast({ title: "Нет statementId", description: "Нельзя обновить статус", variant: "destructive" })
-        return
-      }
+    // ✅ Возврат на линию через ActionLog
+    const handleReturnToLine = useCallback(
+      async (row: StatementRow) => {
+        if (!row.statementId) {
+          toast({
+            title: "Нет statementId",
+            description: "Нельзя обновить статус",
+            variant: "destructive",
+          })
+          return
+        }
+  
+        // Проверка, что можно вернуть
+        if (row.raw.statementStatus !== "GotOff" && row.status !== "GotOff") {
+          toast({
+            title: "Невозможно вернуть на линию",
+            description: "Возврат доступен только после схода с маршрута.",
+            variant: "destructive",
+          })
+          return
+        }
+  
+        setStatusSubmitting(true)
+        try {
+          const now = new Date()
+          await actionLogService.create({
+            statementId: row.statementId,
+            time: format(now, "HH:mm:ss"),
+            driverId: row.driverId ?? null,
+            busId: row.busId ?? null,
+            revolutionCount: 0,
+            description: "Возвращён на линию",
+            statementStatus: "OnWork",
+            actionStatus: "Return",
+          })
+  
+          toast({
+            title: "Успешно",
+            description: "Выход возвращён на линию.",
+          })
+  
+          await new Promise(r => setTimeout(r, 300))
+          await refreshRoutes()
+        } catch (error: any) {
+          console.error("return to line error", error)
+          toast({
+            title: "Ошибка",
+            description: error?.message || "Не удалось вернуть на линию.",
+            variant: "destructive",
+          })
+        } finally {
+          setStatusSubmitting(false)
+        }
+      },
+      [refreshRoutes]
+    )
 
-      setStatusSubmitting(true)
-      try {
-        const payload = buildStatementPayload(row, { status: "OnWork" })
-        await statementsService.update(row.statementId, payload)
-        patchRow(row.dispatchBusLineId, { status: "OnWork" }, { status: "OnWork" })
-        toast({ title: "Выход возвращён на линию" })
-      } catch (error: any) {
-        console.error("return to line error", error)
-        toast({
-          title: "Не удалось обновить статус",
-          description: error?.message || "Попробуйте еще раз",
-          variant: "destructive",
-        })
-      } finally {
-        setStatusSubmitting(false)
-      }
-    },
-    [patchRow]
-  )
-
-  const handleStatusSubmit = useCallback(
+   // ✅ Обработка статусов (сход, заказ, завершение, снятие)
+   const handleStatusSubmit = useCallback(
     async (result: StatusModalResult) => {
       const row = statusModalState.row
       const mode = statusModalState.mode
       if (!row) return
       if (!row.statementId) {
-        toast({ title: "��� statementId", description: "����� �������� �����", variant: "destructive" })
+        toast({
+          title: "Нет statementId",
+          description: "Нельзя обновить статус",
+          variant: "destructive",
+        })
         return
       }
 
       setStatusSubmitting(true)
       try {
         const now = new Date()
-        const normalizedRevolutions =
-          result.revolutionCount ?? row.spokenRevolutions ?? 0
-
-        const rawDescription =
-          (mode === "order" ? result.orderDescription : result.comment) ?? null
+        const normalizedRevolutions = result.revolutionCount ?? row.spokenRevolutions ?? 0
+        const rawDescription = (mode === "order" ? result.orderDescription : result.comment) ?? null
         const description = rawDescription?.trim() ? rawDescription.trim() : null
-
-        const actionStatus =
-          result.reason ?? DEFAULT_ACTION_STATUS_BY_MODE[mode] ?? result.status
+        const actionStatus = result.reason ?? DEFAULT_ACTION_STATUS_BY_MODE[mode] ?? result.status
 
         await actionLogService.create({
           statementId: row.statementId,
@@ -330,30 +386,28 @@ export const useStatementConvoy = ({ convoyId }: UseStatementConvoyParams) => {
           statementStatus: result.status,
           actionStatus,
         })
+
         toast({
-          title: "����⨥ ���������",
-          description: "������ �ᯥ譮 ᮧ���� � ��ୠ�� ᮡ�⨩.",
+          title: "Успешно",
+          description: "Запись успешно добавлена в журнал событий.",
         })
 
-        await fetchData()
-
+        await new Promise(r => setTimeout(r, 300))
+        await refreshRoutes()
         closeStatusModal()
       } catch (error: any) {
         console.error("action log create error", error)
         toast({
-          title: "�訡�� �� ���������� ᮡ���",
-          description: error?.message || "���஡�� ᭮��",
+          title: "Ошибка при добавлении записи",
+          description: error?.message || "Попробуйте позже",
           variant: "destructive",
         })
       } finally {
         setStatusSubmitting(false)
       }
     },
-    [fetchData, closeStatusModal, statusModalState.mode, statusModalState.row]
+    [refreshRoutes, closeStatusModal, statusModalState.mode, statusModalState.row]
   )
-
-  
-
   const handleStatementAction = useCallback(
     (action: StatementAction, row: StatementRow) => {
       switch (action) {
