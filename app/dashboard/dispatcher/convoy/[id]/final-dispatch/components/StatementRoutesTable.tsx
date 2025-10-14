@@ -16,6 +16,7 @@ import {
   formatActionLogBus,
   formatActionLogDriver,
   formatActionLogTime,
+  getWorkflowStatus,
 } from "../utils/helpers"
 
 const actionLabels: Record<StatementAction, string> = {
@@ -132,36 +133,34 @@ const StatementRoutesTable = ({
                 </thead>
                 <tbody>
                   {displayedRows.map((row, index) => {
-                   const hasLogs =
-                   (row.raw.onOrder && row.raw.onOrder.length > 0) ||
-                   (row.raw.removed && row.raw.removed.length > 0)
-               
-                // ✅ проверяем оба варианта поля
-                const isGotOff =
-                row.raw.statementStatus === "GotOff" ||
-                (row.raw as any).statemtStatus === "GotOff"
-                 const actionStatusLabel =
-                   isGotOff && row.raw.actionStatus
-                     ? ACTION_LOG_STATUS_LABELS[row.raw.actionStatus as keyof typeof ACTION_LOG_STATUS_LABELS]
-                     : null
-               
-                 // 🎨 Цвет строки
-                 const rowBackground = isGotOff
-                   ? "bg-yellow-200 hover:bg-yellow-100 transition-colors"
-                   : index % 2 === 0
-                   ? "bg-white"
-                   : "bg-slate-50/60"
-               
-                 // 📝 Примечание
-                 const note = isGotOff
-                   ? `Сход — ${actionStatusLabel || "Без причины"}`
-                   : row.description?.trim() ||
-                     row.raw.description?.trim() ||
-                     (hasLogs ? "Журнал событий" : "-")
-               
-                 // ⚙️ Действия
-                 const currentStatus = (row.raw.statementStatus ?? row.status ?? "Unknown") as keyof typeof actionsByStatus
-                 const actions = actionsByStatus[currentStatus] ?? []
+                    const hasLogs =
+                      (row.raw.onOrder && row.raw.onOrder.length > 0) ||
+                      (row.raw.removed && row.raw.removed.length > 0)
+
+                    // ✅ учитываем старое название поля statemtStatus
+                    const workflowStatus = getWorkflowStatus(row)
+                    const isGotOff = workflowStatus === "GotOff"
+                    const actionStatusLabel =
+                      isGotOff && row.raw.actionStatus
+                        ? ACTION_LOG_STATUS_LABELS[row.raw.actionStatus as keyof typeof ACTION_LOG_STATUS_LABELS]
+                        : null
+
+                    // 🎨 Цвет строки
+                    const rowBackground = isGotOff
+                      ? "bg-yellow-200 hover:bg-yellow-100 transition-colors"
+                      : index % 2 === 0
+                        ? "bg-white"
+                        : "bg-slate-50/60"
+
+                    // 📝 Примечание
+                    const note = isGotOff
+                      ? `Сход — ${actionStatusLabel || "Без причины"}`
+                      : row.description?.trim() ||
+                        row.raw.description?.trim() ||
+                        (hasLogs ? "Журнал событий" : "-")
+
+                    // ⚙️ Действия
+                    const actions = actionsByStatus[workflowStatus] ?? []
 
                     return (
                       <tr key={row.dispatchBusLineId} className={rowBackground}>

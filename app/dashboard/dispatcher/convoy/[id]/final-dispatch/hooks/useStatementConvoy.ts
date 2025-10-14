@@ -22,6 +22,7 @@ import {
   findRowById,
   collectActionLogsFromBuckets,
   splitRoutes,
+  getWorkflowStatus,
 } from "../utils/helpers"
 import type {
   DayType,
@@ -308,8 +309,8 @@ export const useStatementConvoy = ({ convoyId }: UseStatementConvoyParams) => {
           return
         }
   
-        // Проверка, что можно вернуть
-        if (row.raw.statementStatus !== "GotOff" && row.status !== "GotOff") {
+        const workflowStatus = getWorkflowStatus(row)
+        if (workflowStatus !== "GotOff") {
           toast({
             title: "Невозможно вернуть на линию",
             description: "Возврат доступен только после схода с маршрута.",
@@ -327,7 +328,7 @@ export const useStatementConvoy = ({ convoyId }: UseStatementConvoyParams) => {
               driverId: row.driverId ?? null,
               busId: row.busId ?? null,
               revolutionCount: 0,
-              description: "Возвращён на линию",
+              description: null,
               statementStatus: "OnWork",
               actionStatus: "Return",
             })
@@ -339,7 +340,7 @@ export const useStatementConvoy = ({ convoyId }: UseStatementConvoyParams) => {
                 ...row.raw,
                 statementStatus: "OnWork",
                 actionStatus: "Return",
-                description: "Возвращён на линию",
+                description: null,
               },
             })
 
@@ -496,8 +497,3 @@ export const useStatementConvoy = ({ convoyId }: UseStatementConvoyParams) => {
     refreshRoutes,
   }
 }
-
-
-
-
-

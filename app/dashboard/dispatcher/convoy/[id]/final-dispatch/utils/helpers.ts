@@ -18,7 +18,7 @@ import type {
   StatementRow,
   WorkflowStatus,
 } from "../types"
-import { ACTION_LOG_STATUS_LABELS, STATEMENT_STATUS_LABELS, STATEMENT_WORKFLOW_STATUSES } from "./constants"
+import { ACTION_LOG_STATUS_LABELS, STATEMENT_STATUS_LABELS, STATEMENT_WORKFLOW_STATUSES, actionsByStatus } from "./constants"
 
 export const formatTime = (value?: string | null): string => {
   if (!value) return "-"
@@ -118,6 +118,21 @@ export const toStatementRow = (
   description: line.description ?? null,
   raw: line,
 })
+
+export const getWorkflowStatus = (row: StatementRow): WorkflowStatus => {
+  const legacyStatus = (row.raw as { statemtStatus?: WorkflowStatus | null }).statemtStatus
+  const candidateStatus = row.raw.statementStatus ?? legacyStatus
+
+  if (candidateStatus && actionsByStatus[candidateStatus as WorkflowStatus]) {
+    return candidateStatus as WorkflowStatus
+  }
+
+  if (row.status && actionsByStatus[row.status]) {
+    return row.status
+  }
+
+  return "Unknown"
+}
 
 const TRAILING_STATUSES: ReadonlySet<WorkflowStatus> = new Set([
   "OnOrder",
