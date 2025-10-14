@@ -160,8 +160,9 @@ const StatementRoutesTable = ({
                      (hasLogs ? "Журнал событий" : "-")
                
                  // ⚙️ Действия
-                 const actions = actionsByStatus[row.status] ?? []
-                 
+                 const currentStatus = (row.raw.statementStatus ?? row.status ?? "Unknown") as keyof typeof actionsByStatus
+                 const actions = actionsByStatus[currentStatus] ?? []
+
                     return (
                       <tr key={row.dispatchBusLineId} className={rowBackground}>
                          <td className="border px-3 py-2 text-center text-sm font-medium text-slate-700">
@@ -193,43 +194,36 @@ const StatementRoutesTable = ({
                           )}
                         </td>
 
-                        {/* Действия */}
-                        <td className="border px-3 py-2 text-center">
-                          {actions.length === 0 ? (
-                            <span className="text-xs text-muted-foreground">Нет действий</span>
-                          ) : (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-8 w-8"
-                                  disabled={actionsDisabled}
-                                >
-                                  <EllipsisVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-56">
-                                {actions
-                                  // 🟡 фильтруем "Вернуть на линию" — только если GotOff
-                                  .filter(action => {
-                                    if (action === StatementAction.ReturnToLine) {
-                                      return row.raw.statementStatus === "GotOff"
-                                    }
-                                    return true
-                                  })
-                                  .map(action => (
-                                    <DropdownMenuItem
-                                      key={action}
-                                      onClick={() => onAction(action, row)}
-                                    >
-                                      {actionLabels[action]}
-                                    </DropdownMenuItem>
-                                  ))}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </td>
+                     {/* Действия */}
+<td className="border px-3 py-2 text-center">
+  {actions.length === 0 ? (
+    <span className="text-xs text-muted-foreground">Нет действий</span>
+  ) : (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8"
+          disabled={actionsDisabled}
+        >
+          <EllipsisVertical className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        {actions.map(action => (
+          <DropdownMenuItem
+            key={action}
+            onClick={() => onAction(action, row)}
+          >
+            {actionLabels[action]}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )}
+</td>
+
                       </tr>
                     )
                   })}

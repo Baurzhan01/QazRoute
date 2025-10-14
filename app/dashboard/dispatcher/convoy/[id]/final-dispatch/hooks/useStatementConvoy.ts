@@ -317,38 +317,50 @@ export const useStatementConvoy = ({ convoyId }: UseStatementConvoyParams) => {
           })
           return
         }
-  
         setStatusSubmitting(true)
-        try {
-          const now = new Date()
-          await actionLogService.create({
-            statementId: row.statementId,
-            time: format(now, "HH:mm:ss"),
-            driverId: row.driverId ?? null,
-            busId: row.busId ?? null,
-            revolutionCount: 0,
-            description: "Возвращён на линию",
-            statementStatus: "OnWork",
-            actionStatus: "Return",
-          })
-  
-          toast({
-            title: "Успешно",
-            description: "Выход возвращён на линию.",
-          })
-  
-          await new Promise(r => setTimeout(r, 300))
-          await refreshRoutes()
-        } catch (error: any) {
-          console.error("return to line error", error)
-          toast({
-            title: "Ошибка",
-            description: error?.message || "Не удалось вернуть на линию.",
-            variant: "destructive",
-          })
-        } finally {
-          setStatusSubmitting(false)
-        }
+          try {
+            const now = new Date()
+
+            await actionLogService.create({
+              statementId: row.statementId,
+              time: format(now, "HH:mm:ss"),
+              driverId: row.driverId ?? null,
+              busId: row.busId ?? null,
+              revolutionCount: 0,
+              description: "Возвращён на линию",
+              statementStatus: "OnWork",
+              actionStatus: "Return",
+            })
+
+            // ⚡ Мгновенно обновляем строку без ожидания refetch
+            patchRow(row.dispatchBusLineId, {
+              status: "OnWork",
+              raw: {
+                ...row.raw,
+                statementStatus: "OnWork",
+                actionStatus: "Return",
+                description: "Возвращён на линию",
+              },
+            })
+
+            toast({
+              title: "Успешно",
+              description: "Выход возвращён на линию.",
+            })
+
+            // 🔄 через короткую паузу синхронизируем с сервером
+            await new Promise(r => setTimeout(r, 300))
+            await refreshRoutes()
+          } catch (error: any) {
+            console.error("return to line error", error)
+            toast({
+              title: "Ошибка",
+              description: error?.message || "Не удалось вернуть на линию.",
+              variant: "destructive",
+            })
+          } finally {
+            setStatusSubmitting(false)
+          }
       },
       [refreshRoutes]
     )
@@ -386,15 +398,27 @@ export const useStatementConvoy = ({ convoyId }: UseStatementConvoyParams) => {
           statementStatus: result.status,
           actionStatus,
         })
-
+        
+        // ✅ мгновенно обновляем локальную строку
+        patchRow(row.dispatchBusLineId, {
+          status: result.status,
+          raw: {
+            ...row.raw,
+            statementStatus: result.status,
+            actionStatus,
+            description,
+          },
+        })
+        
         toast({
           title: "Успешно",
           description: "Запись успешно добавлена в журнал событий.",
         })
-
+        
+        // 🔄 затем спокойно обновляем с сервера
         await new Promise(r => setTimeout(r, 300))
         await refreshRoutes()
-        closeStatusModal()
+        closeStatusModal()        
       } catch (error: any) {
         console.error("action log create error", error)
         toast({
@@ -469,6 +493,7 @@ export const useStatementConvoy = ({ convoyId }: UseStatementConvoyParams) => {
     handleReturnToLine,
     depotId,
     refresh: fetchData,
+    refreshRoutes,
   }
 }
 
