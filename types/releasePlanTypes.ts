@@ -376,6 +376,10 @@ export interface StatementActionLogEntry {
   replacementType: string | null
   driver?: StatementDriverShort | null
   bus?: StatementBusShort | null
+  // Optional revolutions provided by backend for specific log entries
+  revolution?: number | null
+  factRevolution?: number | null
+  spokenRevolutions?: number | null
 }
 
 export interface StatementBusLine {

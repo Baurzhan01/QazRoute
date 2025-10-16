@@ -90,9 +90,9 @@ const StatementRoutesTable = ({
             exitNumber: row.busLineNumber,
             driver: formatDriverName(entry.driver?.fullName ?? row.driverName, entry.driver?.serviceNumber ?? row.driverServiceNumber),
             bus: formatActionLogBus(entry.bus),
-            plan: row.planRevolutions ?? 0,
-            fact: row.factRevolutions ?? 0,
-            spoken: row.spokenRevolutions ?? 0,
+            plan: row.raw.planRevolutions ?? 0,
+            fact: (entry.factRevolution ?? row.raw.factRevolutions ?? 0),
+            spoken: (entry.revolution ?? row.raw.planRevolutions ?? 0),
             reason: entry.description || row.description || "Без комментария",
           }))
         )
@@ -103,9 +103,9 @@ const StatementRoutesTable = ({
             exitNumber: row.busLineNumber,
             driver: formatDriverName(entry.driver?.fullName ?? row.driverName, entry.driver?.serviceNumber ?? row.driverServiceNumber),
             bus: formatActionLogBus(entry.bus),
-            plan: row.planRevolutions ?? 0,
-            fact: row.factRevolutions ?? 0,
-            spoken: row.spokenRevolutions ?? 0,
+            plan: row.raw.planRevolutions ?? 0,
+            fact: (entry.factRevolution ?? row.raw.factRevolutions ?? 0),
+            spoken: (entry.revolution ?? row.raw.planRevolutions ?? 0),
             note: entry.description || row.description || "Без комментария",
           }))
         )
