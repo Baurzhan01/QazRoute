@@ -17,6 +17,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { referenceService } from "@/service/referenceService";
 import { releasePlanService } from "@/service/releasePlanService";
+import { actionLogService } from "@/service/actionLogService";
+import { statementsService } from "@/service/statementsService";
+import { useConvoy } from "../../context/ConvoyContext";
+import type { StatementStatus } from "@/types/statement.types";
 import { formatDate } from "@/app/dashboard/dispatcher/convoy/[id]/release-plan/utils/dateUtils";
 import type { ReferenceType } from "@/types/reference.types";
 import type { RouteAssignment } from "@/types/releasePlanTypes";
@@ -74,6 +78,7 @@ export default function ReferenceDialog({
   const canDescribe = type === "Other" || type === "TechnicalIssue";
   const mustDescribe = type === "Other";
   const isValid = !!assignment && !!type && (!mustDescribe || description.trim().length > 0);
+  const { convoyId } = useConvoy();
 
   const info = useMemo(() => {
     if (!assignment) return null;
@@ -125,6 +130,59 @@ export default function ReferenceDialog({
         formatDate(displayDate),
         textForDescription
       );
+
+      // 2.5) Добавим запись в ActionLog с деталями справки
+      try {
+        // Разрешим statementId через helper
+        let statementId = convoyId
+          ? await releasePlanService.findStatementIdByDispatch(
+              formatDate(displayDate),
+              convoyId,
+              assignment.dispatchBusLineId
+            )
+          : null;
+
+        // Fallback: if statement not found by bus line, try by convoy+date
+        if (!statementId && convoyId) {
+          try {
+            const list = await statementsService.getByConvoyAndDate(convoyId, formatDate(displayDate))
+            statementId = list.value?.[0]?.id ?? null
+          } catch {}
+        }
+
+        if (statementId) {
+          const now = new Date();
+          const pad = (n: number) => n.toString().padStart(2, "0");
+          const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+          const driverInfo = assignment.driver?.serviceNumber
+            ? `таб. №${assignment.driver.serviceNumber}`
+            : "таб. № —";
+          const busInfo = assignment.garageNumber
+            ? `автобус ${assignment.garageNumber}`
+            : assignment.bus?.garageNumber
+            ? `автобус ${assignment.bus.garageNumber}`
+            : "автобус —";
+
+          const details = description?.trim() ? `. ${description.trim()}` : "";
+          const logDescription = `Справка: ${REF_LABEL[type as ReferenceType]}. ${driverInfo}, ${busInfo}${details}`;
+
+          const statementStatus: StatementStatus = "OnWork";
+
+          await actionLogService.create({
+            statementId,
+            time,
+            driverId: assignment.driver?.id ?? null,
+            busId: assignment.bus?.id ?? null,
+            revolutionCount: 0,
+            description: logDescription,
+            statementStatus,
+            actionStatus: String(type),
+          });
+        }
+      } catch (e) {
+        console.warn("action log create failed for reference", e);
+      }
 
       // 3) шлём событие — пусть слушатели обновятся (если подписаны)
       if (typeof window !== "undefined") {

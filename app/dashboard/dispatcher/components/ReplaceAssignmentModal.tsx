@@ -12,6 +12,7 @@ import { busService } from "@/service/busService"
 import { driverService } from "@/service/driverService"
 import AutocompleteInput from "../components/ui/AutocompleteInput"
 import { getAuthData } from "@/lib/auth-utils"
+import { useConvoy } from "../context/ConvoyContext"
 
 interface ReplaceAssignmentModalProps {
   open: boolean
@@ -66,6 +67,7 @@ export default function ReplaceAssignmentModal({
   onReplaceSuccess,
 }: ReplaceAssignmentModalProps) {
   const depot = depotId || getAuthData()?.busDepotId
+  const { convoyId } = useConvoy()
 
   const [drivers, setDrivers] = useState<DriverRaw[]>([])
   const [buses, setBuses] = useState<BusRaw[]>([])
@@ -192,6 +194,7 @@ export default function ReplaceAssignmentModal({
         reserve: [],
         replacementType,
         date,
+        convoyId,
         onReplaceSuccess,
         onReload,
         onClose,

@@ -1,5 +1,8 @@
 import { toast } from "@/components/ui/use-toast"
 import { releasePlanService } from "@/service/releasePlanService"
+import { actionLogService } from "@/service/actionLogService"
+import { statementsService } from "@/service/statementsService"
+import type { StatementStatus } from "@/types/statement.types"
 import {
   DispatchBusLineStatus,
   RouteAssignment,
@@ -16,6 +19,7 @@ interface HandleReplaceConfirmParams {
   reserve: ReserveReplacementCandidate[]
   replacementType: string
   date: string
+  convoyId?: string | null
   swap: boolean
   onReplaceSuccess?: (updated: RouteAssignment) => void
   onReload?: () => void
@@ -30,6 +34,7 @@ export async function handleReplaceConfirm({
   reserve,
   replacementType,
   date,
+  convoyId,
   swap,
   onReplaceSuccess,
   onReload,
@@ -158,6 +163,64 @@ export async function handleReplaceConfirm({
         date,
         description
       )
+
+      // Try to append an ActionLog entry reflecting the replacement
+      try {
+        // Resolve statementId via helper
+        let statementId = convoyId
+          ? await releasePlanService.findStatementIdByDispatch(
+              date,
+              convoyId,
+              selectedAssignment.dispatchBusLineId
+            )
+          : null
+
+        if (!statementId && convoyId) {
+          try {
+            const list = await statementsService.getByConvoyAndDate(convoyId, date)
+            statementId = list.value?.[0]?.id ?? null
+          } catch {}
+        }
+
+        if (statementId) {
+          const now = new Date()
+          const pad = (n: number) => n.toString().padStart(2, "0")
+          const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+
+          // Map replacement type to a concise action status label if possible
+          const mapReplacementToActionStatus = (t: string): string => {
+            switch (t) {
+              case "Replaced":
+                return "Replace"
+              case "Permutation":
+              case "RearrangingRoute":
+                return "Rearrangement"
+              case "RearrangementRenovation":
+                return "RearrangementRenovation"
+              case "Order":
+                return "Order"
+              default:
+                return t
+            }
+          }
+
+          const statementStatus: StatementStatus = "OnWork"
+
+          await actionLogService.create({
+            statementId,
+            time,
+            driverId: selectedDriver?.id ?? selectedAssignment.driver?.id ?? null,
+            busId: selectedBus?.id ?? selectedAssignment.bus?.id ?? null,
+            revolutionCount: 0,
+            description,
+            statementStatus,
+            actionStatus: mapReplacementToActionStatus(replacementType),
+          })
+        }
+      } catch (e) {
+        // Non-blocking: log errors but do not interrupt UX
+        console.warn("action log create failed for replacement", e)
+      }
       
 
       onReplaceSuccess({

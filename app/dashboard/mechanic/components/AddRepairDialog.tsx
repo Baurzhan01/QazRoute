@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -67,6 +67,9 @@ export default function AddRepairDialog({
 
   const [appNumberError, setAppNumberError] = useState<string | null>(null);
   const [checkingAppNumber, setCheckingAppNumber] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const [isAppNumberValid, setIsAppNumberValid] = useState(false);
+  const [isAppNumberChanged, setIsAppNumberChanged] = useState(false);
 
   const [departureDateStr, setDepartureDateStr] = useState("");
   const [entryDateStr, setEntryDateStr] = useState("");
@@ -77,6 +80,13 @@ export default function AddRepairDialog({
    // --- ссылки для автоскролла ---
   const worksEndRef = useRef<HTMLDivElement | null>(null);
   const sparesEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Track application number change and reset validity when it changes
+  useEffect(() => {
+    setIsAppNumberChanged(applicationNumber.trim().length > 0);
+    // Reset validity until uniqueness is confirmed on blur
+    setIsAppNumberValid(false);
+  }, [applicationNumber]);
 
   function scrollToEnd(ref: React.RefObject<HTMLDivElement | null>) {
     setTimeout(() => ref.current?.scrollIntoView({ behavior: "smooth" }), 50);
@@ -137,17 +147,20 @@ export default function AddRepairDialog({
   }
 
   async function submit() {
-    if (!busId || !registerNumber) {
-      setAppNumberError("Номер реестра обязателен");
+    if (!busId) {
       return;
+    }
+    if (!registerNumber || !registerNumber.trim()) {
+      setRegisterError("Рекомендуется указать реестр");
     }
 
     setSaving(true);
     try {
+      const reg = (registerNumber || "").trim() || "";
       const payload: CreateRepairRequest[] = [
         ...works.map((w) => ({
           busId,
-          registerNumber, // 👈 теперь всегда указываем реестр
+          registerNumber: reg, // default if empty
           applicationNumber: applicationNumber === "" ? 0 : Number(applicationNumber),
           departureDate: departureDateStr || new Date().toISOString().slice(0, 10),
           entryDate: entryDateStr || new Date().toISOString().slice(0, 10),
@@ -161,7 +174,7 @@ export default function AddRepairDialog({
         })),
         ...spares.map((s) => ({
           busId,
-          registerNumber, // 👈 обязательно
+          registerNumber: reg, // default if empty
           applicationNumber: applicationNumber === "" ? 0 : Number(applicationNumber),
           departureDate: departureDateStr || new Date().toISOString().slice(0, 10),
           entryDate: entryDateStr || new Date().toISOString().slice(0, 10),
@@ -186,6 +199,10 @@ export default function AddRepairDialog({
       setRegisterNumber("");
       setDepartureDateStr("");
       setEntryDateStr("");
+      setIsAppNumberChanged(false);
+      setIsAppNumberValid(false);
+      setAppNumberError(null);
+      setRegisterError(null);
     } finally {
       setSaving(false);
     }
@@ -218,9 +235,12 @@ export default function AddRepairDialog({
             <Input
               type="text"
               value={registerNumber}
-              onChange={(e) => setRegisterNumber(e.target.value)}
+              onChange={(e) => { setRegisterNumber(e.target.value); if (registerError) setRegisterError(null); }}
               placeholder="Напр. R-2025-01"
             />
+            {registerError && (
+              <p className="text-red-600 text-sm mt-1">{registerError}</p>
+            )}
           </div>
           <div>
             <Label>№ заявки</Label>
@@ -234,8 +254,13 @@ export default function AddRepairDialog({
                 if (!val) setAppNumberError("Введите номер заявки");
                 else setAppNumberError(null);
               }}
-              onBlur={() => {
-                if (applicationNumber) validateApplicationNumber(applicationNumber);
+              onBlur={async () => {
+                if (applicationNumber) {
+                  const ok = await validateApplicationNumber(applicationNumber);
+                  setIsAppNumberValid(ok);
+                } else {
+                  setIsAppNumberValid(false);
+                }
               }}
               placeholder="Напр. 51636"
             />
@@ -409,7 +434,7 @@ export default function AddRepairDialog({
           <Button variant="outline" onClick={() => setOpen(false)}>
             Отмена
           </Button>
-          <Button onClick={submit} disabled={saving || !!appNumberError || checkingAppNumber}>
+          <Button onClick={submit} disabled={saving || checkingAppNumber || applicationNumber.trim().length === 0 || !isAppNumberChanged || !isAppNumberValid}>
             {saving ? "Сохранение…" : "Сохранить"}
           </Button>
         </DialogFooter>
@@ -417,3 +442,7 @@ export default function AddRepairDialog({
     </Dialog>
   );
 }
+
+
+
+

@@ -18,6 +18,7 @@ import {
   formatActionLogTime,
   getWorkflowStatus,
 } from "../utils/helpers"
+import { actionMenuLabels } from "./labels"
 
 const actionLabels: Record<StatementAction, string> = {
   [StatementAction.Replace]: "Замена",
@@ -215,7 +216,7 @@ const StatementRoutesTable = ({
             key={action}
             onClick={() => onAction(action, row)}
           >
-            {actionLabels[action]}
+            {actionMenuLabels[action]}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

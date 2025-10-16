@@ -353,6 +353,28 @@ export const releasePlanService = {
     })
   
     return res.data
+  },
+
+  // Helper: resolve statementId by dispatchBusLineId for a given date+convoy
+  findStatementIdByDispatch: async (
+    date: string,
+    convoyId: string,
+    dispatchBusLineId: string
+  ): Promise<string | null> => {
+    try {
+      const full = await releasePlanService.getFullStatementByDate(date, convoyId)
+      const routes = full.value?.routes ?? []
+      for (const route of routes) {
+        for (const line of route.busLines ?? []) {
+          if (line.dispatchBusLineId === dispatchBusLineId) {
+            return (line as any).statementId || null
+          }
+        }
+      }
+      return null
+    } catch {
+      return null
+    }
   }  
 } as const
 
