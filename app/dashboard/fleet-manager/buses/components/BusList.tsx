@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Eye, Edit, Trash2, UserPlus, BusIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, Edit, UserPlus, BusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -117,14 +117,7 @@ export default function BusList({
                       <Button variant="ghost" size="icon" onClick={() => onEdit(bus.id)}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-red-500"
-                        onClick={() => onDelete(bus.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {/* Delete action removed by request */}
                     </div>
                   </TableCell>
                 </motion.tr>

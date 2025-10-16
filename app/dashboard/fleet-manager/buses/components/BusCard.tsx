@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, Edit, Trash2, UserPlus } from "lucide-react";
+import { Eye, Edit, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { motion } from "framer-motion";
 
@@ -154,9 +154,7 @@ export default function BusCard({
               <Button size="icon" variant="ghost" onClick={() => onEdit(bus.id)}>
                 <Edit className="h-4 w-4" />
               </Button>
-              <Button size="icon" variant="ghost" className="text-red-500" onClick={() => onDelete(bus.id)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              {/* Delete action removed by request */}
             </>
           )}
 
@@ -196,7 +194,7 @@ export default function BusCard({
                             key={driver.id}
                             variant="ghost"
                             className="justify-start text-left"
-                            onClick={() => handleAssignDriver(driver.id)}
+                            onClick={() => handleAssignDriver(driver.id!)}
                           >
                             № {driver.serviceNumber} {formatShortName(driver.fullName)}
                           </Button>

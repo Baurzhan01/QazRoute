@@ -139,7 +139,7 @@ export default function AddRepairDialog({
         setAppNumberError(null);
         return true;
       }
-      setAppNumberError(res.error || "Такой номер заявки уже существует");
+      setAppNumberError("Такой ApplicationNumber уже существует");
       return false;
     } finally {
       setCheckingAppNumber(false);
@@ -442,6 +442,7 @@ export default function AddRepairDialog({
     </Dialog>
   );
 }
+
 
 
 
