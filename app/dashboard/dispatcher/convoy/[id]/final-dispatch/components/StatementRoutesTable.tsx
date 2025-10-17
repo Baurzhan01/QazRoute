@@ -93,7 +93,7 @@ const StatementRoutesTable = ({
             plan: row.raw.planRevolutions ?? 0,
             fact: (entry.factRevolution ?? row.raw.factRevolutions ?? 0),
             spoken: (entry.revolution ?? row.raw.planRevolutions ?? 0),
-            reason: entry.description || row.description || "Без комментария",
+            reason: entry.description || "Без комментария",
           }))
         )
 
@@ -104,9 +104,9 @@ const StatementRoutesTable = ({
             driver: formatDriverName(entry.driver?.fullName ?? row.driverName, entry.driver?.serviceNumber ?? row.driverServiceNumber),
             bus: formatActionLogBus(entry.bus),
             plan: row.raw.planRevolutions ?? 0,
-            fact: (entry.factRevolution ?? row.raw.factRevolutions ?? 0),
-            spoken: (entry.revolution ?? row.raw.planRevolutions ?? 0),
-            note: entry.description || row.description || "Без комментария",
+            fact: (entry.factRevolution ?? 0),
+            spoken: (entry.revolution ?? 0),
+            note: entry.description || "Без комментария",
           }))
         )
 
@@ -155,7 +155,7 @@ const StatementRoutesTable = ({
 
                     // 📝 Примечание
                     const note = isGotOff
-                      ? `Сход — ${actionStatusLabel || "Без причины"}`
+                      ? `Сход — ${actionStatusLabel || "Причина в журнале событий"}`
                       : row.description?.trim() ||
                         row.raw.description?.trim() ||
                         (hasLogs ? "Журнал событий" : "-")
@@ -166,7 +166,7 @@ const StatementRoutesTable = ({
                     return (
                       <tr key={row.dispatchBusLineId} className={rowBackground}>
                          <td className="border px-3 py-2 text-center text-sm font-medium text-slate-700">
-                            {index + 1}
+                            {row.busLineNumber}
                           </td>
                           <td className="border px-3 py-2 text-sm text-slate-700">{row.busGovNumber || "-"}</td>
                           <td className="border px-3 py-2 text-sm text-slate-700">{row.busGarageNumber || "-"}</td>
