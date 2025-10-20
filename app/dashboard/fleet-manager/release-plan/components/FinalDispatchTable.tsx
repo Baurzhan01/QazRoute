@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, startTransition, useEffect, useMemo, useState } from "react"
 import RouteSection from "./RouteSection"
 import ReserveRowSection from "./ReserveRowSection"
 import BottomBlocks from "./BottomBlocks"
@@ -61,10 +61,33 @@ export default function FinalDispatchTable({
     [orderAssignments]
   )
 
+  // Memoized wrappers to avoid unnecessary re-renders when props are stable
+  const MemoRouteSection = useMemo(() => memo(RouteSection), [])
+  const MemoReserveRowSection = useMemo(() => memo(ReserveRowSection), [])
+  const MemoBottomBlocks = useMemo(() => memo(BottomBlocks), [])
+
+  // Progressive rendering: show a slice first, then reveal all in a transition
+  const INITIAL_SLICE = 20
+  const [visibleCount, setVisibleCount] = useState(() => Math.min(routeGroups.length, INITIAL_SLICE))
+
+  useEffect(() => {
+    // Reset slice on dataset change for a quick first paint
+    setVisibleCount(Math.min(routeGroups.length, INITIAL_SLICE))
+    // Reveal the rest without blocking the main thread
+    startTransition(() => {
+      setVisibleCount(routeGroups.length)
+    })
+  }, [routeGroups.length])
+
+  const visibleRouteGroups = useMemo(
+    () => routeGroups.slice(0, visibleCount),
+    [routeGroups, visibleCount]
+  )
+
   const routeSections = useMemo(
     () =>
-      routeGroups.map((group: RouteGroup) => (
-        <RouteSection
+      visibleRouteGroups.map((group: RouteGroup) => (
+        <MemoRouteSection
           key={group.routeId}
           group={group}
           date={date}
@@ -74,7 +97,7 @@ export default function FinalDispatchTable({
           disableLinks={disableLinks}
         />
       )),
-    [routeGroups, date, dayType, displayDate, readOnlyMode, disableLinks]
+    [visibleRouteGroups, date, dayType, displayDate, readOnlyMode, disableLinks, MemoRouteSection]
   )
 
   return (
@@ -105,7 +128,7 @@ export default function FinalDispatchTable({
 
       {routeSections}
 
-      <ReserveRowSection
+      <MemoReserveRowSection
         title="РЕЗЕРВ"
         color="yellow"
         list={mappedReserve}
@@ -117,7 +140,7 @@ export default function FinalDispatchTable({
         linkPath="reserve"
       />
 
-      <ReserveRowSection
+      <MemoReserveRowSection
         title="ЗАКАЗ"
         color="lime"
         list={mappedOrders}
@@ -129,7 +152,7 @@ export default function FinalDispatchTable({
         linkPath="orders"
       />
 
-      <BottomBlocks
+      <MemoBottomBlocks
         repairBuses={repairBuses}
         dayOffBuses={dayOffBuses}
         driverStatuses={{

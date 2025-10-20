@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { startTransition, useDeferredValue, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -36,38 +36,39 @@ export function ConvoyReleasePlanPage() {
     if (!query.trim()) return originalData
 
     const q = query.toLowerCase()
+    const lc = (s?: string | null) => (s ?? "").toLowerCase()
 
     const routeGroups = originalData.routeGroups
       .map(group => ({
         ...group,
         assignments: group.assignments.filter(a =>
-          a.driver?.fullName.toLowerCase().includes(q) ||
-          a.driver?.serviceNumber?.toLowerCase().includes(q) ||
-          a.bus?.govNumber?.toLowerCase().includes(q) ||
-          a.bus?.garageNumber?.toLowerCase().includes(q)
+          lc(a.driver?.fullName).includes(q) ||
+          lc(a.driver?.serviceNumber).includes(q) ||
+          lc(a.bus?.govNumber).includes(q) ||
+          lc(a.bus?.garageNumber).includes(q)
         )
       }))
       .filter(group => group.assignments.length > 0)
 
     const orders = originalData.orders.filter(o =>
-      o.driver?.fullName.toLowerCase().includes(q) ||
-      o.driver?.serviceNumber?.toLowerCase().includes(q) ||
-      o.govNumber?.toLowerCase().includes(q) ||
-      o.garageNumber?.toLowerCase().includes(q)
+      lc(o.driver?.fullName).includes(q) ||
+      lc(o.driver?.serviceNumber).includes(q) ||
+      lc(o.govNumber).includes(q) ||
+      lc(o.garageNumber).includes(q)
     )
 
     const reserveAssignments = originalData.reserveAssignments.filter(r =>
-      r.driver?.fullName.toLowerCase().includes(q) ||
-      r.driver?.serviceNumber?.toLowerCase().includes(q) ||
-      r.govNumber?.toLowerCase().includes(q) ||
-      r.garageNumber?.toLowerCase().includes(q)
+      lc(r.driver?.fullName).includes(q) ||
+      lc(r.driver?.serviceNumber).includes(q) ||
+      lc(r.govNumber).includes(q) ||
+      lc(r.garageNumber).includes(q)
     )
 
     const scheduledRepairs = originalData.scheduledRepairs.filter(r =>
-      r.driver?.fullName.toLowerCase().includes(q) ||
-      r.driver?.serviceNumber?.toLowerCase().includes(q) ||
-      r.bus?.govNumber?.toLowerCase().includes(q) ||
-      r.bus?.garageNumber?.toLowerCase().includes(q)
+      lc(r.driver?.fullName).includes(q) ||
+      lc(r.driver?.serviceNumber).includes(q) ||
+      lc(r.bus?.govNumber).includes(q) ||
+      lc(r.bus?.garageNumber).includes(q)
     )
 
     return {
@@ -78,6 +79,13 @@ export function ConvoyReleasePlanPage() {
       scheduledRepairs,
     }
   }, [originalData, query])
+
+  // Defer rendering of large filtered data to keep UI responsive
+  const deferredData = useDeferredValue(filteredData)
+  const displayDateStr = useMemo(
+    () => format(new Date(date), "d MMMM yyyy", { locale: ru }),
+    [date]
+  )
 
   if (!convoyId) {
     return <div className="text-red-500 p-6">Ошибка: не выбрана автоколонна</div>
@@ -100,7 +108,7 @@ export function ConvoyReleasePlanPage() {
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-sky-800 tracking-tight">
-            📅 План выпуска — {format(new Date(date), "d MMMM yyyy", { locale: ru })}
+            📅 План выпуска — {displayDateStr}
           </h1>
           <p className="text-gray-600 text-sm mt-1">
             {
@@ -116,7 +124,10 @@ export function ConvoyReleasePlanPage() {
           <Input
             type="date"
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value
+              startTransition(() => setDate(val))
+            }}
             className="max-w-[200px]"
           />
         </div>
@@ -132,7 +143,7 @@ export function ConvoyReleasePlanPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-md"
           />
-          <Button onClick={() => setQuery(search.trim())}>Найти</Button>
+          <Button onClick={() => startTransition(() => setQuery(search.trim()))}>Найти</Button>
           <Button variant="ghost" onClick={() => { setSearch(""); setQuery(""); }}>
             Очистить
           </Button>
@@ -144,15 +155,15 @@ export function ConvoyReleasePlanPage() {
       {error && <p className="text-red-500">Ошибка: {error}</p>}
 
       {/* Таблица */}
-      {filteredData && (
+      {deferredData && (
         <ConvoyDispatchTable
-          data={filteredData}
+          data={deferredData}
           convoySummary={summary ?? undefined}
           date={date}
           dayType={dayType}
           search={query}
           readOnlyMode={true}
-          onReload={() => refetch()}
+          onReload={refetch}
         />
       )}
     </div>

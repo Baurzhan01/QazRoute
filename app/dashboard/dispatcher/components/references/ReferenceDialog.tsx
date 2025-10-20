@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
@@ -21,6 +22,7 @@ import { actionLogService } from "@/service/actionLogService";
 import { statementsService } from "@/service/statementsService";
 import { useConvoy } from "../../context/ConvoyContext";
 import type { StatementStatus } from "@/types/statement.types";
+import type { ActionLogStatus } from "@/types/actionLog.types";
 import { formatDate } from "@/app/dashboard/dispatcher/convoy/[id]/release-plan/utils/dateUtils";
 import type { ReferenceType } from "@/types/reference.types";
 import type { RouteAssignment } from "@/types/releasePlanTypes";
@@ -63,6 +65,22 @@ const REF_LABEL: Record<ReferenceType, string> = {
   Other: "Другое",
 };
 
+// Маппинг типов справок к коду статуса ActionLog (ожидаемому бэком)
+const REF_TO_ACTION_STATUS: Record<ReferenceType, ActionLogStatus> = {
+  FamilyReason: "PersonalReason",
+  SickByCall: "DriverIllness",
+  PoliceCallBeforeDeparture: "Code102",
+  GasStationIssue: "TrafficJam",
+  PoliceOperation: "EmergencyCall",
+  AccidentInDepot: "Accident",
+  DriverLate: "DriverDelay",
+  TechnicalIssue: "TechnicalIssue",
+  AlcoholIntoxication: "Emergency",
+  NoCharge: "NoCharging",
+  EmergencyInDepot: "Emergency",
+  Other: "NotDriverFault",
+};
+
 export default function ReferenceDialog({
   open,
   onOpenChange,
@@ -72,6 +90,7 @@ export default function ReferenceDialog({
 }: ReferenceDialogProps) {
   const [type, setType] = useState<ReferenceType | "">("");
   const [description, setDescription] = useState("");
+  const [revolutions, setRevolutions] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
   // описание доступно для Other (обязательно) и TechnicalIssue (опционально)
@@ -95,6 +114,7 @@ export default function ReferenceDialog({
   const handleClose = () => {
     setType("");
     setDescription("");
+    setRevolutions("");
     onOpenChange(false);
   };
 
@@ -114,6 +134,7 @@ export default function ReferenceDialog({
 
     try {
       setLoading(true);
+      const revolutionCount = Number.isFinite(parseInt(revolutions, 10)) ? Math.max(0, parseInt(revolutions, 10)) : 0;
 
       // 1) создаём справку
       const res = await referenceService.create({
@@ -131,7 +152,7 @@ export default function ReferenceDialog({
         textForDescription
       );
 
-      // 2.5) Добавим запись в ActionLog с деталями справки
+      // 2.5) Добавим запись в ActionLog с деталями справки (для журнала)
       try {
         // Разрешим statementId через helper
         let statementId = convoyId
@@ -142,11 +163,11 @@ export default function ReferenceDialog({
             )
           : null;
 
-        // Fallback: if statement not found by bus line, try by convoy+date
+        // Fallback: если по конкретному выходу не нашли, берём первый по колонне/дате
         if (!statementId && convoyId) {
           try {
-            const list = await statementsService.getByConvoyAndDate(convoyId, formatDate(displayDate))
-            statementId = list.value?.[0]?.id ?? null
+            const list = await statementsService.getByConvoyAndDate(convoyId, formatDate(displayDate));
+            statementId = list.value?.[0]?.id ?? null;
           } catch {}
         }
 
@@ -155,6 +176,9 @@ export default function ReferenceDialog({
           const pad = (n: number) => n.toString().padStart(2, "0");
           const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
+          const routeInfo = (assignment as any).routeNumber
+            ? `маршрут №${(assignment as any).routeNumber}, выход ${assignment.busLineNumber}`
+            : `выход ${assignment.busLineNumber}`;
           const driverInfo = assignment.driver?.serviceNumber
             ? `таб. №${assignment.driver.serviceNumber}`
             : "таб. № —";
@@ -165,23 +189,58 @@ export default function ReferenceDialog({
             : "автобус —";
 
           const details = description?.trim() ? `. ${description.trim()}` : "";
-          const logDescription = `Справка: ${REF_LABEL[type as ReferenceType]}. ${driverInfo}, ${busInfo}${details}`;
+          const refLabel = REF_LABEL[type as ReferenceType];
+          const logDescription = `Справка: ${refLabel} (${routeInfo}). ${driverInfo}, ${busInfo}${details}`;
 
           const statementStatus: StatementStatus = "OnWork";
+          const actionStatus: ActionLogStatus = REF_TO_ACTION_STATUS[type as ReferenceType];
 
-          await actionLogService.create({
+          const createRes = await actionLogService.create({
             statementId,
             time,
             driverId: assignment.driver?.id ?? null,
             busId: assignment.bus?.id ?? null,
-            revolutionCount: 0,
+            revolutionCount,
             description: logDescription,
             statementStatus,
-            actionStatus: String(type),
+            actionStatus,
           });
+
+          if (!createRes?.isSuccess) {
+            console.warn("ActionLog create failed:", createRes?.error);
+            toast({
+              title: "Внимание",
+              description: "Не удалось записать событие в журнал",
+              variant: "destructive",
+            });
+          } else {
+            // Сообщим слушателям, что в журнал добавлена запись
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(
+                new CustomEvent("actionlog:created", {
+                  detail: {
+                    statementId,
+                    time,
+                    driverId: assignment.driver?.id ?? null,
+                    busId: assignment.bus?.id ?? null,
+                    description: logDescription,
+                    statementStatus,
+                    actionStatus,
+                    revolutionCount,
+                    dispatchBusLineId: assignment.dispatchBusLineId,
+                  },
+                })
+              );
+            }
+          }
         }
       } catch (e) {
         console.warn("action log create failed for reference", e);
+        toast({
+          title: "Внимание",
+          description: "Справка создана, но запись в журнал создать не удалось",
+          variant: "destructive",
+        });
       }
 
       // 3) шлём событие — пусть слушатели обновятся (если подписаны)
@@ -294,6 +353,25 @@ export default function ReferenceDialog({
           <div className="text-xs text-gray-500">
             {canDescribe ? `${description.trim().length} символов. ${hint}` : hint}
           </div>
+        </div>
+
+        {/* Обороты */}
+        <div className="grid gap-2">
+          <Label htmlFor="ref-rev">Обороты (целое число, по желанию)</Label>
+          <Input
+            id="ref-rev"
+            type="number"
+            min={0}
+            step={1}
+            value={revolutions}
+            onChange={(e) => {
+              const v = e.target.value.replace(/[^0-9]/g, "");
+              setRevolutions(v);
+            }}
+            placeholder="Напр.: 3"
+            className="w-32"
+          />
+          <div className="text-xs text-gray-500">Если оставить пустым — будет записано как 0.</div>
         </div>
 
         <DialogFooter>
