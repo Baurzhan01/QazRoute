@@ -60,6 +60,44 @@ function formatDateToHms(d?: Date | string | null) {
   return { h, m, s, hms: `${pad2(h)}:${pad2(m)}:${pad2(s)}` }
 }
 
+/** Удалить HTML-теги и привести <br> к переносам строк */
+function stripHtml(html?: string | null) {
+  if (!html) return ""
+  // заменяем <br> на переносы
+  let text = html.replace(/<br\s*\/?>/gi, "\n")
+  // удаляем все теги
+  text = text.replace(/<[^>]*>/g, "")
+  // заменяем неразрывные пробелы и прочие сущности по минимуму
+  text = text.replace(/&nbsp;/gi, " ")
+  // тримим и нормализуем множественные переносы
+  return text
+    .split("\n")
+    .map(s => s.trim())
+    .filter(Boolean)
+    .join("\n")
+}
+
+/** Локализация типа ремонта */
+function prettifyRepairType(t?: string | null) {
+  if (!t) return ""
+  const map: Record<string, string> = {
+    Unscheduled: "Внеплановый",
+    Scheduled: "Плановый",
+    Emergency: "Аварийный",
+  }
+  return map[t] || t
+}
+
+/** Локализация названия события истории */
+function prettifyHistoryType(t?: string | null) {
+  if (!t) return ""
+  const map: Record<string, string> = {
+    REPAIR: "Ремонт",
+    REPLACEMENT: "Замена",
+  }
+  return map[t] || t
+}
+
 /** Небольшой relative time для красоты (на уровне минут) */
 function relativeFromNow(h: number, m: number) {
   const now = new Date()
@@ -124,22 +162,48 @@ const StatementEventLogModal = ({ state, onClose }: StatementEventLogModalProps)
       .then(([historyRes, logsRes]) => {
         const items: EventLogTimelineEntry[] = []
 
-        // История замен (API возвращает replacedAt ISO)
+        // История (замены/ремонты). API возвращает replacedAt ISO, а для ремонта — дополнительные поля
         for (const item of historyRes.value ?? []) {
-          const t = formatDateToHms(item.replacedAt ? new Date(item.replacedAt) : null)
-          const who = [item.newDriverName, item.newBusNumber].filter(Boolean).join(" · ")
-          const action = item.type ? `(${item.type})` : ""
-          items.push({
-            id: `history-${item.replacedAt}-${item.type}`,
-            time: t.hms,
-            description: `🔁 Замена ${action}${who ? ": " + who : ""}`,
-            type: "history",
-            // для сортировки
-            // @ts-ignore расширение
-            __sortSec: daySeconds(t.h, t.m, t.s),
-            __actionStatus: "Replacement",
-            __statementStatus: "OnWork",
-          } as any)
+          const baseTime = formatDateToHms(item.replacedAt ? new Date(item.replacedAt) : null)
+          const typeRu = prettifyHistoryType(item.type)
+
+          if (item.type === "REPAIR") {
+            const startHms = normalizeTimeToHms(item.startTime ?? baseTime.hms)
+            const startRepairHms = normalizeTimeToHms(item.startRepairTime ?? "00:00:00")
+            const endRepairHms = normalizeTimeToHms(item.endRepairTime ?? "00:00:00")
+            const repairKind = prettifyRepairType(item.repairType)
+            const details = stripHtml(item.repairText)
+
+            const lines: string[] = []
+            lines.push(`🔧 ${typeRu}${repairKind ? ` (${repairKind})` : ""}`)
+            if (details) lines.push(`Описание: ${details}`)
+
+            items.push({
+              id: `history-${item.replacedAt}-REPAIR-${item.startTime ?? ""}`,
+              time: baseTime.hms,
+              description: lines.join("\n"),
+              type: "history",
+              // @ts-ignore сортировка по базовому времени
+              __sortSec: daySeconds(baseTime.h, baseTime.m, baseTime.s),
+              __actionStatus: "Repair",
+              __statementStatus: "OnWork",
+              __h: baseTime.h, __m: baseTime.m,
+            } as any)
+          } else {
+            const who = [item.newDriverName, item.newBusNumber].filter(Boolean).join(" · ")
+            const action = typeRu ? `(${typeRu})` : ""
+            items.push({
+              id: `history-${item.replacedAt}-${item.type}`,
+              time: baseTime.hms,
+              description: `🔁 Замена ${action}${who ? ": " + who : ""}`,
+              type: "history",
+              // для сортировки
+              // @ts-ignore расширение
+              __sortSec: daySeconds(baseTime.h, baseTime.m, baseTime.s),
+              __actionStatus: "Replacement",
+              __statementStatus: "OnWork",
+            } as any)
+          }
         }
 
         // ActionLog (может приходить либо объект времени, либо строка)

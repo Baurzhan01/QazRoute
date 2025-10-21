@@ -37,7 +37,7 @@ export default function Loader({ autoClose = true }: LoaderProps) {
     <AnimatePresence>
       {!loaded && (
         <motion.div
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center text-center"
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center text-center print:hidden"
           style={{
             background:
               "linear-gradient(-45deg, #f0f9ff, #fef9c3, #e0f2fe, #fef9c3)",

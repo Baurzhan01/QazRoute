@@ -2,7 +2,8 @@ import { ReactNode } from "react"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import type { Metadata } from "next"
 import { headers } from "next/headers"
-import { Toaster } from "@/components/ui/toaster" // ✅ добавили
+import { Toaster } from "@/components/ui/toaster"
+import Loader from "@/components/ui/Loader"
 
 export async function generateMetadata(): Promise<Metadata> {
   const allHeaders = await headers()
@@ -17,16 +18,16 @@ export async function generateMetadata(): Promise<Metadata> {
     "dispatcher": "Диспетчер",
     "on-duty-mechanic": "Дежурный механик",
     "hr": "HR-отдел",
-    "payroll": "Бухгалтерия",
-    "admin": "Администратор",
-    "dashboard": "Панель управления",
+    "payroll": "Зарплата",
+    "admin": "Администрирование",
+    "dashboard": "Рабочая панель",
   }
 
-  const roleTitle = titles[role] || "Панель управления"
+  const roleTitle = titles[role] || "Рабочая панель"
 
   return {
     title: `${roleTitle} | QazRoute`,
-    description: "Управление маршрутами, автобусами и сотрудниками автобусного парка через систему QazRoute.",
+    description: "Управление выпуском, транспортом и маршрутами в системе QazRoute.",
     icons: {
       icon: "/favicon.ico",
     },
@@ -37,9 +38,10 @@ export default function DashboardRootLayout({ children }: { children: ReactNode 
   return (
     <>
       <DashboardLayout>
+        <Loader />
         {children}
       </DashboardLayout>
-      <Toaster /> {/* ✅ вставили глобальный рендерер уведомлений */}
+      <Toaster />
     </>
   )
 }

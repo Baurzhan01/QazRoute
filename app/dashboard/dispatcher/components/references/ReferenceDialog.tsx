@@ -24,6 +24,7 @@ import { useConvoy } from "../../context/ConvoyContext";
 import type { StatementStatus } from "@/types/statement.types";
 import type { ActionLogStatus } from "@/types/actionLog.types";
 import { formatDate } from "@/app/dashboard/dispatcher/convoy/[id]/release-plan/utils/dateUtils";
+import { getRouteStatusByDate } from "@/lib/date-utils/getRouteStatusByDate";
 import type { ReferenceType } from "@/types/reference.types";
 import type { RouteAssignment } from "@/types/releasePlanTypes";
 
@@ -134,7 +135,9 @@ export default function ReferenceDialog({
 
     try {
       setLoading(true);
-      const revolutionCount = Number.isFinite(parseInt(revolutions, 10)) ? Math.max(0, parseInt(revolutions, 10)) : 0;
+      // Разрешаем отрицательные и дробные значения, запятая как разделитель
+      const parsedRevs = parseFloat(revolutions.replace(",", "."));
+      const revolutionCount = Number.isFinite(parsedRevs) ? parsedRevs : 0;
 
       // 1) создаём справку
       const res = await referenceService.create({
@@ -154,16 +157,41 @@ export default function ReferenceDialog({
 
       // 2.5) Добавим запись в ActionLog с деталями справки (для журнала)
       try {
-        // Разрешим statementId через helper
-        let statementId = convoyId
-          ? await releasePlanService.findStatementIdByDispatch(
+        // 0) Иногда statementId уже приходит в assignment в других контекстах
+        let statementId: string | null = (assignment as any)?.statementId ?? null;
+
+        // 1) Разрешим statementId через helper (по колонне/дате/выходу)
+        if (!statementId && convoyId) {
+          statementId = await releasePlanService.findStatementIdByDispatch(
+            formatDate(displayDate),
+            convoyId,
+            assignment.dispatchBusLineId
+          );
+        }
+
+        // 2) Попробуем ещё раз, но с routeStatus, зависящим от даты (некоторые бек-реализации фильтруют по типу дня)
+        if (!statementId && convoyId) {
+          try {
+            const routeStatus = getRouteStatusByDate(displayDate);
+            const full = await releasePlanService.getFullStatementByDate(
               formatDate(displayDate),
               convoyId,
-              assignment.dispatchBusLineId
-            )
-          : null;
+              routeStatus
+            );
+            const routes = full.value?.routes ?? [];
+            for (const route of routes) {
+              for (const line of route.busLines ?? []) {
+                if ((line as any).dispatchBusLineId === assignment.dispatchBusLineId) {
+                  statementId = (line as any).statementId || null;
+                  break;
+                }
+              }
+              if (statementId) break;
+            }
+          } catch {}
+        }
 
-        // Fallback: если по конкретному выходу не нашли, берём первый по колонне/дате
+        // 3) Fallback: если по конкретному выходу не нашли, берём первый по колонне/дате
         if (!statementId && convoyId) {
           try {
             const list = await statementsService.getByConvoyAndDate(convoyId, formatDate(displayDate));
@@ -233,6 +261,19 @@ export default function ReferenceDialog({
               );
             }
           }
+        }
+        
+        if (!statementId) {
+          console.warn("ReferenceDialog: statementId not resolved; action log create skipped", {
+            convoyId,
+            displayDate: formatDate(displayDate),
+            dispatchBusLineId: assignment.dispatchBusLineId,
+          });
+          toast({
+            title: "Нет связанного наряда",
+            description: "Не удалось определить statementId для этого выхода — запись в журнал не создана.",
+            variant: "destructive",
+          });
         }
       } catch (e) {
         console.warn("action log create failed for reference", e);
@@ -357,18 +398,28 @@ export default function ReferenceDialog({
 
         {/* Обороты */}
         <div className="grid gap-2">
-          <Label htmlFor="ref-rev">Обороты (целое число, по желанию)</Label>
+          <Label htmlFor="ref-rev">Обороты (можно дробные, через запятую)</Label>
           <Input
             id="ref-rev"
-            type="number"
-            min={0}
-            step={1}
+            type="text"
             value={revolutions}
             onChange={(e) => {
-              const v = e.target.value.replace(/[^0-9]/g, "");
+              // Разрешаем ввод: цифры, одна запятая/точка, ведущий минус
+              let v = e.target.value;
+              // Убираем недопустимые символы
+              v = v.replace(/[^0-9,\.\-]/g, "");
+              // Оставляем только один минус и только в начале
+              v = v.replace(/(?!^)-/g, "");
+              // Разрешаем только один десятичный разделитель (запятая или точка)
+              const firstSep = v.search(/[\.,]/);
+              if (firstSep !== -1) {
+                const before = v.slice(0, firstSep + 1);
+                const after = v.slice(firstSep + 1).replace(/[\.,]/g, "");
+                v = before + after;
+              }
               setRevolutions(v);
             }}
-            placeholder="Напр.: 3"
+            placeholder="Напр.: -0,5 / 0,5 / 1,5"
             className="w-32"
           />
           <div className="text-xs text-gray-500">Если оставить пустым — будет записано как 0.</div>

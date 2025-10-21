@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
@@ -12,34 +12,13 @@ import { convoyService } from "@/service/convoyService"
 import { releasePlanService } from "@/service/releasePlanService"
 
 import { getDayTypeFromDate } from "@/app/dashboard/dispatcher/convoy/[id]/release-plan/utils/dateUtils"
-import type { DayType, RouteBucket, StatementActionLog, StatementRow } from "../types"
-import { routeStatusMap, statusMeta } from "../utils/constants"
-import {
-  collectActionLogsFromBuckets,
-  collectRemovedRows,
-  formatActionLogBus,
-  formatActionLogDriver,
-  formatActionLogTime,
-  prettifyStatus,
-  formatTime,
-  splitRoutes,
-} from "../utils/helpers"
+import type { DayType, RouteBucket } from "../types"
+import { routeStatusMap } from "../utils/constants"
+import { splitRoutes } from "../utils/helpers"
+import StatementRoutesTable from "../components/StatementRoutesTable"
+import RemovedRoutesTable from "../components/RemovedRoutesTable"
 
-interface Totals {
-  plan: number
-  fact: number
-  spoken: number
-}
-
-const sumRowTotals = (rows: StatementRow[]): Totals =>
-  rows.reduce<Totals>(
-    (acc, row) => ({
-      plan: acc.plan + (row.planRevolutions ?? 0),
-      fact: acc.fact + (row.factRevolutions ?? 0),
-      spoken: acc.spoken + (row.spokenRevolutions ?? 0),
-    }),
-    { plan: 0, fact: 0, spoken: 0 }
-  )
+// no need for summary totals: we mirror the main view layout
 
 const StatementPrintPage = () => {
   const params = useParams()
@@ -65,10 +44,19 @@ const StatementPrintPage = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [convoyLabel, setConvoyLabel] = useState<string>("")
+  const [title, setTitle] = useState<string>("Ведомость")
   const [routes, setRoutes] = useState<RouteBucket[]>([])
-  const [removedRows, setRemovedRows] = useState<StatementRow[]>([])
-  const [orderLogs, setOrderLogs] = useState<StatementActionLog[]>([])
-  const [removedLogs, setRemovedLogs] = useState<StatementActionLog[]>([])
+  const [removedRows, setRemovedRows] = useState<any[]>([])
+
+  const [pendingInputs] = useState<Record<string, string>>({})
+  const [savingRows] = useState<Record<string, boolean>>({})
+
+  const buildTitle = useCallback((label: string, targetDate: Date, convoyNumber?: number | null) => {
+    const convoyPart = convoyNumber ? ` автоколонна №${convoyNumber}` : ""
+    const needsSuffix = label && (!convoyNumber || !String(label).includes(String(convoyNumber)))
+    const suffix = needsSuffix ? ` (${label})` : ""
+    return `Ведомость${convoyPart}${suffix} на ${format(targetDate, "d MMMM yyyy", { locale: ru })}`
+  }, [])
 
   useEffect(() => {
     if (!convoyId) return
@@ -85,15 +73,25 @@ const StatementPrintPage = () => {
         const data = statementRes.value ?? null
         const buckets = splitRoutes(data?.routes ?? [])
         setRoutes(buckets)
-        setRemovedRows(collectRemovedRows(buckets))
-        setOrderLogs(collectActionLogsFromBuckets(buckets, "onOrder"))
-        setRemovedLogs(collectActionLogsFromBuckets(buckets, "removed"))
+        // removed rows are rendered by RemovedRoutesTable; we just pass rows it expects
+        const removed = buckets.flatMap(b => b.rows).filter(r => r.status === "Rejected")
+        setRemovedRows(removed as any)
 
         const summary = summaryRes?.value ?? summaryRes ?? {}
-        const label = summary?.convoyNumber != null
-          ? `Колонна №${summary.convoyNumber}`
-          : summary?.convoyName || ""
+        // robust convoy number resolution
+        let convoyNumber: number | null = null
+        if (typeof summary?.convoyNumber === 'number') convoyNumber = summary.convoyNumber
+        else if (typeof summary?.number === 'number') convoyNumber = summary.number
+        else if (typeof summary?.convoy?.number === 'number') convoyNumber = summary.convoy.number
+        if (convoyNumber == null) {
+          try {
+            const byId = await convoyService.getById(convoyId)
+            if (byId?.isSuccess && typeof byId.value?.number === 'number') convoyNumber = byId.value.number
+          } catch {}
+        }
+        const label = convoyNumber ? `Автоколонна №${convoyNumber}` : (summary?.convoyName || "")
         setConvoyLabel(label)
+        setTitle(buildTitle(label, targetDate, convoyNumber ?? undefined))
       } catch (err: any) {
         console.error("print statement error", err)
         const message = err?.message || "Не удалось загрузить ведомость"
@@ -111,10 +109,10 @@ const StatementPrintPage = () => {
     void load()
   }, [convoyId, dateStr, dayType])
 
-  const overallTotals = useMemo(() => sumRowTotals(routes.flatMap(route => route.rows)), [routes])
-
   const handlePrint = () => window.print()
   const handleClose = () => router.back()
+
+  // Автопечать убрана — печать только по кнопке
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
@@ -134,8 +132,8 @@ const StatementPrintPage = () => {
       <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-6 py-6">
         <section className="rounded-xl bg-white p-6 shadow-sm print:shadow-none">
           <header className="mb-6 text-center">
-            <p className="text-sm text-slate-500">{convoyLabel || "Конвой"}</p>
-            <h2 className="text-2xl font-bold text-slate-800">Ведомость от {prettyDate}</h2>
+            {convoyLabel && <p className="text-sm text-slate-500">{convoyLabel}</p>}
+            <h2 className="text-2xl font-bold text-slate-800">{title}</h2>
           </header>
 
           {loading && <p className="text-center text-muted-foreground">Загрузка...</p>}
@@ -143,291 +141,25 @@ const StatementPrintPage = () => {
 
           {!loading && !error && (
             <div className="flex flex-col gap-8">
-              <section className="break-inside-avoid">
-                <h3 className="mb-3 text-lg font-semibold text-slate-700">Итоги по ведомости</h3>
-                <div className="grid grid-cols-1 gap-3 rounded-lg border bg-slate-50 p-4 text-sm text-slate-700 md:grid-cols-3">
-                  <div>
-                    <p className="text-xs uppercase text-slate-500">План оборотов</p>
-                    <p className="text-xl font-semibold">{overallTotals.plan}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase text-slate-500">Факт оборотов</p>
-                    <p className="text-xl font-semibold">{overallTotals.fact}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase text-slate-500">Со слов</p>
-                    <p className="text-xl font-semibold">{overallTotals.spoken}</p>
-                  </div>
-                </div>
-              </section>
-
-              {routes.map(route => {
-                const totals = sumRowTotals(route.rows)
-                const removedSummaries = route.rows.flatMap(row => {
-                  const entries: StatementActionLog[] = row.raw.removed ?? []
-                  return entries.map((entry, index) => ({
-                    key: `${row.dispatchBusLineId}-removed-${index}`,
-                    exitNumber: row.busLineNumber,
-                    routeNumber: row.routeNumber,
-                    time: formatActionLogTime(entry.time),
-                    driver: formatActionLogDriver(entry.driver),
-                    bus: formatActionLogBus(entry.bus),
-                    comment: entry.description || row.description || "Без комментария",
-                    replacementType: entry.replacementType || null,
-                  }))
-                })
-                const orderSummaries = route.rows.flatMap(row => {
-                  const entries: StatementActionLog[] = row.raw.onOrder ?? []
-                  return entries.map((entry, index) => ({
-                    key: `${row.dispatchBusLineId}-order-${index}`,
-                    exitNumber: row.busLineNumber,
-                    routeNumber: row.routeNumber,
-                    time: formatActionLogTime(entry.time),
-                    driver: formatActionLogDriver(entry.driver),
-                    bus: formatActionLogBus(entry.bus),
-                    comment: entry.description || row.description || "Без комментария",
-                    replacementType: entry.replacementType || null,
-                  }))
-                })
-
-                return (
-                  <section key={route.id} className="break-inside-avoid">
-                    <h3 className="mb-2 text-lg font-semibold text-slate-800">Маршрут №{route.number}</h3>
-                    <table className="w-full table-fixed border border-slate-300 text-xs">
-                      <thead className="bg-slate-100 text-slate-700">
-                        <tr>
-                          <th className="border border-slate-300 px-2 py-1">№</th>
-                          <th className="border border-slate-300 px-2 py-1">Выход</th>
-                          <th className="border border-slate-300 px-2 py-1">Гос. номер</th>
-                          <th className="border border-slate-300 px-2 py-1">Гар. номер</th>
-                          <th className="border border-slate-300 px-2 py-1">Таб. номер</th>
-                          <th className="border border-slate-300 px-2 py-1">Водитель</th>
-                          <th className="border border-slate-300 px-2 py-1">Выезд</th>
-                          <th className="border border-slate-300 px-2 py-1">Возврат</th>
-                          <th className="border border-slate-300 px-2 py-1">План</th>
-                          <th className="border border-slate-300 px-2 py-1">Факт</th>
-                          <th className="border border-slate-300 px-2 py-1">Со слов</th>
-                          <th className="border border-slate-300 px-2 py-1">Статус</th>
-                          <th className="border border-slate-300 px-2 py-1">Примечание</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {route.rows.map((row, index) => {
-                          const meta = statusMeta[row.status] ?? statusMeta.Unknown
-                          const rowBackground = meta.rowClass ?? (index % 2 === 0 ? "bg-white" : "bg-slate-50")
-
-                          return (
-                            <tr key={row.dispatchBusLineId} className={rowBackground}>
-                              <td className="border border-slate-200 px-2 py-1 text-center">{index + 1}</td>
-                              <td className="border border-slate-200 px-2 py-1 text-center">{row.busLineNumber}</td>
-                              <td className="border border-slate-200 px-2 py-1 text-center">{row.busGovNumber || "-"}</td>
-                              <td className="border border-slate-200 px-2 py-1 text-center">{row.busGarageNumber || "-"}</td>
-                              <td className="border border-slate-200 px-2 py-1 text-center">{row.driverServiceNumber || "-"}</td>
-                              <td className="border border-slate-200 px-2 py-1">{row.driverName || "-"}</td>
-                              <td className="border border-slate-200 px-2 py-1 text-center">{formatTime(row.exitTime)}</td>
-                              <td className="border border-slate-200 px-2 py-1 text-center">{formatTime(row.endTime)}</td>
-                              <td className="border border-slate-200 px-2 py-1 text-center">{row.planRevolutions ?? "-"}</td>
-                              <td className="border border-slate-200 px-2 py-1 text-center">{row.factRevolutions ?? "-"}</td>
-                              <td className="border border-slate-200 px-2 py-1 text-center">{row.spokenRevolutions ?? "-"}</td>
-                              <td className="border border-slate-200 px-2 py-1 text-center">
-                                {statusMeta[row.status]?.label || row.status}
-                              </td>
-                              <td className="border border-slate-200 px-2 py-1">{row.description || row.raw.description || ""}</td>
-                            </tr>
-                          )
-                        })}
-                        <tr className="bg-slate-200 font-semibold text-slate-800">
-                          <td className="border border-slate-300 px-2 py-1 text-right" colSpan={8}>
-                            Итого по маршруту
-                          </td>
-                          <td className="border border-slate-300 px-2 py-1 text-center">{totals.plan}</td>
-                          <td className="border border-slate-300 px-2 py-1 text-center">{totals.fact}</td>
-                          <td className="border border-slate-300 px-2 py-1 text-center">{totals.spoken}</td>
-                          <td className="border border-slate-300 px-2 py-1" colSpan={2}></td>
-                        </tr>
-                      </tbody>
-                    </table>
-
-                    {(orderSummaries.length > 0 || removedSummaries.length > 0) && (
-                      <div className="mt-4 space-y-4">
-                        {orderSummaries.length > 0 && (
-                          <div className="border border-purple-200 bg-purple-50/60">
-                            <header className="flex items-center justify-between border-b border-purple-200 bg-purple-100/60 px-3 py-2">
-                              <h4 className="text-sm font-semibold text-purple-700">Отправлены на заказ</h4>
-                              <span className="text-xs text-purple-600">Всего: {orderSummaries.length}</span>
-                            </header>
-                            <div className="overflow-x-auto">
-                              <table className="min-w-full text-sm">
-                                <thead className="text-xs uppercase tracking-wide text-purple-600">
-                                  <tr>
-                                    <th className="border border-purple-200 px-2 py-1 text-center">Выход</th>
-                                    <th className="border border-purple-200 px-2 py-1 text-center">Маршрут</th>
-                                    <th className="border border-purple-200 px-2 py-1 text-center">Время</th>
-                                    <th className="border border-purple-200 px-2 py-1">Водитель</th>
-                                    <th className="border border-purple-200 px-2 py-1">Автобус</th>
-                                    <th className="border border-purple-200 px-2 py-1">Комментарий</th>
-                                    <th className="border border-purple-200 px-2 py-1 text-center">Тип</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {orderSummaries.map(summary => (
-                                    <tr key={summary.key} className="odd:bg-white even:bg-purple-100/40">
-                                      <td className="border border-purple-200 px-2 py-1 text-center">{summary.exitNumber}</td>
-                                      <td className="border border-purple-200 px-2 py-1 text-center">№{summary.routeNumber}</td>
-                                      <td className="border border-purple-200 px-2 py-1 text-center">{summary.time}</td>
-                                      <td className="border border-purple-200 px-2 py-1">{summary.driver}</td>
-                                      <td className="border border-purple-200 px-2 py-1">{summary.bus}</td>
-                                      <td className="border border-purple-200 px-2 py-1">{summary.comment}</td>
-                                      <td className="border border-purple-200 px-2 py-1 text-center">
-                                        {summary.replacementType ? (
-                                          <span className="rounded bg-white/70 px-2 py-0.5 text-xs uppercase tracking-wide text-purple-600">
-                                            {summary.replacementType}
-                                          </span>
-                                        ) : (
-                                          "-"
-                                        )}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
-
-                        {removedSummaries.length > 0 && (
-                          <div className="border border-rose-200 bg-rose-50/60">
-                            <header className="flex items-center justify-between border-b border-rose-200 bg-rose-100/70 px-3 py-2">
-                              <h4 className="text-sm font-semibold text-rose-700">Снятые с выхода</h4>
-                              <span className="text-xs text-rose-600">Всего: {removedSummaries.length}</span>
-                            </header>
-                            <div className="overflow-x-auto">
-                              <table className="min-w-full text-sm">
-                                <thead className="text-xs uppercase tracking-wide text-rose-600">
-                                  <tr>
-                                    <th className="border border-rose-200 px-2 py-1 text-center">Выход</th>
-                                    <th className="border border-rose-200 px-2 py-1 text-center">Маршрут</th>
-                                    <th className="border border-rose-200 px-2 py-1 text-center">Время</th>
-                                    <th className="border border-rose-200 px-2 py-1">Водитель</th>
-                                    <th className="border border-rose-200 px-2 py-1">Автобус</th>
-                                    <th className="border border-rose-200 px-2 py-1">Комментарий</th>
-                                    <th className="border border-rose-200 px-2 py-1 text-center">Тип</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {removedSummaries.map(summary => (
-                                    <tr key={summary.key} className="odd:bg-white even:bg-rose-100/50">
-                                      <td className="border border-rose-200 px-2 py-1 text-center">{summary.exitNumber}</td>
-                                      <td className="border border-rose-200 px-2 py-1 text-center">№{summary.routeNumber}</td>
-                                      <td className="border border-rose-200 px-2 py-1 text-center">{summary.time}</td>
-                                      <td className="border border-rose-200 px-2 py-1">{summary.driver}</td>
-                                      <td className="border border-rose-200 px-2 py-1">{summary.bus}</td>
-                                      <td className="border border-rose-200 px-2 py-1">{summary.comment}</td>
-                                      <td className="border border-rose-200 px-2 py-1 text-center">
-                                        {summary.replacementType ? (
-                                          <span className="rounded bg-white/70 px-2 py-0.5 text-xs uppercase tracking-wide text-rose-600">
-                                            {summary.replacementType}
-                                          </span>
-                                        ) : (
-                                          "-"
-                                        )}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </section>
-                )
-              })}
-
-              {removedRows.length > 0 && (
-                <section className="break-inside-avoid">
-                  <h3 className="mb-2 text-lg font-semibold text-slate-800">Снятые с маршрута</h3>
-                  <table className="w-full table-fixed border border-slate-300 text-xs">
-                    <thead className="bg-rose-100 text-slate-700">
-                      <tr>
-                        <th className="border border-slate-300 px-2 py-1">Выход</th>
-                        <th className="border border-slate-300 px-2 py-1">Маршрут</th>
-                        <th className="border border-slate-300 px-2 py-1">Водитель</th>
-                        <th className="border border-slate-300 px-2 py-1">Гос. номер</th>
-                        <th className="border border-slate-300 px-2 py-1">Комментарий</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {removedRows.map(row => (
-                        <tr key={`removed-${row.dispatchBusLineId}`} className="odd:bg-white even:bg-rose-50">
-                          <td className="border border-slate-200 px-2 py-1 text-center">{row.busLineNumber}</td>
-                          <td className="border border-slate-200 px-2 py-1 text-center">№{row.routeNumber}</td>
-                          <td className="border border-slate-200 px-2 py-1">{row.driverName || "-"}</td>
-                          <td className="border border-slate-200 px-2 py-1 text-center">{row.busGovNumber || "-"}</td>
-                          <td className="border border-slate-200 px-2 py-1">{row.description || row.raw.description || "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </section>
-              )}
-
-              {(orderLogs.length > 0 || removedLogs.length > 0) && (
-                <section className="grid gap-6 md:grid-cols-2">
-                  {orderLogs.length > 0 && (
-                    <div className="break-inside-avoid rounded-lg border border-purple-200 bg-purple-50 p-4">
-                      <h4 className="mb-3 text-base font-semibold text-slate-800">Заявки/заказы</h4>
-                      <table className="w-full table-fixed text-xs">
-                        <thead className="text-slate-600">
-                          <tr>
-                            <th className="border border-purple-200 px-2 py-1">№</th>
-                            <th className="border border-purple-200 px-2 py-1">Время</th>
-                            <th className="border border-purple-200 px-2 py-1">Статус</th>
-                            <th className="border border-purple-200 px-2 py-1">Описание</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {orderLogs.map((entry, index) => (
-                            <tr key={`order-${index}`} className="odd:bg-white even:bg-purple-100/60">
-                              <td className="border border-purple-200 px-2 py-1 text-center">{index + 1}</td>
-                              <td className="border border-purple-200 px-2 py-1 text-center">{formatActionLogTime(entry.time)}</td>
-                              <td className="border border-purple-200 px-2 py-1 text-center">{prettifyStatus(entry.status ?? entry.replacementType ?? "-")}</td>
-                              <td className="border border-purple-200 px-2 py-1">{entry.description || "-"}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {removedLogs.length > 0 && (
-                    <div className="break-inside-avoid rounded-lg border border-rose-200 bg-rose-50 p-4">
-                      <h4 className="mb-3 text-base font-semibold text-slate-800">Сходы с линии</h4>
-                      <table className="w-full table-fixed text-xs">
-                        <thead className="text-slate-600">
-                          <tr>
-                            <th className="border border-rose-200 px-2 py-1">№</th>
-                            <th className="border border-rose-200 px-2 py-1">Время</th>
-                            <th className="border border-rose-200 px-2 py-1">Статус</th>
-                            <th className="border border-rose-200 px-2 py-1">Описание</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {removedLogs.map((entry, index) => (
-                            <tr key={`removed-log-${index}`} className="odd:bg-white even:bg-rose-100/60">
-                              <td className="border border-rose-200 px-2 py-1 text-center">{index + 1}</td>
-                              <td className="border border-rose-200 px-2 py-1 text-center">{formatActionLogTime(entry.time)}</td>
-                              <td className="border border-rose-200 px-2 py-1 text-center">{prettifyStatus(entry.status ?? entry.replacementType ?? "-")}</td>
-                              <td className="border border-rose-200 px-2 py-1">{entry.description || "-"}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </section>
-              )}
+              <div id="print-root" className="print-area">
+                <StatementRoutesTable
+                  routes={routes}
+                  pendingInputs={pendingInputs}
+                  savingRows={savingRows}
+                  onInputChange={() => {}}
+                  onAction={() => {}}
+                  actionsDisabled
+                />
+              </div>
+              {/* Дополнительные блоки на экране, но не в печати */}
+              <div className="no-print">
+                <RemovedRoutesTable
+                  rows={removedRows as any}
+                  onReturn={() => {}}
+                  onViewLog={() => {}}
+                  statusSubmitting={false}
+                />
+              </div>
             </div>
           )}
         </section>
@@ -435,22 +167,32 @@ const StatementPrintPage = () => {
 
       <style jsx global>{`
         @media print {
-          body {
-            background: white;
-          }
+          .no-print { display: none !important; }
+          body { background: white; margin: 0; }
+          /* Печатаем только область с таблицей */
+          body * { visibility: hidden; }
+          #print-root, #print-root * { visibility: visible; }
+          #print-root { position: absolute; left: 0; top: 0; width: 100%; }
 
-          .print\:shadow-none {
-            box-shadow: none !important;
-          }
+          .print\:shadow-none { box-shadow: none !important; }
+          main { padding: 0 !important; }
+          .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
 
-          main {
-            padding: 0 !important;
-          }
-
-          .break-inside-avoid {
-            break-inside: avoid;
-            page-break-inside: avoid;
-          }
+          /* Компактный печатный стиль */
+          .print-area { font-size: 11pt; line-height: 1.25; max-width: none !important; width: auto !important; }
+          .print-area table { border-collapse: collapse !important; }
+          .print-area th, .print-area td { padding: 4pt 6pt !important; border: 1px solid #444 !important; }
+          .print-area thead th { font-weight: 600; }
+          .print-area [class*="bg-"] { background: transparent !important; }
+          .print-area [class*="shadow"] { box-shadow: none !important; }
+          .print-area .border { border-color: #444 !important; }
+          .print-area .text-muted-foreground { color: #111 !important; }
+          .print-area .overflow-x-auto, .print-area .overflow-y-auto { overflow: visible !important; }
+          .print-area .w-full { width: 100% !important; }
+          .print-area .max-w-\[1200px\] { max-width: none !important; }
+          .print-area .px-6 { padding-left: 0 !important; padding-right: 0 !important; }
+          .print-area .py-6 { padding-top: 0 !important; padding-bottom: 0 !important; }
+          .print-area .rounded-xl { border-radius: 0 !important; }
         }
       `}</style>
     </div>

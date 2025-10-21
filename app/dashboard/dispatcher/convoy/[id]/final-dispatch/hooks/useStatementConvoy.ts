@@ -77,10 +77,11 @@ export const useStatementConvoy = ({ convoyId }: UseStatementConvoyParams) => {
     setRemovedRows(collectRemovedRows(buckets))
   }, [])
 
-  const buildTitle = useCallback((label: string, targetDate: Date) => {
-    const company = ""
-    const suffix = label ? ` (${label})` : ""
-    return `Ведомость ${company}${suffix} на ${format(targetDate, "d MMMM yyyy", { locale: ru })}`
+  const buildTitle = useCallback((label: string, targetDate: Date, convoyNumber?: number | null) => {
+    const convoyPart = convoyNumber ? ` автоколонна №${convoyNumber}` : ""
+    const needsSuffix = label && (!convoyNumber || !String(label).includes(String(convoyNumber)))
+    const suffix = needsSuffix ? ` (${label})` : ""
+    return `Ведомость${convoyPart}${suffix} на ${format(targetDate, "d MMMM yyyy", { locale: ru })}`
   }, [])
 
   const fetchData = useCallback(async () => {
@@ -103,11 +104,25 @@ export const useStatementConvoy = ({ convoyId }: UseStatementConvoyParams) => {
       setRemovedLogs(collectActionLogsFromBuckets(buckets, "removed"))
 
       const summary = summaryRes?.value ?? summaryRes ?? {}
-      const label = summary?.convoyNumber
-        ? `Автоколонна №${summary.convoyNumber}`
-        : summary?.convoyName || ""
+      // Try to determine convoy number from various shapes of the summary
+      let convoyNumber: number | null = null
+      if (typeof summary?.convoyNumber === 'number') convoyNumber = summary.convoyNumber
+      else if (typeof summary?.number === 'number') convoyNumber = summary.number
+      else if (typeof summary?.convoy?.number === 'number') convoyNumber = summary.convoy.number
+
+      // Fallback: fetch by id if still unknown
+      if (convoyNumber == null) {
+        try {
+          const byId = await convoyService.getById(convoyId)
+          if (byId?.isSuccess && typeof byId.value?.number === 'number') {
+            convoyNumber = byId.value.number
+          }
+        } catch {}
+      }
+
+      const label = convoyNumber ? `Автоколонна №${convoyNumber}` : (summary?.convoyName || "")
       setConvoyLabel(label)
-      setTitle(buildTitle(label, date))
+      setTitle(buildTitle(label, date, convoyNumber ?? undefined))
 
       if (data?.date) {
         const serverDate = new Date(data.date)
@@ -170,7 +185,9 @@ export const useStatementConvoy = ({ convoyId }: UseStatementConvoyParams) => {
   }, [routes])
 
   useEffect(() => {
-    setTitle(buildTitle(convoyLabel, date))
+    const numMatch = convoyLabel.match(/\d+/)
+    const num = numMatch ? Number(numMatch[0]) : undefined
+    setTitle(buildTitle(convoyLabel, date, Number.isFinite(num as number) ? (num as number) : undefined))
   }, [convoyLabel, date, buildTitle])
 
   useEffect(() => () => {
