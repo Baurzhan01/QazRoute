@@ -171,6 +171,7 @@ export default function AddRepairDialog({
           sparePartId: null,
           sparePartCount: 0,
           sparePartPrice: 0,
+          minorUrgentRepairs: false, // 👈 ВСЕГДА false из этой формы
         })),
         ...spares.map((s) => ({
           busId,
@@ -187,6 +188,7 @@ export default function AddRepairDialog({
           workCount: 0,
           workHour: 0,
           workPrice: 0,
+          minorUrgentRepairs: false, // 👈 ВСЕГДА false из этой формы
         })),
       ];
 

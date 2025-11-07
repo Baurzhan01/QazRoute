@@ -392,9 +392,19 @@ export default function MechanicHomePage() {
           <Button variant="outline" onClick={() => setFilterOpen(true)}>
             <Filter className="mr-2 h-4 w-4" /> Фильтрация
           </Button>
+
           <Button variant="outline" asChild>
             <Link href="/dashboard/mechanic/repair-registers">
               <ClipboardList className="mr-2 h-4 w-4" /> Реестр ремонтов
+            </Link>
+          </Button>
+
+          <Button
+            className="bg-orange-500 hover:bg-orange-600 text-white"
+            asChild
+          >
+            <Link href="/dashboard/mechanic/minor-repair/new">
+              ⚡ Мелко-срочный ремонт (batch)
             </Link>
           </Button>
         </div>

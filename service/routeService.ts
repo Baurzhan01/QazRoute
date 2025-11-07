@@ -4,7 +4,8 @@ import type {
   Route,
   CreateRouteRequest,
   UpdateRouteRequest,
-  RouteConflict
+  RouteConflict,
+  RouteStatus
 } from "@/types/route.types"
 
 export const routeService = {
@@ -18,6 +19,14 @@ export const routeService = {
   getByConvoyId: async (convoyId: string, status?: string): Promise<ApiResponse<Route[]>> => {
     const res = await apiClient.get<ApiResponse<Route[]>>(`/routes/by-convoy/${convoyId}`, {
       params: status ? { status } : {},
+    })
+    return res.data
+  },
+
+   // НОВОЕ: все маршруты с их выходами, с фильтром по типу дня
+   getAllWithLines: async (type?: RouteStatus): Promise<ApiResponse<Route[]>> => {
+    const res = await apiClient.get<ApiResponse<Route[]>>("/routes/all", {
+      params: type ? { type } : {},
     })
     return res.data
   },

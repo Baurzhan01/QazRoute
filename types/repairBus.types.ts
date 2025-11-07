@@ -27,6 +27,7 @@ export interface CreateRepairRequest {
   workCount?: number;
   workHour?: number;
   workPrice?: number;        // 👈 добавить
+  minorUrgentRepairs?: boolean;
 }
 
 export interface RepairRegister {

@@ -20,4 +20,5 @@ export interface LaborTime {
   createdAt: string;
   updatedAt: string | null;
   isDeleted: boolean;
+  price?: number;
 }
