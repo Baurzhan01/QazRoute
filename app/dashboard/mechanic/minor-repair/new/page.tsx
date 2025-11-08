@@ -103,7 +103,7 @@ export default function MinorUrgentRepairNewPage() {
       if (!depotId) return;
       setLoadingBuses(true);
       try {
-        const res = await busService.getByDepot(depotId, "1", "1000");
+        const res = await busService.getByDepot(depotId, "1", "3000");
         setBuses(res.value?.items ?? []);
       } finally {
         setLoadingBuses(false);
