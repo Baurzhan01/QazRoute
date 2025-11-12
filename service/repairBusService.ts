@@ -56,6 +56,7 @@ getByRegister: async (registerNumber: string, params?: any) => {
       laborTimeId?: string;
       workName?: string;
       workCode?: string;
+      AppNumber?: string;
       createdFrom?: string;
       createdTo?: string;
       departureFrom?: string;

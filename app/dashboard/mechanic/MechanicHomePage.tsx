@@ -143,6 +143,7 @@ export default function MechanicHomePage() {
     if (!depotId || !filters.departureFrom || !filters.departureTo) return;
 
     setLoading(true);
+    const applicationNumberFilter = filters.appNumber.trim();
     // Сохраняем параметры в URL (текущая страница в UI и pageSize групп)
     const urlParams: Record<string, string | number> = {
       page: filters.page,
@@ -154,7 +155,7 @@ export default function MechanicHomePage() {
     if (filters.govNumber) urlParams.govNumber = filters.govNumber;
     if (filters.workName) urlParams.workName = filters.workName;
     if (filters.sparePartName) urlParams.sparePartName = filters.sparePartName;
-    if (filters.appNumber) urlParams.appNumber = filters.appNumber;
+    if (applicationNumberFilter) urlParams.AppNumber = applicationNumberFilter;
     const qs = new URLSearchParams(urlParams as any).toString();
     router.replace(`?${qs}`);
 
@@ -168,15 +169,15 @@ export default function MechanicHomePage() {
       // Первый запрос — чтобы узнать totalCount
       const baseParams: Record<string, string | number> = {
         page,
-        pageSize: pageSizeForFetch,
-        DepartureFrom: filters.departureFrom,
-        DepartureTo: filters.departureTo,
-      };
-      if (filters.garageNumber) baseParams.garageNumber = filters.garageNumber;
-      if (filters.govNumber) baseParams.govNumber = filters.govNumber;
-      if (filters.workName) baseParams.workName = filters.workName;
-      if (filters.sparePartName) baseParams.sparePartName = filters.sparePartName;
-      if (filters.appNumber) baseParams.appNumber = filters.appNumber;
+      pageSize: pageSizeForFetch,
+      DepartureFrom: filters.departureFrom,
+      DepartureTo: filters.departureTo,
+    };
+    if (filters.garageNumber) baseParams.garageNumber = filters.garageNumber;
+    if (filters.govNumber) baseParams.govNumber = filters.govNumber;
+    if (filters.workName) baseParams.workName = filters.workName;
+    if (filters.sparePartName) baseParams.sparePartName = filters.sparePartName;
+    if (applicationNumberFilter) baseParams.AppNumber = applicationNumberFilter;
 
       const first = await repairBusService.getByDepotId(depotId, baseParams);
       const firstValue: PagedResult<Repair> =
