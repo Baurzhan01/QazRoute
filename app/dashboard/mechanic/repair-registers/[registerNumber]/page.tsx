@@ -45,6 +45,28 @@ function fmtDate(s?: string) {
   return d.toLocaleDateString("ru-RU");
 }
 
+function getPageNumbers(current: number, total: number, maxVisible = 9) {
+  const pages: (number | string)[] = [];
+
+  if (total <= maxVisible) {
+    for (let i = 1; i <= total; i++) pages.push(i);
+    return pages;
+  }
+
+  const left = Math.max(2, current - 2);
+  const right = Math.min(total - 1, current + 2);
+
+  pages.push(1);
+  if (left > 2) pages.push("…");
+
+  for (let i = left; i <= right; i++) pages.push(i);
+
+  if (right < total - 1) pages.push("…");
+  pages.push(total);
+
+  return pages;
+}
+
 export default function RegisterDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -98,8 +120,6 @@ export default function RegisterDetailPage() {
     setLoading(true);
     try {
       const res = await repairBusService.getByRegister(registerNumber, {
-        page,
-        pageSize,
         appNumber: filters.appNumber || undefined,
         garageNumber: filters.garageNumber || undefined,
         govNumber: filters.govNumber || undefined,
@@ -120,7 +140,7 @@ export default function RegisterDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [registerNumber, page, pageSize, filters]);
+  }, [registerNumber, filters]);
 
   useEffect(() => {
     loadRegister();
@@ -147,18 +167,31 @@ export default function RegisterDetailPage() {
   useEffect(() => {
     const fetchSources = async () => {
       if (!applications.length) return;
-  
-      const startDate = applications[0]?.firstDepartureDate;
-      const endDate = applications[0]?.lastEntryDate;
-      const depotId = localStorage.getItem("busDepotId"); // 👈 правильный ключ
-  
-      if (!startDate || !endDate || !depotId) return;
-  
+
+      const depotId = localStorage.getItem("busDepotId");
+      if (!depotId) return;
+
+      const startDate = applications.reduce<string | null>((min, application) => {
+        const current = application.firstDepartureDate?.slice(0, 10);
+        if (!current) return min;
+        if (!min || current < min) return current;
+        return min;
+      }, null);
+
+      const endDate = applications.reduce<string | null>((max, application) => {
+        const current = application.lastEntryDate?.slice(0, 10);
+        if (!current) return max;
+        if (!max || current > max) return current;
+        return max;
+      }, null);
+
+      if (!startDate || !endDate) return;
+
       const [exitRes, planRes] = await Promise.all([
         routeExitRepairService.filter({
           startDate,
           endDate,
-          depotId, // теперь корректно
+          depotId,
           repairTypes: "all",
         }),
         repairService.filter({
@@ -168,8 +201,12 @@ export default function RegisterDetailPage() {
           PageSize: 1000,
         }),
       ]);
-  
-      setExits(exitRes.isSuccess && exitRes.value ? exitRes.value.filter((e) => e.repairType === "Unscheduled") : []);
+
+      setExits(
+        exitRes.isSuccess && exitRes.value
+          ? exitRes.value.filter((e) => e.repairType === "Unscheduled")
+          : []
+      );
       setPlanned(
         planRes.isSuccess && planRes.value
           ? planRes.value.map((p) => ({
@@ -179,9 +216,9 @@ export default function RegisterDetailPage() {
           : []
       );
     };
-  
+
     fetchSources();
-  }, [applications]);  
+  }, [applications]);
 
   // источник строки
   function getSource(a: RepairRegisterApplication) {
@@ -210,6 +247,12 @@ export default function RegisterDetailPage() {
 
   const totalPages = Math.max(1, Math.ceil(applications.length / pageSize));
   const safePage = Math.min(page, totalPages);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   const pagedApps = useMemo(
     () =>
@@ -388,6 +431,25 @@ export default function RegisterDetailPage() {
                     );
                   })}
                 </tbody>
+                <tfoot>
+                  <tr className="bg-slate-50 font-semibold">
+                    <td colSpan={3} className="py-2 pr-4 text-right">
+                      Итого
+                    </td>
+                    <td className="py-2 pr-4">
+                      {totals.totalWork.toLocaleString("ru-RU")} ₸
+                    </td>
+                    <td className="py-2 pr-4">—</td>
+                    <td className="py-2 pr-4">
+                      {totals.totalSpare.toLocaleString("ru-RU")} ₸
+                    </td>
+                    <td className="py-2 pr-4">—</td>
+                    <td className="py-2 pr-4 font-semibold">
+                      {totals.totalAll.toLocaleString("ru-RU")} ₸
+                    </td>
+                    <td className="py-2 pr-4" colSpan={2}></td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           )}
@@ -403,16 +465,22 @@ export default function RegisterDetailPage() {
                 </PaginationPrevious>
               </PaginationItem>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <PaginationItem key={p}>
-                  <PaginationLink
-                    isActive={safePage === p}
-                    onClick={() => setPage(p)}
-                  >
-                    {p}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
+              {getPageNumbers(safePage, totalPages).map((p, index) =>
+                typeof p === "number" ? (
+                  <PaginationItem key={`page-${p}`}>
+                    <PaginationLink
+                      isActive={safePage === p}
+                      onClick={() => setPage(p)}
+                    >
+                      {p}
+                    </PaginationLink>
+                  </PaginationItem>
+                ) : (
+                  <PaginationItem key={`ellipsis-${index}`}>
+                    <span className="px-2 text-muted-foreground">{p}</span>
+                  </PaginationItem>
+                )
+              )}
 
               <PaginationItem>
                 <PaginationNext

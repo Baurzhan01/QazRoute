@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,30 @@ function roundSparePrice(price: number): number {
   const frac = price - intPart;
   return frac >= 0.5 ? Math.ceil(price) : Math.floor(price);
 }
+
+function normalizeDateInput(value: string): string {
+  if (!value) return "";
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+}
+
+const handleDateInput =
+  (setter: (value: string) => void) =>
+  (event: FormEvent<HTMLInputElement> | ChangeEvent<HTMLInputElement>) => {
+    const normalized = normalizeDateInput(event.currentTarget.value);
+    setter(normalized);
+    if (event.currentTarget.value !== normalized) {
+      event.currentTarget.value = normalized;
+    }
+  };
 
 // --- Типы ---
 type WorkDraft = {
@@ -271,19 +296,21 @@ export default function AddRepairDialog({
             )}
           </div>
           <div>
-            <Label>Дата выезда</Label>
-            <Input
-              type="date"
-              value={departureDateStr}
-              onChange={(e) => setDepartureDateStr(e.target.value)}
-            />
-          </div>
-          <div>
             <Label>Дата въезда</Label>
             <Input
               type="date"
               value={entryDateStr}
-              onChange={(e) => setEntryDateStr(e.target.value)}
+              onInput={handleDateInput(setEntryDateStr)}
+              onChange={handleDateInput(setEntryDateStr)}
+            />
+          </div>
+          <div>
+            <Label>Дата выезда</Label>
+            <Input
+              type="date"
+              value={departureDateStr}
+              onInput={handleDateInput(setDepartureDateStr)}
+              onChange={handleDateInput(setDepartureDateStr)}
             />
           </div>
         </div>

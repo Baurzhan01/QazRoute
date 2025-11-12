@@ -367,10 +367,7 @@ export default function BusHistoryPage() {
                   (s, x) => s + safeSum(x.workSum, 0),
                   0
                 );
-                const totalSum = group.reduce(
-                  (s, x) => s + safeSum(x.allSum, 0),
-                  0
-                );
+                const totalSum = partsSum + worksSum;
                 const registerNum = group[0]?.registerNumber || "—";
 
                 return (
