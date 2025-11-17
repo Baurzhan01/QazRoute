@@ -3,6 +3,7 @@ import { TodayReleaseSummary } from "./components/TodayReleaseSummary"
 import { MonthlyProgress } from "./components/MonthlyProgress"
 import { DispatcherShiftSummary } from "./components/DispatcherShiftSummary"
 import { QuickLinks } from "./components/QuickLinks"
+import { SeniorCounts } from "./components/SeniorCounts"
 
 export const metadata: Metadata = {
   title: "Главная панель | Старший Диспетчер",
@@ -28,6 +29,7 @@ export default function SeniorDispatcherDashboard() {
       </div>
 
       <div className="grid gap-6">
+        <SeniorCounts />
         <TodayReleaseSummary />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
@@ -23,6 +24,7 @@ type ConvoyRepairStat = {
 }
 
 export default function UnscheduledRepairsPage() {
+  const searchParams = useSearchParams()
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [repairs, setRepairs] = useState<any[]>([])
   const [convoyStats, setConvoyStats] = useState<Record<string, ConvoyRepairStat>>({})
@@ -55,6 +57,16 @@ export default function UnscheduledRepairsPage() {
       setConvoyNames(map)
     }
   }, [depotId])
+
+  useEffect(() => {
+    const dt = searchParams.get("date")
+    if (dt) {
+      const parsed = new Date(dt)
+      if (!isNaN(parsed.getTime())) {
+        setSelectedDate(parsed)
+      }
+    }
+  }, [searchParams])
 
   useEffect(() => {
     fetchRepairs()

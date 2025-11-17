@@ -2,6 +2,11 @@ import ExcelJS from "exceljs"
 import { saveAs } from "file-saver"
 import type { RouteExitRepairDto } from "@/types/routeExitRepair.types"
 
+const stripTags = (val: string) => {
+  const cleared = val.replace(/<[^>]*>/g, '').trim()
+  return cleared || '-'
+}
+
 export const exportUnscheduledRepairs = async (repairs: RouteExitRepairDto[], dateStr: string) => {
   const workbook = new ExcelJS.Workbook()
   const worksheet = workbook.addWorksheet("Неплановые ремонты")
@@ -46,7 +51,7 @@ export const exportUnscheduledRepairs = async (repairs: RouteExitRepairDto[], da
     const isFinished = !!r.andTime
 
     // Причина с метками
-    let reasonText = r.text || "-"
+    let reasonText = stripTags(r.text || "-")
     if (isRepeat) reasonText += " • Повторный заезд"
     if (isLongTerm) reasonText += " • Длительный ремонт"
 
@@ -103,3 +108,7 @@ export const exportUnscheduledRepairs = async (repairs: RouteExitRepairDto[], da
   const buffer = await workbook.xlsx.writeBuffer()
   saveAs(new Blob([buffer]), `repair-logs_${dateStr}.xlsx`)
 }
+
+
+
+

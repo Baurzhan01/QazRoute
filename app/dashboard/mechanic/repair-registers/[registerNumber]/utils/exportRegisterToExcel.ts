@@ -4,6 +4,12 @@ import type { RepairRegisterApplication } from "@/types/repairBus.types";
 import type { RouteExitRepairDto } from "@/types/routeExitRepair.types";
 import type { RepairRecord } from "@/types/repair.types";
 
+type PlannedRepairLookup = RepairRecord & {
+  dateStart: string;
+  dateEnd: string;
+  busId?: string | null;
+};
+
 interface Totals {
   totalWork: number;
   totalSpare: number;
@@ -23,13 +29,30 @@ function fmtDate(s?: string) {
   return d.toLocaleDateString("ru-RU");
 }
 
+function toDateOnly(value?: string | null) {
+  if (!value) return "";
+  return value.slice(0, 10);
+}
+
+function hasDateOverlap(
+  startA?: string,
+  endA?: string,
+  startB?: string,
+  endB?: string
+) {
+  if (!startA || !startB) return false;
+  const normalizedEndA = endA || startA;
+  const normalizedEndB = endB || startB;
+  return !(normalizedEndA < startB || normalizedEndB < startA);
+}
+
 // Определение источника: сход или плановый ремонт
 function getSource(
   a: RepairRegisterApplication,
   exits: RouteExitRepairDto[],
-  planned: (RepairRecord & { date: string })[]
+  planned: PlannedRepairLookup[]
 ): Source {
-  const depDate = a.firstDepartureDate?.slice(0, 10);
+  const depDate = toDateOnly(a.firstDepartureDate);
   if (!depDate) return { label: "—", match: false };
 
   const matchExit = exits.find(
@@ -44,10 +67,19 @@ function getSource(
     };
   }
 
-  const matchPlan = planned.find(
-    (p) => p.bus?.id === a.busId && p.date?.slice(0, 10) === depDate
-  );
-  if (matchPlan) return { label: "Плановый ремонт", match: true };
+  const appEndDate = toDateOnly(a.lastEntryDate) || depDate;
+
+  const matchPlan = planned.find((p) => {
+    const planBusId = p.busId || p.bus?.id;
+    if (!planBusId || planBusId !== a.busId) return false;
+    return hasDateOverlap(p.dateStart, p.dateEnd, depDate, appEndDate);
+  });
+  if (matchPlan) {
+    const descriptionLabel = matchPlan.description?.trim()
+      ? `Плановый ремонт (${matchPlan.description})`
+      : "Плановый ремонт";
+    return { label: descriptionLabel, match: true };
+  }
 
   return { label: "—", match: false };
 }
@@ -57,7 +89,7 @@ export async function exportRegisterToExcel(
   applications: RepairRegisterApplication[],
   totals: Totals,
   exits: RouteExitRepairDto[],
-  planned: (RepairRecord & { date: string })[]
+  planned: PlannedRepairLookup[]
 ) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet(`Реестр ${registerNumber}`);

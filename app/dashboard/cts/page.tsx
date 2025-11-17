@@ -1,8 +1,9 @@
-"use client"
+﻿"use client"
 
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Wrench, ClipboardList, Clock, Bell } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { routeExitRepairService } from "@/service/routeExitRepairService"
@@ -22,9 +23,19 @@ interface DashboardStat {
 export default function CTSHomePage() {
   const [stats, setStats] = useState<DashboardStat[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const router = useRouter()
 
-  const today = useMemo(() => new Date().toISOString().split("T")[0], [])
+  const formatLocalDate = (date: Date) => {
+    const tzDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    return tzDate.toISOString().split("T")[0]
+  }
+
+  const formattedDate = useMemo(() => formatLocalDate(selectedDate), [selectedDate])
+  const totalRepairs = useMemo(
+    () => stats.filter((s) => s.type !== "Messages").reduce((sum, s) => sum + (s.value || 0), 0),
+    [stats]
+  )
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -33,20 +44,39 @@ export default function CTSHomePage() {
       if (!depotId) return
 
       try {
-        const res = await routeExitRepairService.getStatsByDate(depotId, today, today)
+        const res = await routeExitRepairService.getStatsByDate(depotId, formattedDate, formattedDate)
 
         if (res.isSuccess && res.value) {
-          const grouped = res.value.byConvoy
+          const byConvoyRaw = res.value.byConvoy ?? []
+          const groupedArray = Array.isArray(byConvoyRaw) ? byConvoyRaw : []
 
-          const aggregate = (type: RepairType): number =>
-            Object.entries(grouped).reduce((sum, [key, count]) =>
-              key.endsWith(`|${type}`) ? sum + count : sum, 0)
+          const aggregate = (type: RepairType): number => {
+            switch (type) {
+              case "Planned":
+                return groupedArray.reduce((sum, item) => sum + (item.planned ?? 0), 0)
+              case "Unscheduled":
+                return groupedArray.reduce((sum, item) => sum + (item.unplanned ?? 0), 0)
+              case "LongTerm":
+                return groupedArray.reduce((sum, item) => sum + (item.long ?? 0), 0)
+              case "Other":
+                return groupedArray.reduce((sum, item) => sum + (item.other ?? 0), 0)
+              default:
+                return 0
+            }
+          }
+
+          const fallbackPlanned = res.value.totalPlanned ?? 0
+          const fallbackUnplanned = res.value.totalUnplanned ?? 0
+          const fallbackLong = res.value.totalLong ?? 0
+          const plannedTotal = groupedArray.length ? aggregate("Planned") : fallbackPlanned
+          const unplannedTotal = groupedArray.length ? aggregate("Unscheduled") : fallbackUnplanned
+          const longTotal = groupedArray.length ? aggregate("LongTerm") : fallbackLong
 
           setStats([
             {
               type: "Planned",
               title: "Плановый ремонт",
-              value: aggregate("Planned"),
+              value: plannedTotal,
               icon: <ClipboardList className="w-6 h-6 text-sky-700" />,
               bgColor: "bg-sky-100",
               href: "/dashboard/cts/repairs/plan",
@@ -54,7 +84,7 @@ export default function CTSHomePage() {
             {
               type: "Unscheduled",
               title: "Неплановый ремонт",
-              value: aggregate("Unscheduled"),
+              value: unplannedTotal,
               icon: <Wrench className="w-6 h-6 text-amber-700" />,
               bgColor: "bg-amber-100",
               href: "/dashboard/cts/repairs/unscheduled-repairs",
@@ -62,7 +92,42 @@ export default function CTSHomePage() {
             {
               type: "LongTerm",
               title: "Длительный ремонт",
-              value: aggregate("LongTerm"),
+              value: longTotal,
+              icon: <Clock className="w-6 h-6 text-rose-700" />,
+              bgColor: "bg-rose-100",
+              href: "/dashboard/cts/repairs/long-repairs",
+            },
+            {
+              type: "Messages",
+              title: "Сообщения",
+              value: 0,
+              icon: <Bell className="w-6 h-6 text-lime-700" />,
+              bgColor: "bg-lime-100",
+              href: "/dashboard/cts/messages",
+            },
+          ])
+        } else {
+          setStats([
+            {
+              type: "Planned",
+              title: "Плановый ремонт",
+              value: 0,
+              icon: <ClipboardList className="w-6 h-6 text-sky-700" />,
+              bgColor: "bg-sky-100",
+              href: "/dashboard/cts/repairs/plan",
+            },
+            {
+              type: "Unscheduled",
+              title: "Неплановый ремонт",
+              value: 0,
+              icon: <Wrench className="w-6 h-6 text-amber-700" />,
+              bgColor: "bg-amber-100",
+              href: "/dashboard/cts/repairs/unscheduled-repairs",
+            },
+            {
+              type: "LongTerm",
+              title: "Длительный ремонт",
+              value: 0,
               icon: <Clock className="w-6 h-6 text-rose-700" />,
               bgColor: "bg-rose-100",
               href: "/dashboard/cts/repairs/long-repairs",
@@ -85,11 +150,31 @@ export default function CTSHomePage() {
     }
 
     fetchStats()
-  }, [today])
+  }, [formattedDate])
 
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-3xl font-bold text-sky-800">Панель КТС</h1>
+      <div className="flex flex-wrap items-center gap-3">
+        {!loading && (
+          <p className="text-gray-600 text-sm">
+            На {formattedDate}: всего ремонтов — {totalRepairs}
+          </p>
+        )}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Дата:</span>
+          <Input
+            type="date"
+            value={formattedDate}
+            onChange={(e) => {
+              const val = e.target.value
+              if (!val) return
+              setSelectedDate(new Date(`${val}T00:00:00`))
+            }}
+            className="h-9 w-[170px]"
+          />
+        </div>
+      </div>
 
       {loading ? (
         <p className="text-gray-500 text-sm">Загрузка статистики...</p>
@@ -98,7 +183,7 @@ export default function CTSHomePage() {
           {stats.map((stat) => (
             <Card
               key={stat.type}
-              onClick={() => router.push(stat.href)}
+              onClick={() => router.push(`${stat.href}?date=${formattedDate}`)}
               className={cn(
                 stat.bgColor,
                 "shadow-sm cursor-pointer transition hover:shadow-md hover:scale-[1.02]"

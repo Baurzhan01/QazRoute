@@ -152,8 +152,7 @@ export default function CTSPlanRepairPage() {
               selected={date}
               onSelect={(d) => d && setDate(d)}
               locale={ru}
-              fromDate={addDays(new Date(), -5)}
-              toDate={addDays(new Date(), 5)}
+              // убрали ограничение +-5 дней, чтобы можно было смотреть любые даты
               initialFocus
             />
           </PopoverContent>

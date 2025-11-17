@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import Providers from './providers'
+import { ViewTransitions } from 'next-view-transitions'
 
 export const metadata: Metadata = {
   title: 'QazRoute',
@@ -16,9 +17,11 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <body>
-        <Providers>
-          {children}
-        </Providers>
+        <ViewTransitions>
+          <Providers>
+            {children}
+          </Providers>
+        </ViewTransitions>
       </body>
     </html>
   )

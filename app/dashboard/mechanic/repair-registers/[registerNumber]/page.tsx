@@ -38,11 +38,34 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+type PlannedRepairLookup = RepairRecord & {
+  dateStart: string;
+  dateEnd: string;
+  busId?: string | null;
+};
+
 function fmtDate(s?: string) {
   if (!s || s === "0001-01-01") return "—";
   const d = new Date(s);
   if (isNaN(d.getTime())) return s;
   return d.toLocaleDateString("ru-RU");
+}
+
+function toDateOnly(value?: string | null) {
+  if (!value) return "";
+  return value.slice(0, 10);
+}
+
+function hasDateOverlap(
+  startA?: string,
+  endA?: string,
+  startB?: string,
+  endB?: string
+) {
+  if (!startA || !startB) return false;
+  const normalizedEndA = endA || startA;
+  const normalizedEndB = endB || startB;
+  return !(normalizedEndA < startB || normalizedEndB < startA);
 }
 
 function getPageNumbers(current: number, total: number, maxVisible = 9) {
@@ -74,7 +97,7 @@ export default function RegisterDetailPage() {
   const registerNumber = params.registerNumber as string;
 
   const [exits, setExits] = useState<RouteExitRepairDto[]>([]);
-  const [planned, setPlanned] = useState<(RepairRecord & { date: string })[]>([]);
+  const [planned, setPlanned] = useState<PlannedRepairLookup[]>([]);
 
   const FILTER_KEY = `repair_register_filters_${registerNumber}`;
 
@@ -207,13 +230,34 @@ export default function RegisterDetailPage() {
           ? exitRes.value.filter((e) => e.repairType === "Unscheduled")
           : []
       );
-      setPlanned(
+      const planItems =
         planRes.isSuccess && planRes.value
-          ? planRes.value.map((p) => ({
-              ...p,
-              date: (p.departureDate || p.date || "").slice(0, 10),
-            }))
-          : []
+          ? Array.isArray(planRes.value)
+            ? planRes.value
+            : Array.isArray((planRes.value as any).items)
+              ? ((planRes.value as any).items as RepairRecord[])
+              : []
+          : [];
+
+      setPlanned(
+        planItems.map((p) => {
+          const rawStart = p.departureDate || p.date || "";
+          const normalizedStart = rawStart ? rawStart.slice(0, 10) : "";
+          const rawEnd =
+            ((p as { entryDate?: string }).entryDate ||
+              p.date ||
+              p.departureDate ||
+              "") ?? "";
+          const normalizedEnd = rawEnd ? rawEnd.slice(0, 10) : normalizedStart;
+          const fallbackBusId = (p as { busId?: string }).busId ?? null;
+
+          return {
+            ...p,
+            busId: p.bus?.id ?? fallbackBusId,
+            dateStart: normalizedStart,
+            dateEnd: normalizedEnd,
+          };
+        })
       );
     };
 
@@ -222,7 +266,7 @@ export default function RegisterDetailPage() {
 
   // источник строки
   function getSource(a: RepairRegisterApplication) {
-    const depDate = a.firstDepartureDate?.slice(0, 10);
+    const depDate = toDateOnly(a.firstDepartureDate);
     if (!depDate) return { label: "—", match: false };
 
     const matchExit = exits.find(
@@ -237,10 +281,19 @@ export default function RegisterDetailPage() {
       };
     }
 
-    const matchPlan = planned.find(
-      (p) => p.bus?.id === a.busId && p.date?.slice(0, 10) === depDate
-    );
-    if (matchPlan) return { label: "Плановый ремонт", match: true };
+    const appEndDate = toDateOnly(a.lastEntryDate) || depDate;
+
+    const matchPlan = planned.find((p) => {
+      const planBusId = p.busId || p.bus?.id;
+      if (!planBusId || planBusId !== a.busId) return false;
+      return hasDateOverlap(p.dateStart, p.dateEnd, depDate, appEndDate);
+    });
+    if (matchPlan) {
+      const descriptionLabel = matchPlan.description?.trim()
+        ? `Плановый ремонт (${matchPlan.description})`
+        : "Плановый ремонт";
+      return { label: descriptionLabel, match: true };
+    }
 
     return { label: "—", match: false };
   }
