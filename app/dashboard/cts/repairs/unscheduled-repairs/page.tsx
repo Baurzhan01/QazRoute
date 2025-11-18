@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { Suspense, useState, useEffect, useCallback, useMemo } from "react"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
 import { useSearchParams } from "next/navigation"
@@ -23,7 +23,7 @@ type ConvoyRepairStat = {
   other: number
 }
 
-export default function UnscheduledRepairsPage() {
+function UnscheduledRepairsPage() {
   const searchParams = useSearchParams()
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [repairs, setRepairs] = useState<any[]>([])
@@ -133,5 +133,13 @@ export default function UnscheduledRepairsPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function UnscheduledRepairsPageWrapper() {
+  return (
+    <Suspense fallback={<div className="text-sm text-muted-foreground">Загрузка...</div>}>
+      <UnscheduledRepairsPage />
+    </Suspense>
   )
 }

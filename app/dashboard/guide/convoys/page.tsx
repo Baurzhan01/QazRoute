@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
 import { format } from "date-fns"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
@@ -25,7 +25,7 @@ type ConvoyMetrics = {
   incidents: number
 }
 
-export default function GuideConvoysPage() {
+function GuideConvoysPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const depotId = getAuthData()?.busDepotId || ""
@@ -193,5 +193,13 @@ export default function GuideConvoysPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function GuideConvoysPageWrapper() {
+  return (
+    <Suspense fallback={<div className="text-sm text-muted-foreground">Загрузка...</div>}>
+      <GuideConvoysPage />
+    </Suspense>
   )
 }

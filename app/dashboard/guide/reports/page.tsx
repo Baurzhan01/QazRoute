@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
 import { format } from "date-fns"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,7 +9,7 @@ import { getAuthData } from "@/lib/auth-utils"
 import { routeExitRepairService } from "@/service/routeExitRepairService"
 import type { RouteExitRepairDto } from "@/types/routeExitRepair.types"
 
-export default function GuideReportsPage() {
+function GuideReportsPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const depotId = getAuthData()?.busDepotId || ""
@@ -164,5 +164,13 @@ export default function GuideReportsPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function GuideReportsPageWrapper() {
+  return (
+    <Suspense fallback={<div className="text-sm text-muted-foreground">Загрузка...</div>}>
+      <GuideReportsPage />
+    </Suspense>
   )
 }

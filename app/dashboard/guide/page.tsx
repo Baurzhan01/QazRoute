@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
 import { format } from "date-fns"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,7 +23,7 @@ type KPI = {
   href?: string
 }
 
-export default function GuideDashboardPage() {
+function GuideDashboardPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -232,5 +232,13 @@ export default function GuideDashboardPage() {
 
       <GuideDepotLineCharts />
     </div>
+  )
+}
+
+export default function GuideDashboardPageWrapper() {
+  return (
+    <Suspense fallback={<div className="text-sm text-muted-foreground">Загрузка...</div>}>
+      <GuideDashboardPage />
+    </Suspense>
   )
 }
