@@ -9,15 +9,15 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/components/ui/use-toast"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Loader2, Search, Camera, Upload, Paperclip, PlusCircle, ChevronLeft, ChevronRight } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { Loader2, Search, Camera, Upload, Paperclip, PlusCircle } from "lucide-react"
 import { busService } from "@/service/busService"
 import { busAggregateService } from "@/service/busAggregateService"
 import { minioService } from "@/service/minioService"
-import { API_BASE_URL } from "@/app/api/apiService"
 import type { BusDepotItem } from "@/types/bus.types"
 import type { BusAggregate } from "@/types/busAggregate.types"
+import AttachmentThumbnail from "./components/AttachmentThumbnail"
+import AttachmentPreviewDialog from "./components/AttachmentPreviewDialog"
+import { buildAbsoluteUrl } from "./utils"
 
 interface AttachmentPreview {
   name: string
@@ -40,13 +40,6 @@ const formatDisplayDate = (value: string) => {
   return `${day}.${month}.${year}`
 }
 
-const withAbsoluteUrl = (url: string) => {
-  if (/^https?:\/\//i.test(url)) return url
-  const host = (process.env.NEXT_PUBLIC_API_URL || API_BASE_URL || "").replace(/\/$/, "")
-  const normalized = url.startsWith("/") ? url : `/${url}`
-  return `${host}${normalized}`
-}
-
 export default function OTKDashboardPage() {
   const { toast } = useToast()
   const [depotId, setDepotId] = useState<string | null>(null)
@@ -61,11 +54,10 @@ export default function OTKDashboardPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [aggregates, setAggregates] = useState<BusAggregate[]>([])
   const [isLoadingAggregates, setIsLoadingAggregates] = useState(false)
-  const [previewState, setPreviewState] = useState<{ open: boolean; images: string[]; index: number; zoomed: boolean }>({
+  const [previewState, setPreviewState] = useState<{ open: boolean; images: string[]; index: number }>({
     open: false,
     images: [],
     index: 0,
-    zoomed: false,
   })
 
   useEffect(() => {
@@ -79,8 +71,8 @@ export default function OTKDashboardPage() {
   const loadAggregates = useCallback(async () => {
     setIsLoadingAggregates(true)
     try {
-      const res = await busAggregateService.getAll()
-      setAggregates(res.value ?? [])
+      const res = await busAggregateService.getAll({ page: 1, pageSize: 50 })
+      setAggregates(res.value?.items ?? [])
     } catch (error) {
       console.error(error)
       toast({
@@ -198,24 +190,8 @@ export default function OTKDashboardPage() {
 
   const openPreview = (images: string[], index = 0) => {
     if (!images.length) return
-    setPreviewState({ open: true, images: images.map(withAbsoluteUrl), index, zoomed: false })
+    setPreviewState({ open: true, images: images.map(buildAbsoluteUrl), index })
   }
-
-  const closePreview = () => setPreviewState((prev) => ({ ...prev, open: false, zoomed: false }))
-
-  const goToPrevImage = () =>
-    setPreviewState((prev) => ({
-      ...prev,
-      index: prev.images.length ? (prev.index - 1 + prev.images.length) % prev.images.length : 0,
-      zoomed: false,
-    }))
-
-  const goToNextImage = () =>
-    setPreviewState((prev) => ({
-      ...prev,
-      index: prev.images.length ? (prev.index + 1) % prev.images.length : 0,
-      zoomed: false,
-    }))
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -386,22 +362,7 @@ export default function OTKDashboardPage() {
                     </div>
                     <p className="mt-1 font-semibold text-gray-900">{item.busGovNumber || "госномер неизвестен"}</p>
                     <p className="text-sm text-gray-600">{item.description}</p>
-                    {item.urls?.length ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {item.urls.map((url, index) => (
-                          <Button
-                            key={url}
-                            variant="outline"
-                            size="sm"
-                            className="text-xs"
-                            onClick={() => openPreview(item.urls || [], index)}
-                          >
-                            <Paperclip className="mr-1 h-3 w-3" />
-                            Фото {index + 1}
-                          </Button>
-                        ))}
-                      </div>
-                    ) : null}
+                    <AttachmentThumbnail urls={item.urls} onPreview={openPreview} />
                   </div>
                 ))}
               </div>
@@ -444,20 +405,7 @@ export default function OTKDashboardPage() {
                     <TableCell className="text-sm text-gray-600">{aggregate.description}</TableCell>
                     <TableCell className="text-right">
                       {aggregate.urls?.length ? (
-                        <div className="flex flex-wrap justify-end gap-1">
-                          {aggregate.urls.map((url, index) => (
-                            <Button
-                              key={url + index}
-                              variant="ghost"
-                              size="sm"
-                              className="text-xs"
-                              onClick={() => openPreview(aggregate.urls || [], index)}
-                            >
-                              <Paperclip className="mr-1 h-3 w-3" />
-                              Фото {index + 1}
-                            </Button>
-                          ))}
-                        </div>
+                        <AttachmentThumbnail urls={aggregate.urls} onPreview={openPreview} size="sm" align="end" showCount={false} />
                       ) : (
                         <span className="text-xs text-gray-400">—</span>
                       )}
@@ -477,72 +425,13 @@ export default function OTKDashboardPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={previewState.open} onOpenChange={(open) => (open ? setPreviewState((prev) => ({ ...prev, open })) : closePreview())}>
-        <DialogContent className="sm:max-w-4xl lg:max-w-5xl">
-          <DialogHeader>
-            <DialogTitle>Просмотр вложений</DialogTitle>
-          </DialogHeader>
-          {previewState.images.length ? (
-            <div className="relative flex flex-col items-center gap-4">
-              <div className="relative w-full overflow-hidden rounded-xl bg-black/5">
-                <img
-                  src={previewState.images[previewState.index]}
-                  alt={`Фото ${previewState.index + 1}`}
-                  className={cn(
-                    "h-[320px] w-full cursor-zoom-in select-none bg-white object-contain transition duration-200 ease-in-out sm:h-[400px] lg:h-[70vh]",
-                    previewState.zoomed && "scale-150 cursor-zoom-out"
-                  )}
-                  onClick={() =>
-                    setPreviewState((prev) => ({
-                      ...prev,
-                      zoomed: !prev.zoomed,
-                    }))
-                  }
-                />
-                {previewState.images.length > 1 && (
-                  <>
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/80"
-                      onClick={goToPrevImage}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/80"
-                      onClick={goToNextImage}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
-              </div>
-              <div className="text-sm text-gray-500">
-                Фото {previewState.index + 1} из {previewState.images.length}
-              </div>
-              <div className="flex flex-wrap justify-center gap-2">
-                {previewState.images.map((url, idx) => (
-                  <button
-                    key={url + idx}
-                    onClick={() => setPreviewState((prev) => ({ ...prev, index: idx, zoomed: false }))}
-                    className={cn(
-                      "h-16 w-16 overflow-hidden rounded-md border",
-                      idx === previewState.index ? "border-emerald-500" : "border-gray-200"
-                    )}
-                  >
-                    <img src={url} alt={`Миниатюра ${idx + 1}`} className="h-full w-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">Нет вложений для просмотра</p>
-          )}
-        </DialogContent>
-      </Dialog>
+      <AttachmentPreviewDialog
+        open={previewState.open}
+        images={previewState.images}
+        initialIndex={previewState.index}
+        onOpenChange={(open) => setPreviewState((prev) => ({ ...prev, open }))}
+      />
     </div>
   )
 }
+

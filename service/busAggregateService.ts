@@ -17,8 +17,8 @@ export const busAggregateService = {
     return res.data;
   },
 
-  getAll: async (): Promise<BusAggregateListResponse> => {
-    const res = await apiClient.get(BASE_URL);
+  getAll: async (params?: { page?: number; pageSize?: number; search?: string }): Promise<BusAggregateListResponse> => {
+    const res = await apiClient.get(BASE_URL, { params });
     return res.data;
   },
 

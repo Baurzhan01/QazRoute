@@ -24,5 +24,10 @@ export interface UpdateBusAggregateRequest {
   date: string;
 }
 
-export type BusAggregateListResponse = ApiResponse<BusAggregate[]>;
+export interface BusAggregateList {
+  items: BusAggregate[];
+  totalCount: number;
+}
+
+export type BusAggregateListResponse = ApiResponse<BusAggregateList>;
 export type BusAggregateResponse = ApiResponse<BusAggregate>;

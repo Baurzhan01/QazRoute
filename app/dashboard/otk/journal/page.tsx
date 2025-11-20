@@ -1,17 +1,20 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, RefreshCcw, Search, Paperclip } from "lucide-react"
+import { Loader2, RefreshCcw, Search } from "lucide-react"
 import { busAggregateService } from "@/service/busAggregateService"
 import type { BusAggregate } from "@/types/busAggregate.types"
 import { useToast } from "@/components/ui/use-toast"
 import Link from "next/link"
+import AttachmentThumbnail from "../components/AttachmentThumbnail"
+import AttachmentPreviewDialog from "../components/AttachmentPreviewDialog"
+import { buildAbsoluteUrl } from "../utils"
 
 const formatDisplayDate = (value: string) => {
   const [day, month, year] = value.split("-")
@@ -22,45 +25,49 @@ export default function OTKJournalPage() {
   const { toast } = useToast()
   const [aggregates, setAggregates] = useState<BusAggregate[]>([])
   const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [loading, setLoading] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
+  const [previewState, setPreviewState] = useState<{ open: boolean; images: string[]; index: number }>({
+    open: false,
+    images: [],
+    index: 0,
+  })
 
-  const fetchAggregates = async () => {
-    setLoading(true)
-    try {
-      const res = await busAggregateService.getAll()
-      setAggregates(res.value ?? [])
-    } catch (error) {
-      console.error(error)
-      toast({
-        title: "Не удалось загрузить журнал",
-        description: "Повторите попытку позднее",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
+  const fetchAggregates = useCallback(
+    async (searchValue?: string) => {
+      setLoading(true)
+      try {
+        const res = await busAggregateService.getAll({ page: 1, pageSize: 100, search: searchValue })
+        setAggregates(res.value?.items ?? [])
+        setTotalCount(res.value?.totalCount ?? res.value?.items?.length ?? 0)
+      } catch (error) {
+        console.error(error)
+        toast({
+          title: "Не удалось загрузить журнал",
+          description: "Попробуйте снова немного позже",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    },
+    [toast]
+  )
 
   useEffect(() => {
-    fetchAggregates()
-  }, [])
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 350)
+    return () => clearTimeout(timer)
+  }, [search])
 
-  const filteredAggregates = useMemo(() => {
-    if (!search.trim()) return aggregates
-    const q = search.trim().toLowerCase()
-    return aggregates.filter((item) => {
-      const haystack = [
-        item.busGovNumber,
-        item.busGarageNumber,
-        item.description,
-        formatDisplayDate(item.date),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-      return haystack.includes(q)
-    })
-  }, [aggregates, search])
+  useEffect(() => {
+    fetchAggregates(debouncedSearch || undefined)
+  }, [debouncedSearch, fetchAggregates])
+
+  const openPreview = (urls: string[], index = 0) => {
+    if (!urls.length) return
+    setPreviewState({ open: true, images: urls.map(buildAbsoluteUrl), index })
+  }
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -74,7 +81,7 @@ export default function OTKJournalPage() {
           <Button asChild variant="outline">
             <Link href="/dashboard/otk">На рабочий стол</Link>
           </Button>
-          <Button onClick={fetchAggregates} variant="outline" className="gap-2" disabled={loading}>
+          <Button onClick={() => fetchAggregates(debouncedSearch || undefined)} variant="outline" className="gap-2" disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
             Обновить
           </Button>
@@ -94,7 +101,7 @@ export default function OTKJournalPage() {
               />
             </div>
             <Badge variant="secondary" className="w-fit">
-              Найдено: {filteredAggregates.length}
+              Найдено: {totalCount}
             </Badge>
           </div>
         </CardHeader>
@@ -106,11 +113,11 @@ export default function OTKJournalPage() {
                   <TableHead>Дата</TableHead>
                   <TableHead>Автобус</TableHead>
                   <TableHead>Описание</TableHead>
-                  <TableHead className="text-right">Фото</TableHead>
+                  <TableHead className="text-right">Вложения</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAggregates.map((item) => (
+                {aggregates.map((item) => (
                   <TableRow key={item.id} className="align-top">
                     <TableCell className="font-medium text-gray-900">{formatDisplayDate(item.date)}</TableCell>
                     <TableCell>
@@ -122,35 +129,22 @@ export default function OTKJournalPage() {
                     <TableCell className="text-sm text-gray-600">{item.description}</TableCell>
                     <TableCell className="text-right">
                       {item.urls?.length ? (
-                        <div className="flex flex-col gap-1 text-right">
-                          {item.urls.map((url, index) => (
-                            <Button
-                              key={url + index}
-                              variant="ghost"
-                              size="sm"
-                              asChild
-                              className="justify-end text-xs font-medium"
-                            >
-                              <a href={url} target="_blank" rel="noopener noreferrer">
-                                <Paperclip className="mr-1 h-3 w-3" />
-                                Фото {index + 1}
-                              </a>
-                            </Button>
-                          ))}
-                        </div>
+                        <AttachmentThumbnail urls={item.urls} onPreview={openPreview} align="end" size="sm" showCount={false} />
                       ) : (
                         <span className="text-xs text-gray-400">—</span>
                       )}
                     </TableCell>
                   </TableRow>
                 ))}
-                {!loading && filteredAggregates.length === 0 && (
+
+                {!loading && aggregates.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={4} className="py-12 text-center text-gray-500">
                       Записей не найдено
                     </TableCell>
                   </TableRow>
                 )}
+
                 {loading && (
                   <TableRow>
                     <TableCell colSpan={4} className="py-12 text-center text-gray-400">
@@ -163,6 +157,13 @@ export default function OTKJournalPage() {
           </ScrollArea>
         </CardContent>
       </Card>
+
+      <AttachmentPreviewDialog
+        open={previewState.open}
+        images={previewState.images}
+        initialIndex={previewState.index}
+        onOpenChange={(open) => setPreviewState((prev) => ({ ...prev, open }))}
+      />
     </div>
   )
 }
