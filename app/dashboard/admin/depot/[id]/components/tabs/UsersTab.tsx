@@ -10,6 +10,7 @@ import {
   UserPlus, 
   Shield, 
   Building2,
+  ShieldCheck,
   UserCog // 👈 добавь сюда
 } from "lucide-react"
 
@@ -32,6 +33,7 @@ const roleDefinitions: { key: UserRole; icon: React.ElementType; label: string }
   { key: "hr", icon: Users, label: "Отдел кадров" },
   { key: "taskInspector", icon: FileText, label: "Отдел таксировки" },
   { key: "CTS", icon: Shield, label: "КТС (Контроль тех. состояния)" },
+  { key: "OTK", icon: ShieldCheck, label: "ОТК (Отдел технического контроля)" },
   { key: "MCC", icon: Building2, label: "ЦУП (Центр управления)" },
   { key: "LRT", icon: Building2, label: "LRT (Логистика/Ремонт/Транспорт)" },
   { key: "Guide", icon: UserCog, label: "Руководство" },

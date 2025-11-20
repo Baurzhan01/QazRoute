@@ -3,76 +3,82 @@ import { Briefcase, Clock, FileText, Users, Wrench, UserCog, Shield, Building } 
 
 const roleMap: Record<UserRole, { name: string; cardTitle: string; key: string }> = {
   admin: {
-    name: "–ê–¥–º–∏–Ω–∏—Å—Ç—Ä–∞—Ç–æ—Ä",
-    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –ê–¥–º–∏–Ω–∏—Å—Ç—Ä–∞—Ç–æ—Ä",
+    name: "¶–¶+¶-¶¨¶-¶¨T¡T¬T¿¶-T¬¶-T¿",
+    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶–¶+¶-¶¨¶-¶¨T¡T¬T¿¶-T¬¶-T¿",
     key: "admin",
   },
   fleetManager: {
-    name: "–ù–∞—á–∞–ª—å–Ω–∏–∫ –∫–æ–ª–æ–Ω–Ω—ã",
-    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –ù–∞—á–∞–ª—å–Ω–∏–∫ –∫–æ–ª–æ–Ω–Ω—ã",
+    name: "¶›¶-T«¶-¶¨TÃ¶-¶¨¶¶ ¶¶¶-¶¨¶-¶-¶-TÀ",
+    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶›¶-T«¶-¶¨TÃ¶-¶¨¶¶ ¶¶¶-¶¨¶-¶-¶-TÀ",
     key: "fleetManager",
   },
   mechanic: {
-    name: "–ú–µ—Ö–∞–Ω–∏–∫",
-    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –ú–µ—Ö–∞–Ω–∏–∫",
+    name: "¶‹¶¶T≈¶-¶-¶¨¶¶",
+    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶‹¶¶T≈¶-¶-¶¨¶¶",
     key: "mechanic",
   },
   mechanicOnDuty: {
-    name: "–î–µ–∂—É—Ä–Ω—ã–π –º–µ—Ö–∞–Ω–∏–∫",
-    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –î–µ–∂—É—Ä–Ω—ã–π –º–µ—Ö–∞–Ω–∏–∫",
+    name: "¶‘¶¶¶¶T√T¿¶-TÀ¶¶ ¶-¶¶T≈¶-¶-¶¨¶¶",
+    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶‘¶¶¶¶T√T¿¶-TÀ¶¶ ¶-¶¶T≈¶-¶-¶¨¶¶",
     key: "mechanicOnDuty",
   },
   dispatcher: {
-    name: "–î–∏—Å–ø–µ—Ç—á–µ—Ä",
-    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –î–∏—Å–ø–µ—Ç—á–µ—Ä",
+    name: "¶‘¶¨T¡¶¨¶¶T¬T«¶¶T¿",
+    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶‘¶¨T¡¶¨¶¶T¬T«¶¶T¿",
     key: "dispatcher",
   },
   seniorDispatcher: {
-    name: "–°—Ç–∞—Ä—à–∏–π –¥–∏—Å–ø–µ—Ç—á–µ—Ä",
-    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –°—Ç–∞—Ä—à–∏–π –¥–∏—Å–ø–µ—Ç—á–µ—Ä",
+    name: "¶·T¬¶-T¿T»¶¨¶¶ ¶+¶¨T¡¶¨¶¶T¬T«¶¶T¿",
+    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶·T¬¶-T¿T»¶¨¶¶ ¶+¶¨T¡¶¨¶¶T¬T«¶¶T¿",
     key: "seniorDispatcher",
   },
   hr: {
-    name: "–û—Ç–¥–µ–ª –∫–∞–¥—Ä–æ–≤",
-    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –û—Ç–¥–µ–ª –∫–∞–¥—Ä–æ–≤",
+    name: "¶ﬁT¬¶+¶¶¶¨ ¶¶¶-¶+T¿¶-¶-",
+    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶ﬁT¬¶+¶¶¶¨ ¶¶¶-¶+T¿¶-¶-",
     key: "hr",
   },
   taskInspector: {
-    name: "–û—Ç–¥–µ–ª —Ç–∞–∫—Å–∏—Ä–æ–≤–∫–∏",
-    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –û—Ç–¥–µ–ª —Ç–∞–∫—Å–∏—Ä–æ–≤–∫–∏",
+    name: "¶ﬁT¬¶+¶¶¶¨ T¬¶-¶¶T¡¶¨T¿¶-¶-¶¶¶¨",
+    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶ﬁT¬¶+¶¶¶¨ T¬¶-¶¶T¡¶¨T¿¶-¶-¶¶¶¨",
     key: "taskInspector",
   },
   CTS: {
-    name: "–ö–¢–°",
-    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –ö–¢–°",
+    name: "¶⁄¶‚¶·",
+    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶⁄¶‚¶·",
     key: "CTS",
   },
   MCC: {
-    name: "–¶–£–ü",
-    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –¶–£–ü",
+    name: "¶Ê¶„¶ﬂ",
+    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶Ê¶„¶ﬂ",
     key: "MCC",
+  },
+  OTK: {
+    name: "Œ“  (ŒÚ‰ÂÎ ÚÂıÌË˜ÂÒÍÓ„Ó ÍÓÌÚÓÎˇ)",
+    cardTitle: "œÓÎ¸ÁÓ‚‡ÚÂÎË Ò ÓÎ¸˛ Œ“ ",
+    key: "OTK",
   },
   LRT: {
     name: "LRT",
-    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é LRT",
+    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ LRT",
     key: "LRT",
   },  
   Guide: {
-    name: "–†—É–∫–æ–≤–æ–¥—Å—Ç–≤–æ",
-    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –†—É–∫–æ–≤–æ–¥—Å—Ç–≤–æ",
+    name: "¶‡T√¶¶¶-¶-¶-¶+T¡T¬¶-¶-",
+    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶‡T√¶¶¶-¶-¶-¶+T¡T¬¶-¶-",
     key: "Guide",
   },
 }
 
-// utils/roleUtils.ts (–∏–ª–∏ –≤–≤–µ—Ä—Ö—É useUsers.ts, –µ—Å–ª–∏ –ª–æ–∫–∞–ª—å–Ω–æ)
+// utils/roleUtils.ts (¶¨¶¨¶¨ ¶-¶-¶¶T¿T≈T√ useUsers.ts, ¶¶T¡¶¨¶¨ ¶¨¶-¶¶¶-¶¨TÃ¶-¶-)
 export const normalizeRole = (role?: string): UserRole => {
-  if (!role || typeof role !== "string") return "dispatcher" // –¥–µ—Ñ–æ–ª—Ç–Ω–∞—è –±–µ–∑–æ–ø–∞—Å–Ω–∞—è —Ä–æ–ª—å
+  if (!role || typeof role !== "string") return "dispatcher" // ¶+¶¶Tƒ¶-¶¨T¬¶-¶-Tœ ¶-¶¶¶¨¶-¶¨¶-T¡¶-¶-Tœ T¿¶-¶¨TÃ
 
   const exceptions: Record<string, UserRole> = {
     CTS: "CTS",
     MCC: "MCC",
     LRT: "LRT",
     Guide: "Guide",
+    OTK: "OTK",
   }
 
   return exceptions[role] ?? (role.charAt(0).toLowerCase() + role.slice(1)) as UserRole
@@ -81,11 +87,11 @@ export const normalizeRole = (role?: string): UserRole => {
 
 
 export function getRoleName(role: string): string {
-  return roleMap[role as UserRole]?.name ?? "–ù–µ–∏–∑–≤–µ—Å—Ç–Ω–∞—è —Ä–æ–ª—å"
+  return roleMap[role as UserRole]?.name ?? "¶›¶¶¶¨¶¨¶-¶¶T¡T¬¶-¶-Tœ T¿¶-¶¨TÃ"
 }
 
 export function getRoleCardTitle(role: string): string {
-  return roleMap[role as UserRole]?.cardTitle ?? "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏"
+  return roleMap[role as UserRole]?.cardTitle ?? "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨"
 }
 
 export function getRoleKey(role: string): string {
@@ -104,6 +110,7 @@ export const getRoleCardGradient = (role: UserRole): string => {
     case "mechanicOnDuty": return "from-indigo-500 to-indigo-700"
     case "CTS": return "from-red-500 to-red-700"
     case "MCC": return "from-yellow-500 to-yellow-600"
+    case "OTK": return "from-emerald-500 to-emerald-700"
     case "Guide": return "from-pink-500 to-pink-700"
     case "LRT": return "from-cyan-500 to-cyan-700"
     default: return "from-gray-400 to-gray-600"
@@ -122,9 +129,12 @@ export const getRoleBorderColor = (role: UserRole): string => {
     mechanicOnDuty: "border-indigo-500",
     CTS: "border-red-500",
     MCC: "border-yellow-500",
+    OTK: "border-emerald-500",
     Guide: "text-pink-100",
     LRT: "text-cyan-100",
   }
 
   return map[role] ?? "border-gray-400"
 }
+
+

@@ -2,7 +2,7 @@ export interface User {
   id: string;
   fullName: string;
   email: string;
-  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" |"CTS" |"MCC" | "taskInspector" | "LRT" | "Guide"
+  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" |"CTS" |"MCC" | "taskInspector" | "LRT" | "Guide" | "OTK"
   position?: string;
   avatar?: string;
   busDepotId?: string;
@@ -29,7 +29,8 @@ export type UserRole =
   | "CTS" 
   | "MCC"
   | "Guide"
-  | "LRT" // ← добавляем новую роль
+  | "OTK"
+  | "LRT" // ??? ?????+?????>????? ?????????? ?????>?
 
 // Обновленный интерфейс Convoy
 export interface Convoy {
@@ -50,7 +51,7 @@ export interface UserFormData {
   email: string;
   login: string;
   password: string;
-  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" |"CTS" |"MCC" | "taskInspector" | "LRT" |"Guide"
+  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" |"CTS" |"MCC" | "taskInspector" | "LRT" |"Guide" | "OTK"
   position: string;
   busDepotId: string;
   convoyId?: string;
@@ -68,3 +69,6 @@ export interface UpdateUserRequest {
   role: string;
   convoyId?: string; // Добавляем для обновления
 }
+
+
+

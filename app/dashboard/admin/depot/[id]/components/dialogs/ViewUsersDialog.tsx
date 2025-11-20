@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import {
@@ -49,6 +49,7 @@ interface ViewUsersDialogProps {
     | "MCC"
     | "LRT"
     | "Guide"
+    | "OTK"
     | null;
   usersByRole: Record<string, User[]>;
   onEdit: (user: User) => void;

@@ -19,7 +19,8 @@ export type UserRole =
   | "CTS" 
   | "MCC"
   | "Guide"
-  | "LRT" // ← добавляем новую роль
+  | "OTK"
+  | "LRT" // ??? ?????+?????>????? ?????????? ?????>?
 
 export interface Bus {
   id?: string;
@@ -106,7 +107,7 @@ export interface RegisterRequest {
   email: string;
   login: string;
   password: string;
-  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" |"CTS" |"MCC" | "taskInspector" | "LRT" |"Guide"
+  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" |"CTS" |"MCC" | "taskInspector" | "LRT" |"Guide" | "OTK"
   busDepotId?: string;
   convoyId?: string;
 }
@@ -116,7 +117,7 @@ export interface User {
   fullName: string;
   email: string;
   login: string;
-  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" |"CTS" |"MCC" | "taskInspector" | "LRT" |"Guide"
+  role: "fleetManager" | "mechanic" | "admin" | "mechanicOnDuty" | "dispatcher" | "seniorDispatcher" | "hr" |"CTS" |"MCC" | "taskInspector" | "LRT" |"Guide" | "OTK"
   busDepotId?: string;
   convoyId?: string;
   convoyNumber?: number;
@@ -171,3 +172,4 @@ export interface UpdateUserRequest {
   convoyId?: string;
   convoyNumber?: number;
 }
+

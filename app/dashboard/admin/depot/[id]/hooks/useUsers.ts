@@ -50,6 +50,7 @@ export function useUsers({ initialUsers, updateUserConvoy }: UseUsersProps) {
       "taskInspector",
       "Guide",
       "LRT",
+      "OTK",
     ]
     roles.forEach(role => (result[role] = []))
     users.forEach(user => {

@@ -33,6 +33,7 @@ function getRoleColorClass(role: UserRole): string {
     MCC: "text-yellow-100",
     LRT: "text-cyan-100",
     Guide: "text-pink-100",
+    OTK: "text-emerald-100",
   }
   return map[role] ?? "text-gray-300"
 }
@@ -94,9 +95,13 @@ export default function UserCard({
                     <p className="font-medium">{user.fullName}</p>
                     <p className="text-sm text-gray-500">
                       {user.position || "Нет должности"}
-                      {(user.role === "CTS" || user.role === "MCC") && (
+                      {["CTS", "MCC", "OTK"].includes(user.role) && (
                         <span className={`ml-2 text-xs px-2 py-0.5 rounded bg-opacity-20 ${
-                          user.role === "CTS" ? "bg-red-200 text-red-800" : "bg-yellow-200 text-yellow-800"
+                          user.role === "CTS"
+                            ? "bg-red-200 text-red-800"
+                            : user.role === "MCC"
+                              ? "bg-yellow-200 text-yellow-800"
+                              : "bg-emerald-200 text-emerald-800"
                         }`}>
                           {user.role}
                         </span>

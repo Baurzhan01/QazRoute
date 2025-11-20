@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import type React from "react"
 import {
@@ -34,6 +34,7 @@ const roleOptions = [
   { value: "hr", label: "Отдел кадров" },
   { value: "taskInspector", label: "Отдел таксировки" },
   { value: "CTS", label: "КТС" },
+  { value: "OTK", label: "ОТК (Отдел технического контроля)" },
   { value: "MCC", label: "ЦУП" },
   { value: "Guide", label: "Руководство" },
   { value: "LRT", label: "CTS" },
