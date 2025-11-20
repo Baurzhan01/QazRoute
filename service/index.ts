@@ -15,3 +15,5 @@ export * from './convoyService';
 export * from './busDepotService';
 export * from './driverService';
 export * from './registrationRequestService';
+export * from './busAggregateService';
+export * from './minioService';

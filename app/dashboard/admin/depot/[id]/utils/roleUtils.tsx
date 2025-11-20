@@ -1,77 +1,77 @@
-import type { UserRole } from "../types"
+Ôªøimport type { UserRole } from "../types"
 import { Briefcase, Clock, FileText, Users, Wrench, UserCog, Shield, Building } from "lucide-react"
 
 const roleMap: Record<UserRole, { name: string; cardTitle: string; key: string }> = {
   admin: {
-    name: "¶–¶+¶-¶¨¶-¶¨T¡T¬T¿¶-T¬¶-T¿",
-    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶–¶+¶-¶¨¶-¶¨T¡T¬T¿¶-T¬¶-T¿",
+    name: "–ê–¥–º–∏–Ω–∏—Å—Ç—Ä–∞—Ç–æ—Ä",
+    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –ê–¥–º–∏–Ω–∏—Å—Ç—Ä–∞—Ç–æ—Ä",
     key: "admin",
   },
   fleetManager: {
-    name: "¶›¶-T«¶-¶¨TÃ¶-¶¨¶¶ ¶¶¶-¶¨¶-¶-¶-TÀ",
-    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶›¶-T«¶-¶¨TÃ¶-¶¨¶¶ ¶¶¶-¶¨¶-¶-¶-TÀ",
+    name: "–ù–∞—á–∞–ª—å–Ω–∏–∫ –∫–æ–ª–æ–Ω–Ω—ã",
+    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –ù–∞—á–∞–ª—å–Ω–∏–∫ –∫–æ–ª–æ–Ω–Ω—ã",
     key: "fleetManager",
   },
   mechanic: {
-    name: "¶‹¶¶T≈¶-¶-¶¨¶¶",
-    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶‹¶¶T≈¶-¶-¶¨¶¶",
+    name: "–ú–µ—Ö–∞–Ω–∏–∫",
+    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –ú–µ—Ö–∞–Ω–∏–∫",
     key: "mechanic",
   },
   mechanicOnDuty: {
-    name: "¶‘¶¶¶¶T√T¿¶-TÀ¶¶ ¶-¶¶T≈¶-¶-¶¨¶¶",
-    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶‘¶¶¶¶T√T¿¶-TÀ¶¶ ¶-¶¶T≈¶-¶-¶¨¶¶",
+    name: "–î–µ–∂—É—Ä–Ω—ã–π –º–µ—Ö–∞–Ω–∏–∫",
+    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –î–µ–∂—É—Ä–Ω—ã–π –º–µ—Ö–∞–Ω–∏–∫",
     key: "mechanicOnDuty",
   },
   dispatcher: {
-    name: "¶‘¶¨T¡¶¨¶¶T¬T«¶¶T¿",
-    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶‘¶¨T¡¶¨¶¶T¬T«¶¶T¿",
+    name: "–î–∏—Å–ø–µ—Ç—á–µ—Ä",
+    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –î–∏—Å–ø–µ—Ç—á–µ—Ä",
     key: "dispatcher",
   },
   seniorDispatcher: {
-    name: "¶·T¬¶-T¿T»¶¨¶¶ ¶+¶¨T¡¶¨¶¶T¬T«¶¶T¿",
-    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶·T¬¶-T¿T»¶¨¶¶ ¶+¶¨T¡¶¨¶¶T¬T«¶¶T¿",
+    name: "–°—Ç–∞—Ä—à–∏–π –¥–∏—Å–ø–µ—Ç—á–µ—Ä",
+    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –°—Ç–∞—Ä—à–∏–π –¥–∏—Å–ø–µ—Ç—á–µ—Ä",
     key: "seniorDispatcher",
   },
   hr: {
-    name: "¶ﬁT¬¶+¶¶¶¨ ¶¶¶-¶+T¿¶-¶-",
-    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶ﬁT¬¶+¶¶¶¨ ¶¶¶-¶+T¿¶-¶-",
+    name: "–û—Ç–¥–µ–ª –∫–∞–¥—Ä–æ–≤",
+    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –û—Ç–¥–µ–ª –∫–∞–¥—Ä–æ–≤",
     key: "hr",
   },
   taskInspector: {
-    name: "¶ﬁT¬¶+¶¶¶¨ T¬¶-¶¶T¡¶¨T¿¶-¶-¶¶¶¨",
-    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶ﬁT¬¶+¶¶¶¨ T¬¶-¶¶T¡¶¨T¿¶-¶-¶¶¶¨",
+    name: "–û—Ç–¥–µ–ª —Ç–∞–∫—Å–∏—Ä–æ–≤–∫–∏",
+    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –û—Ç–¥–µ–ª —Ç–∞–∫—Å–∏—Ä–æ–≤–∫–∏",
     key: "taskInspector",
   },
   CTS: {
-    name: "¶⁄¶‚¶·",
-    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶⁄¶‚¶·",
+    name: "–ö–¢–°",
+    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –ö–¢–°",
     key: "CTS",
   },
   MCC: {
-    name: "¶Ê¶„¶ﬂ",
-    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶Ê¶„¶ﬂ",
+    name: "–¶–£–ü",
+    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –¶–£–ü",
     key: "MCC",
   },
   OTK: {
-    name: "Œ“  (ŒÚ‰ÂÎ ÚÂıÌË˜ÂÒÍÓ„Ó ÍÓÌÚÓÎˇ)",
-    cardTitle: "œÓÎ¸ÁÓ‚‡ÚÂÎË Ò ÓÎ¸˛ Œ“ ",
+    name: "–û–¢–ö (–û—Ç–¥–µ–ª —Ç–µ—Ö–Ω–∏—á–µ—Å–∫–æ–≥–æ –∫–æ–Ω—Ç—Ä–æ–ª—è)",
+    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –û–¢–ö",
     key: "OTK",
   },
   LRT: {
     name: "LRT",
-    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ LRT",
+    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é LRT",
     key: "LRT",
   },  
   Guide: {
-    name: "¶‡T√¶¶¶-¶-¶-¶+T¡T¬¶-¶-",
-    cardTitle: "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨ T¡ T¿¶-¶¨TÃTŒ ¶‡T√¶¶¶-¶-¶-¶+T¡T¬¶-¶-",
+    name: "–†—É–∫–æ–≤–æ–¥—Å—Ç–≤–æ",
+    cardTitle: "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏ —Å —Ä–æ–ª—å—é –†—É–∫–æ–≤–æ–¥—Å—Ç–≤–æ",
     key: "Guide",
   },
 }
 
-// utils/roleUtils.ts (¶¨¶¨¶¨ ¶-¶-¶¶T¿T≈T√ useUsers.ts, ¶¶T¡¶¨¶¨ ¶¨¶-¶¶¶-¶¨TÃ¶-¶-)
+// utils/roleUtils.ts (–∏–ª–∏ –≤–≤–µ—Ä—Ö—É useUsers.ts, –µ—Å–ª–∏ –ª–æ–∫–∞–ª—å–Ω–æ)
 export const normalizeRole = (role?: string): UserRole => {
-  if (!role || typeof role !== "string") return "dispatcher" // ¶+¶¶Tƒ¶-¶¨T¬¶-¶-Tœ ¶-¶¶¶¨¶-¶¨¶-T¡¶-¶-Tœ T¿¶-¶¨TÃ
+  if (!role || typeof role !== "string") return "dispatcher" // –¥–µ—Ñ–æ–ª—Ç–Ω–∞—è –±–µ–∑–æ–ø–∞—Å–Ω–∞—è —Ä–æ–ª—å
 
   const exceptions: Record<string, UserRole> = {
     CTS: "CTS",
@@ -87,11 +87,11 @@ export const normalizeRole = (role?: string): UserRole => {
 
 
 export function getRoleName(role: string): string {
-  return roleMap[role as UserRole]?.name ?? "¶›¶¶¶¨¶¨¶-¶¶T¡T¬¶-¶-Tœ T¿¶-¶¨TÃ"
+  return roleMap[role as UserRole]?.name ?? "–ù–µ–∏–∑–≤–µ—Å—Ç–Ω–∞—è —Ä–æ–ª—å"
 }
 
 export function getRoleCardTitle(role: string): string {
-  return roleMap[role as UserRole]?.cardTitle ?? "¶ﬂ¶-¶¨TÃ¶¨¶-¶-¶-T¬¶¶¶¨¶¨"
+  return roleMap[role as UserRole]?.cardTitle ?? "–ü–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–∏"
 }
 
 export function getRoleKey(role: string): string {
@@ -136,5 +136,3 @@ export const getRoleBorderColor = (role: UserRole): string => {
 
   return map[role] ?? "border-gray-400"
 }
-
-

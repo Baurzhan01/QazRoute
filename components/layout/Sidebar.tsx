@@ -84,6 +84,13 @@ export default function Sidebar() {
     { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
   ];
 
+  // --- меню для ОТК ---
+  const otkNavItems: NavItem[] = [
+    { title: "Рабочий стол", href: "/dashboard/otk", icon: <Home className="h-5 w-5" /> },
+    { title: "Журнал агрегатов", href: "/dashboard/otk/journal", icon: <ClipboardList className="h-5 w-5" /> },
+    { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
+  ];
+
   // --- меню для Руководства ---
   const guideNavItems: NavItem[] = [
     { title: "Главная", href: "/dashboard/guide", icon: <Home className="h-5 w-5" /> },
@@ -136,6 +143,7 @@ export default function Sidebar() {
     role === "mechanic" ? mechanicNavItems :
     role === "mcc" ? mccNavItems :
     role === "cts" || role === "on-duty-mechanic" ? ctsNavItems :
+    role === "otk" ? otkNavItems :
     role === "dispatcher" ? dispatcherNavItems :
     role === "senior-dispatcher" || role === "seniordispatcher" ? seniorDispatcherNavItems :
     role === "lrt" ? lrtNavItems :
