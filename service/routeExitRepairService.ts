@@ -2,7 +2,13 @@
 
 import apiClient from "@/app/api/apiClient"
 import type { ApiResponse } from "@/types/api.types"
-import type { CreateRouteExitRepairDto, RouteExitRepairDto, RouteExitRepairStatus, BusRepairStatsResponse } from "@/types/routeExitRepair.types"
+import type {
+  CreateRouteExitRepairDto,
+  RouteExitRepairDto,
+  RouteExitRepairStatus,
+  BusRepairStatsResponse,
+  RouteExitRepairStatsByDate,
+} from "@/types/routeExitRepair.types"
 
 
 export const routeExitRepairService = {
@@ -22,7 +28,7 @@ export const routeExitRepairService = {
     depotId: string,
     startDate: string,
     endDate: string
-  ): Promise<ApiResponse<{ total: number; byConvoy: Record<string, number> }>> => {
+  ): Promise<ApiResponse<RouteExitRepairStatsByDate>> => {
     try {
       const res = await apiClient.get(`/route-exits-repair/stats/by-date`, {
         params: { depotId, startDate, endDate },

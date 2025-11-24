@@ -192,7 +192,17 @@ export default function OTKDashboardPage() {
     setBusResults([])
   }
 
-  const recentAggregates = useMemo(() => aggregates.slice(0, 5), [aggregates])
+  const recentAggregates = useMemo(() => {
+    const sorted = [...aggregates].sort((a, b) => {
+      const ad = new Date(a.date || "").getTime()
+      const bd = new Date(b.date || "").getTime()
+      if (isNaN(ad) && isNaN(bd)) return 0
+      if (isNaN(ad)) return 1
+      if (isNaN(bd)) return -1
+      return bd - ad
+    })
+    return sorted.slice(0, 3)
+  }, [aggregates])
 
   const openPreview = (images: string[], index = 0) => {
     if (!images.length) return

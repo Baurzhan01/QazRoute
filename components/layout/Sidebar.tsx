@@ -20,6 +20,7 @@ import {
   Bell,
   Settings,
   CalendarCheck,
+  Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -48,17 +49,17 @@ export default function Sidebar() {
     }
   }, []);
 
-  // --- меню для механика ---
+  // --- Навигация: механик ---
   const mechanicNavItems: NavItem[] = [
     { title: "Главная", href: "/dashboard/mechanic", icon: <Home className="h-5 w-5" /> },
-    { title: "Журнал ремонтов автобусов", href: "/dashboard/mechanic/repairs", icon: <ClipboardList className="h-5 w-5" /> },
-    { title: "Реестры ремонтов", href: "/dashboard/mechanic/repair-registers", icon: <ClipboardList className="h-5 w-5" /> },
-    { title: "Список автобусов", href: "/dashboard/mechanic/buses", icon: <Truck className="h-5 w-5" /> },
-    { title: "Сходы с линии", href: "/dashboard/mechanic/breakdowns", icon: <AlertTriangle className="h-5 w-5" /> },
-    { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
+    { title: "Журнал ремонтов", href: "/dashboard/mechanic/repairs", icon: <ClipboardList className="h-5 w-5" /> },
+    { title: "Регистры ремонтов", href: "/dashboard/mechanic/repair-registers", icon: <ClipboardList className="h-5 w-5" /> },
+    { title: "Каталог автобусов", href: "/dashboard/mechanic/buses", icon: <Truck className="h-5 w-5" /> },
+    { title: "Выявленные дефекты", href: "/dashboard/mechanic/breakdowns", icon: <AlertTriangle className="h-5 w-5" /> },
+    { title: "Профиль", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
   ];
 
-  // --- меню для КТС ---
+  // --- Навигация: ЦТС ---
   const ctsNavItems: NavItem[] = [
     { title: "Главная", href: "/dashboard/cts", icon: <Home className="h-5 w-5" /> },
     { title: "Разнарядка", href: "/dashboard/cts/release-plan", icon: <BarChart2 className="h-5 w-5" /> },
@@ -66,79 +67,79 @@ export default function Sidebar() {
     { title: "Неплановый ремонт", href: "/dashboard/cts/repairs/unscheduled-repairs", icon: <Wrench className="h-5 w-5" /> },
     { title: "Прочий ремонт", href: "/dashboard/cts/repairs/other-repairs", icon: <AlertCircle className="h-5 w-5" /> },
     { title: "Длительный ремонт", href: "/dashboard/cts/repairs/long-repairs", icon: <Clock className="h-5 w-5" /> },
+    { title: "Журнал агрегатов", href: "/dashboard/cts/aggregates", icon: <Package className="h-5 w-5" /> },
     { title: "Отчёт", href: "/dashboard/cts/report", icon: <FileText className="h-5 w-5" /> },
-    { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
+    { title: "Профиль", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
   ];
 
-  // --- меню для МЦК ---
+  // --- Навигация: MCC ---
   const mccNavItems: NavItem[] = [
     { title: "Главная", href: "/dashboard/mcc", icon: <Home className="h-5 w-5" /> },
     { title: "Журнал ремонтов", href: "/dashboard/mcc/unscheduled-repairs", icon: <Wrench className="h-5 w-5" /> },
-    { title: "Личный кабинет", href: "/dashboard/mcc/profile", icon: <UserCircle className="h-5 w-5" /> },
+    { title: "Профиль", href: "/dashboard/mcc/profile", icon: <UserCircle className="h-5 w-5" /> },
   ];
 
-  // --- меню для LRT ---
+  // --- Навигация: LRT ---
   const lrtNavItems: NavItem[] = [
     { title: "Главная", href: "/dashboard/lrt", icon: <Home className="h-5 w-5" /> },
-    { title: "Сходы с линии", href: "/dashboard/lrt/breakdowns", icon: <Wrench className="h-5 w-5" /> },
-    { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
+    { title: "Выявленные дефекты", href: "/dashboard/lrt/breakdowns", icon: <Wrench className="h-5 w-5" /> },
+    { title: "Профиль", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
   ];
 
-  // --- меню для ОТК ---
+  // --- Навигация: ОТК ---
   const otkNavItems: NavItem[] = [
-    { title: "Рабочий стол", href: "/dashboard/otk", icon: <Home className="h-5 w-5" /> },
+    { title: "Главная", href: "/dashboard/otk", icon: <Home className="h-5 w-5" /> },
     { title: "Журнал агрегатов", href: "/dashboard/otk/journal", icon: <ClipboardList className="h-5 w-5" /> },
-    { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
+    { title: "Профиль", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
   ];
 
-  // --- меню для Руководства ---
+  // --- Навигация: справочник ---
   const guideNavItems: NavItem[] = [
     { title: "Главная", href: "/dashboard/guide", icon: <Home className="h-5 w-5" /> },
-    { title: "Автоколонны", href: "/dashboard/guide/convoys", icon: <Truck className="h-5 w-5" /> },
-    { title: "Сходы", href: "/dashboard/guide/incidents", icon: <AlertTriangle className="h-5 w-5" /> },
+    { title: "Колонны", href: "/dashboard/guide/convoys", icon: <Truck className="h-5 w-5" /> },
+    { title: "События", href: "/dashboard/guide/incidents", icon: <AlertTriangle className="h-5 w-5" /> },
     { title: "Ремонты", href: "/dashboard/guide/repairs", icon: <Wrench className="h-5 w-5" /> },
-    { title: "Реестры ремонтов", href: "/dashboard/guide/repair-registers", icon: <ClipboardList className="h-5 w-5" /> },
-    { title: "Отчеты", href: "/dashboard/guide/reports", icon: <BarChart2 className="h-5 w-5" /> },
+    { title: "Регистры ремонтов", href: "/dashboard/guide/repair-registers", icon: <ClipboardList className="h-5 w-5" /> },
+    { title: "Отчёты", href: "/dashboard/guide/reports", icon: <BarChart2 className="h-5 w-5" /> },
   ];
 
-  // --- меню для диспетчера ---
+  // --- Навигация: диспетчер ---
   const dispatcherNavItems: NavItem[] = [
     { title: "Главная", href: "/dashboard/dispatcher", icon: <Home className="h-5 w-5" /> },
-    { title: "План выпуска", href: "/dashboard/dispatcher/release-plan", icon: <ClipboardList className="h-5 w-5" /> },
-    { title: "Ведомость", href: "/dashboard/dispatcher/final-dispatch", icon: <FileText className="h-5 w-5" /> },
-    { title: "Сходы с линии", href: "/dashboard/dispatcher/departures-drop", icon: <AlertTriangle className="h-5 w-5" /> },
-    { title: "Плановый ремонт", href: "/dashboard/dispatcher/maintenance-plan", icon: <Wrench className="h-5 w-5" /> },
-    { title: "Дьюти", href: "/dashboard/dispatcher/duty", icon: <Briefcase className="h-5 w-5" /> },
-    { title: "Отчеты", href: "/dashboard/dispatcher/reports", icon: <BarChart2 className="h-5 w-5" /> },
-    { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
+    { title: "Разнарядка", href: "/dashboard/dispatcher/release-plan", icon: <ClipboardList className="h-5 w-5" /> },
+    { title: "Финальный выпуск", href: "/dashboard/dispatcher/final-dispatch", icon: <FileText className="h-5 w-5" /> },
+    { title: "Сходы", href: "/dashboard/dispatcher/departures-drop", icon: <AlertTriangle className="h-5 w-5" /> },
+    { title: "План ТО", href: "/dashboard/dispatcher/maintenance-plan", icon: <Wrench className="h-5 w-5" /> },
+    { title: "Дежурство", href: "/dashboard/dispatcher/duty", icon: <Briefcase className="h-5 w-5" /> },
+    { title: "Отчёты", href: "/dashboard/dispatcher/reports", icon: <BarChart2 className="h-5 w-5" /> },
+    { title: "Профиль", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
   ];
 
-  // --- меню по умолчанию ---
+  // --- Навигация: дефолт ---
   const defaultNavItems: NavItem[] = [
-    { title: "Панель управления", href: dashboardPath, icon: <Home className="h-5 w-5 text-sky-500" /> },
-    { title: "Список автобусов", href: "/dashboard/fleet-manager/buses", icon: <Truck className="h-5 w-5 text-sky-500" /> },
-    { title: "Сходы с линии", href: "/dashboard/breakdowns", icon: <AlertTriangle className="h-5 w-5 text-yellow-500" /> },
+    { title: "Рабочий стол", href: dashboardPath, icon: <Home className="h-5 w-5 text-sky-500" /> },
+    { title: "Каталог автобусов", href: "/dashboard/fleet-manager/buses", icon: <Truck className="h-5 w-5 text-sky-500" /> },
+    { title: "Выявленные дефекты", href: "/dashboard/breakdowns", icon: <AlertTriangle className="h-5 w-5 text-yellow-500" /> },
     { title: "Журнал ремонтов", href: "/dashboard/repairs", icon: <ClipboardList className="h-5 w-5 text-sky-500" /> },
     { title: "Табель", href: "/dashboard/timesheet", icon: <CalendarCheck className="h-5 w-5 text-sky-500" /> },
     { title: "Отчёты", href: "/dashboard/fleet-manager/reports", icon: <FileText className="h-5 w-5 text-sky-500" /> },
-    { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5 text-sky-500" /> },
+    { title: "Профиль", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5 text-sky-500" /> },
   ];
 
-  // --- меню для старшего диспетчера ---
+  // --- Навигация: старший диспетчер ---
   const seniorDispatcherNavItems: NavItem[] = [
     { title: "Главная", href: "/dashboard/senior-dispatcher", icon: <Home className="h-5 w-5" /> },
-    { title: "Сходы с линии", href: "/dashboard/breakdowns", icon: <AlertTriangle className="h-5 w-5 text-yellow-500" /> },
-    { title: "Управление диспетчерами", href: "/dashboard/senior-dispatcher/dispatchers", icon: <Users className="h-5 w-5" /> },
-    { title: "Справочник данных водителей", href: "/dashboard/senior-dispatcher/drivers", icon: <User className="h-5 w-5" /> },
-    { title: "Табель рабочего времени", href: "/dashboard/senior-dispatcher/shift-table", icon: <Clock className="h-5 w-5" /> },
-    { title: "Расписание маршрутов", href: "/dashboard/senior-dispatcher/routes", icon: <ClipboardList className="h-5 w-5" /> },
-    { title: "Плановые заявки на заказ", href: "/dashboard/senior-dispatcher/routes/plan-orders", icon: <FileText className="h-5 w-5" /> },
-    { title: "Отчеты", href: "/dashboard/senior-dispatcher/reports", icon: <BarChart2 className="h-5 w-5" /> },
-    { title: "Дьюти", href: "/dashboard/dispatcher/duty", icon: <Briefcase className="h-5 w-5" /> },
-    { title: "Личный кабинет", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
+    { title: "Выявленные дефекты", href: "/dashboard/breakdowns", icon: <AlertTriangle className="h-5 w-5 text-yellow-500" /> },
+    { title: "Список диспетчеров", href: "/dashboard/senior-dispatcher/dispatchers", icon: <Users className="h-5 w-5" /> },
+    { title: "Водители", href: "/dashboard/senior-dispatcher/drivers", icon: <User className="h-5 w-5" /> },
+    { title: "Расписание смен", href: "/dashboard/senior-dispatcher/shift-table", icon: <Clock className="h-5 w-5" /> },
+    { title: "Маршруты", href: "/dashboard/senior-dispatcher/routes", icon: <ClipboardList className="h-5 w-5" /> },
+    { title: "План заказ-нарядов", href: "/dashboard/senior-dispatcher/routes/plan-orders", icon: <FileText className="h-5 w-5" /> },
+    { title: "Отчёты", href: "/dashboard/senior-dispatcher/reports", icon: <BarChart2 className="h-5 w-5" /> },
+    { title: "Дежурство", href: "/dashboard/dispatcher/duty", icon: <Briefcase className="h-5 w-5" /> },
+    { title: "Профиль", href: "/dashboard/profile", icon: <UserCircle className="h-5 w-5" /> },
   ];
 
-  // выбор меню по роли
   const navItems =
     role === "mechanic" ? mechanicNavItems :
     role === "mcc" ? mccNavItems :
@@ -158,7 +159,7 @@ export default function Sidebar() {
           <span className="text-yellow-400">Route</span>
           <span className="text-gray-700"> ERP</span>
         </h2>
-        <p className="text-sm text-gray-500">Система управления транспортом</p>
+        <p className="text-sm text-gray-500">Управление автопарком и ремонтами</p>
       </div>
 
       <nav className="flex-1 p-4 space-y-1">

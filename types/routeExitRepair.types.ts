@@ -25,6 +25,23 @@ export interface BusRepairStatsResponse {
   history: RouteExitRepairDto[]
 }
 
+export interface RouteExitRepairConvoyStat {
+  convoyId?: string
+  planned?: number
+  unplanned?: number
+  long?: number
+  other?: number
+}
+
+export interface RouteExitRepairStatsByDate {
+  total?: number
+  totalPlanned?: number
+  totalUnplanned?: number
+  totalLong?: number
+  totalOther?: number
+  byConvoy?: RouteExitRepairConvoyStat[] | Record<string, RouteExitRepairConvoyStat>
+}
+
   
 export type RouteExitRepairStatus = "Unscheduled" | "Other" | "LongTerm" | "LaunchedFromGarage"
 

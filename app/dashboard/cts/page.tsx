@@ -8,6 +8,7 @@ import { Wrench, ClipboardList, Clock, Bell } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { routeExitRepairService } from "@/service/routeExitRepairService"
 import { getAuthData } from "@/lib/auth-utils"
+import type { RouteExitRepairConvoyStat, RouteExitRepairStatsByDate } from "@/types/routeExitRepair.types"
 
 type RepairType = "Planned" | "Unscheduled" | "LongTerm" | "Other"
 
@@ -47,8 +48,13 @@ export default function CTSHomePage() {
         const res = await routeExitRepairService.getStatsByDate(depotId, formattedDate, formattedDate)
 
         if (res.isSuccess && res.value) {
-          const byConvoyRaw = res.value.byConvoy ?? []
-          const groupedArray = Array.isArray(byConvoyRaw) ? byConvoyRaw : []
+          const statsValue: RouteExitRepairStatsByDate = res.value
+          const byConvoyRaw = statsValue.byConvoy
+          const groupedArray: RouteExitRepairConvoyStat[] = Array.isArray(byConvoyRaw)
+            ? byConvoyRaw
+            : byConvoyRaw && typeof byConvoyRaw === "object"
+              ? Object.values(byConvoyRaw)
+              : []
 
           const aggregate = (type: RepairType): number => {
             switch (type) {
@@ -65,9 +71,9 @@ export default function CTSHomePage() {
             }
           }
 
-          const fallbackPlanned = res.value.totalPlanned ?? 0
-          const fallbackUnplanned = res.value.totalUnplanned ?? 0
-          const fallbackLong = res.value.totalLong ?? 0
+          const fallbackPlanned = statsValue.totalPlanned ?? statsValue.total ?? 0
+          const fallbackUnplanned = statsValue.totalUnplanned ?? 0
+          const fallbackLong = statsValue.totalLong ?? 0
           const plannedTotal = groupedArray.length ? aggregate("Planned") : fallbackPlanned
           const unplannedTotal = groupedArray.length ? aggregate("Unscheduled") : fallbackUnplanned
           const longTotal = groupedArray.length ? aggregate("LongTerm") : fallbackLong
