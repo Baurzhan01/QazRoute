@@ -14,6 +14,7 @@ import { busService } from "@/service/busService"
 import { busAggregateService } from "@/service/busAggregateService"
 import { minioService } from "@/service/minioService"
 import { BUS_AGGREGATE_STATUS_BADGE_VARIANT, getBusAggregateStatusLabel } from "@/lib/busAggregateStatus"
+import { getAuthData } from "@/lib/auth-utils"
 import type { BusDepotItem } from "@/types/bus.types"
 import { BusAggregateStatus } from "@/types/busAggregate.types"
 import type { BusAggregate } from "@/types/busAggregate.types"
@@ -44,6 +45,7 @@ const formatDisplayDate = (value: string) => {
 
 export default function OTKDashboardPage() {
   const { toast } = useToast()
+  const authData = getAuthData()
   const [depotId, setDepotId] = useState<string | null>(null)
   const [busQuery, setBusQuery] = useState("")
   const [busResults, setBusResults] = useState<BusDepotItem[]>([])
@@ -156,6 +158,11 @@ export default function OTKDashboardPage() {
 
     setIsSaving(true)
     try {
+      const userId = authData?.userId || authData?.id
+      if (!userId) {
+        toast({ title: "Нет данных пользователя", description: "Не удалось определить userId для записи", variant: "destructive" })
+        return
+      }
       await busAggregateService.create({
         busId: selectedBus.id,
         description: description.trim(),
@@ -165,6 +172,7 @@ export default function OTKDashboardPage() {
         installedBusId: null,
         installedDate: null,
         urlAct: null,
+        userId,
       })
       toast({ title: "Запись сохранена", description: "Информация об агрегате добавлена" })
       setDescription("")

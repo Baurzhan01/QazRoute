@@ -20,6 +20,8 @@ export interface BusAggregate {
   busId: string;
   busGovNumber: string;
   busGarageNumber: string;
+  userId?: string | null;
+  userName?: string | null;
   description: string;
   urls: string[];
   date: string; // format DD-MM-YYYY as provided by backend
@@ -37,6 +39,7 @@ export interface CreateBusAggregateRequest {
   urls: string[];
   date: string;
   status: BusAggregateStatus;
+  userId: string;
   installedBusId?: string | null;
   installedDate?: string | null;
   urlAct?: string | null;

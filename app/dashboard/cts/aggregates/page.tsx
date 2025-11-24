@@ -34,14 +34,19 @@ export default function CtsAggregatesPage() {
     images: [],
     index: 0,
   });
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [totalCount, setTotalCount] = useState(0);
 
   const depotId = useMemo(() => getAuthData()?.busDepotId ?? null, []);
 
-  const loadAggregates = async (searchValue?: string) => {
+  const loadAggregates = async (searchValue?: string, pageToLoad = page) => {
     setLoading(true);
     try {
-      const res = await busAggregateService.getAll({ page: 1, pageSize: 100, search: searchValue });
+      const res = await busAggregateService.getAll({ page: pageToLoad, pageSize, search: searchValue });
       setAggregates(res.value?.items ?? []);
+      setTotalCount(res.value?.totalCount ?? res.value?.items?.length ?? 0);
+      setPage(pageToLoad);
     } catch (error) {
       console.error(error);
       toast({
@@ -56,11 +61,10 @@ export default function CtsAggregatesPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadAggregates(search.trim() || undefined);
+      loadAggregates(search.trim() || undefined, page);
     }, 300);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+  }, [search, page]);
 
   const filteredAggregates = useMemo(() => {
     const q = search.toLowerCase();
@@ -81,7 +85,7 @@ export default function CtsAggregatesPage() {
 
   const handleSaved = async (updated: BusAggregate) => {
     updateAggregateInState(updated);
-    await loadAggregates(search.trim() || undefined);
+    await loadAggregates(search.trim() || undefined, page);
     setSelected(null);
   };
 
@@ -116,7 +120,10 @@ export default function CtsAggregatesPage() {
           <Input
             placeholder="Поиск по гос/гаражному или описанию"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
           />
           <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as BusAggregateStatus | "all")}>
             <SelectTrigger>
@@ -152,6 +159,7 @@ export default function CtsAggregatesPage() {
                 <TableHead>Описание</TableHead>
                 <TableHead>Установлен на</TableHead>
                 <TableHead>Дата установки</TableHead>
+                <TableHead>Ответственный</TableHead>
                 <TableHead>Файлы</TableHead>
                 <TableHead className="text-right">Действия</TableHead>
               </TableRow>
@@ -159,14 +167,14 @@ export default function CtsAggregatesPage() {
             <TableBody>
               {loading && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
                     <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                   </TableCell>
                 </TableRow>
               )}
               {!loading && filteredAggregates.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={10} className="py-10 text-center text-muted-foreground">
                     Нет записей
                   </TableCell>
                 </TableRow>
@@ -174,7 +182,7 @@ export default function CtsAggregatesPage() {
               {!loading &&
                 filteredAggregates.map((item, idx) => (
                   <TableRow key={item.id} className="align-top">
-                    <TableCell className="font-medium text-gray-500">{idx + 1}</TableCell>
+                    <TableCell className="font-medium text-gray-500">{(page - 1) * pageSize + idx + 1}</TableCell>
                     <TableCell className="font-medium">{item.date ? item.date.split("-").reverse().join(".") : "—"}</TableCell>
                     <TableCell>
                       <div className="flex flex-col">
@@ -210,6 +218,9 @@ export default function CtsAggregatesPage() {
                       ) : (
                         <span className="text-xs text-gray-400">—</span>
                       )}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-700">
+                      {item.userName || <span className="text-xs text-gray-400">—</span>}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-2">
@@ -278,6 +289,36 @@ export default function CtsAggregatesPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm text-muted-foreground">
+          Всего: {totalCount || filteredAggregates.length} записей
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1 || loading}
+          >
+            Предыдущая
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Стр. {page}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const maxPage = Math.max(1, Math.ceil((totalCount || filteredAggregates.length) / pageSize));
+              setPage((p) => (p < maxPage ? p + 1 : p));
+            }}
+            disabled={loading || (page * pageSize >= (totalCount || filteredAggregates.length))}
+          >
+            Следующая
+          </Button>
+        </div>
+      </div>
 
       <AggregateEditor
         aggregate={selected}

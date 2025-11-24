@@ -16,15 +16,15 @@ interface DefectActModalProps {
 
 export function DefectActModal({ aggregate, open, onClose }: DefectActModalProps) {
   const [commissionText, setCommissionText] = useState(
-    "Комиссия в составе: ____________________________________________\n_______________________________________________________________"
+    " "
   );
-  const [diagnosis, setDiagnosis] = useState("При диагностике установлено: ____________________________________");
-  const [conclusion, setConclusion] = useState("Заключение комиссии: _____________________________________________");
-  const [notes, setNotes] = useState("Комментарий: _____________________________________________");
+  const [diagnosis, setDiagnosis] = useState("");
+  const [conclusion, setConclusion] = useState("");
+  const [notes, setNotes] = useState("");
   const [approverTitle, setApproverTitle] = useState("Главный инженер");
   const [approverCompany, setApproverCompany] = useState('АО "Автобусный парк №1"');
   const [approverName, setApproverName] = useState("Тлеубергенов Б.Т.");
-  const [signers, setSigners] = useState("Фамилия И.О., должность\nФамилия И.О., должность");
+  const [signers, setSigners] = useState("");
   const printRef = useRef<HTMLDivElement | null>(null);
 
   const attachments = useMemo(() => aggregate?.urls ?? [], [aggregate?.urls]);
@@ -105,7 +105,7 @@ export function DefectActModal({ aggregate, open, onClose }: DefectActModalProps
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-8xl w-[1200px] max-h-[90vh] overflow-hidden">
+      <DialogContent className="w-[95vw] max-w-none sm:max-w-[90vw] lg:max-w-[1400px] max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Дефектный акт</DialogTitle>
         </DialogHeader>
