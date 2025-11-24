@@ -3,6 +3,7 @@ import apiClient from "@/app/api/apiClient";
 import type { ApiResponse } from "@/types/api.types";
 import type {
   BusAggregate,
+  BusAggregateByBusResponse,
   BusAggregateListResponse,
   BusAggregateResponse,
   CreateBusAggregateRequest,
@@ -37,7 +38,7 @@ export const busAggregateService = {
     return res.data;
   },
 
-  getByBusId: async (busId: string): Promise<BusAggregateListResponse> => {
+  getByBusId: async (busId: string): Promise<BusAggregateByBusResponse> => {
     const res = await apiClient.get(`${BASE_URL}/by-bus/${busId}`);
     return res.data;
   },

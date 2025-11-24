@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Loader2, RefreshCcw, Search } from "lucide-react"
 import { busAggregateService } from "@/service/busAggregateService"
+import { BUS_AGGREGATE_STATUS_BADGE_VARIANT, getBusAggregateStatusLabel } from "@/lib/busAggregateStatus"
 import type { BusAggregate } from "@/types/busAggregate.types"
 import { useToast } from "@/components/ui/use-toast"
 import Link from "next/link"
@@ -112,8 +113,9 @@ export default function OTKJournalPage() {
                 <TableRow>
                   <TableHead>Дата</TableHead>
                   <TableHead>Автобус</TableHead>
+                  <TableHead>Статус</TableHead>
                   <TableHead>Описание</TableHead>
-                  <TableHead className="text-right">Вложения</TableHead>
+                  <TableHead className="text-right">Файлы</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -126,13 +128,38 @@ export default function OTKJournalPage() {
                         <span className="text-sm text-gray-500">гаражный {item.busGarageNumber || "—"}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-gray-600">{item.description}</TableCell>
-                    <TableCell className="text-right">
-                      {item.urls?.length ? (
-                        <AttachmentThumbnail urls={item.urls} onPreview={openPreview} align="end" size="sm" showCount={false} />
-                      ) : (
-                        <span className="text-xs text-gray-400">—</span>
+                    <TableCell>
+                      <Badge variant={BUS_AGGREGATE_STATUS_BADGE_VARIANT[item.status]}>
+                        {getBusAggregateStatusLabel(item.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600">
+                      {item.description}
+                      {item.installedBusId && (
+                        <span className="mt-1 block text-xs text-emerald-700">
+                          Установлен на {item.installedBusGarageNumber || "—"} · {item.installedBusGovNumber || "—"}
+                          {item.installedDate ? ` (${formatDisplayDate(item.installedDate)})` : ""}
+                        </span>
                       )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex flex-col items-end gap-2">
+                        {item.urlAct && (
+                          <a
+                            href={buildAbsoluteUrl(item.urlAct)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs font-medium text-blue-600 hover:underline"
+                          >
+                            Акт приемки
+                          </a>
+                        )}
+                        {item.urls?.length ? (
+                          <AttachmentThumbnail urls={item.urls} onPreview={openPreview} align="end" size="sm" showCount={false} />
+                        ) : !item.urlAct ? (
+                          <span className="text-xs text-gray-400">—</span>
+                        ) : null}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

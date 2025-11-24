@@ -13,7 +13,9 @@ import { Loader2, Search, Camera, Upload, Paperclip, PlusCircle } from "lucide-r
 import { busService } from "@/service/busService"
 import { busAggregateService } from "@/service/busAggregateService"
 import { minioService } from "@/service/minioService"
+import { BUS_AGGREGATE_STATUS_BADGE_VARIANT, getBusAggregateStatusLabel } from "@/lib/busAggregateStatus"
 import type { BusDepotItem } from "@/types/bus.types"
+import { BusAggregateStatus } from "@/types/busAggregate.types"
 import type { BusAggregate } from "@/types/busAggregate.types"
 import AttachmentThumbnail from "./components/AttachmentThumbnail"
 import AttachmentPreviewDialog from "./components/AttachmentPreviewDialog"
@@ -159,6 +161,10 @@ export default function OTKDashboardPage() {
         description: description.trim(),
         urls: attachments.map((item) => item.url),
         date: formatApiDate(date),
+        status: BusAggregateStatus.InRepair,
+        installedBusId: null,
+        installedDate: null,
+        urlAct: null,
       })
       toast({ title: "Запись сохранена", description: "Информация об агрегате добавлена" })
       setDescription("")
@@ -356,13 +362,34 @@ export default function OTKDashboardPage() {
               <div className="space-y-4">
                 {recentAggregates.map((item) => (
                   <div key={item.id} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-                    <div className="flex items-center justify-between gap-3 text-sm text-gray-500">
-                      <span>{formatDisplayDate(item.date)}</span>
-                      <span>{item.busGarageNumber || "гараж №?"}</span>
+                    <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500">
+                      <span className="font-medium text-gray-900">{formatDisplayDate(item.date)}</span>
+                      <Badge variant={BUS_AGGREGATE_STATUS_BADGE_VARIANT[item.status]}>
+                        {getBusAggregateStatusLabel(item.status)}
+                      </Badge>
                     </div>
                     <p className="mt-1 font-semibold text-gray-900">{item.busGovNumber || "госномер неизвестен"}</p>
-                    <p className="text-sm text-gray-600">{item.description}</p>
-                    <AttachmentThumbnail urls={item.urls} onPreview={openPreview} />
+                    <p className="text-xs text-gray-500">{item.busGarageNumber ? `гараж ${item.busGarageNumber}` : "гараж №?"}</p>
+                    <p className="mt-2 text-sm text-gray-600">{item.description}</p>
+                    {item.installedBusId && (
+                      <p className="mt-1 text-xs text-emerald-700">
+                        Установлен на {item.installedBusGarageNumber || "—"} · {item.installedBusGovNumber || "—"}
+                        {item.installedDate ? ` (${formatDisplayDate(item.installedDate)})` : ""}
+                      </p>
+                    )}
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                      <AttachmentThumbnail urls={item.urls} onPreview={openPreview} />
+                      {item.urlAct && (
+                        <a
+                          href={buildAbsoluteUrl(item.urlAct)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs font-medium text-blue-600 hover:underline"
+                        >
+                          Акт приемки
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -388,8 +415,9 @@ export default function OTKDashboardPage() {
                 <TableRow>
                   <TableHead>Дата</TableHead>
                   <TableHead>Автобус</TableHead>
+                  <TableHead>Статус</TableHead>
                   <TableHead>Описание</TableHead>
-                  <TableHead className="text-right">Вложения</TableHead>
+                  <TableHead className="text-right">Файлы</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -402,13 +430,38 @@ export default function OTKDashboardPage() {
                         <span className="text-gray-500 text-xs">гараж {aggregate.busGarageNumber || "—"}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-gray-600">{aggregate.description}</TableCell>
-                    <TableCell className="text-right">
-                      {aggregate.urls?.length ? (
-                        <AttachmentThumbnail urls={aggregate.urls} onPreview={openPreview} size="sm" align="end" showCount={false} />
-                      ) : (
-                        <span className="text-xs text-gray-400">—</span>
+                    <TableCell>
+                      <Badge variant={BUS_AGGREGATE_STATUS_BADGE_VARIANT[aggregate.status]}>
+                        {getBusAggregateStatusLabel(aggregate.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600">
+                      {aggregate.description}
+                      {aggregate.installedBusId && (
+                        <span className="mt-1 block text-xs text-emerald-700">
+                          Установлен на {aggregate.installedBusGarageNumber || "—"} · {aggregate.installedBusGovNumber || "—"}
+                          {aggregate.installedDate ? ` (${formatDisplayDate(aggregate.installedDate)})` : ""}
+                        </span>
                       )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex flex-col items-end gap-2">
+                        {aggregate.urlAct && (
+                          <a
+                            href={buildAbsoluteUrl(aggregate.urlAct)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs font-medium text-blue-600 hover:underline"
+                          >
+                            Акт приемки
+                          </a>
+                        )}
+                        {aggregate.urls?.length ? (
+                          <AttachmentThumbnail urls={aggregate.urls} onPreview={openPreview} size="sm" align="end" showCount={false} />
+                        ) : !aggregate.urlAct ? (
+                          <span className="text-xs text-gray-400">—</span>
+                        ) : null}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
