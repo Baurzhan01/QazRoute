@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RefreshCcw, FileText, PencilLine } from "lucide-react";
+import { Loader2, RefreshCcw, FileText, PencilLine, Trash2 } from "lucide-react";
 import { busAggregateService } from "@/service/busAggregateService";
 import { BUS_AGGREGATE_STATUS_BADGE_VARIANT, getBusAggregateStatusLabel } from "@/lib/busAggregateStatus";
 import type { BusAggregate } from "@/types/busAggregate.types";
@@ -34,6 +34,7 @@ export default function CtsAggregatesPage() {
     images: [],
     index: 0,
   });
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [totalCount, setTotalCount] = useState(0);
@@ -94,6 +95,26 @@ export default function CtsAggregatesPage() {
   const openPreview = (urls: string[], index = 0) => {
     if (!urls.length) return;
     setPreviewState({ open: true, images: urls.map(buildAbsoluteUrl), index });
+  };
+
+  const handleDelete = async (id: string) => {
+    const ok = window.confirm("Вы действительно хотите удалить запись?");
+    if (!ok) return;
+    setDeletingId(id);
+    try {
+      const res = await busAggregateService.remove(id);
+      if (res.isSuccess) {
+        toast({ title: "Удалено", description: "Запись журнала удалена" });
+        await loadAggregates(search.trim() || undefined, page);
+      } else {
+        toast({ title: "Не удалось удалить", description: res.error || "Попробуйте снова", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Ошибка удаления", description: "Не удалось удалить запись", variant: "destructive" });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -262,6 +283,16 @@ export default function CtsAggregatesPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex flex-wrap items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 text-red-600"
+                          onClick={() => handleDelete(item.id)}
+                          disabled={deletingId === item.id || loading}
+                        >
+                          {deletingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          Удалить
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
