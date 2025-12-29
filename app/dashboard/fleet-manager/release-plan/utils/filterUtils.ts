@@ -14,16 +14,25 @@ export function filterDrivers({
 }) {
   const q = query.toLowerCase();
 
-  return drivers.filter(driver =>
-    ["OnWork", "DayOff"].includes(driver.driverStatus) &&
-    !assignedIds.includes(driver.id) &&
-    !driver.isAssigned &&
-    (!busIds || (driver.busIds ?? []).some((id: string) => busIds.includes(id))) &&
-    (
-      driver.fullName.toLowerCase().includes(q) ||
-      driver.serviceNumber.toLowerCase().includes(q)
-    )
-  );
+  return drivers.filter(driver => {
+    const driverBusIds = (driver as { busIds?: string[] }).busIds;
+    const matchesBusIds =
+      !busIds ||
+      busIds.length === 0 ||
+      !driverBusIds ||
+      driverBusIds.some((id: string) => busIds.includes(id));
+
+    return (
+      ["OnWork", "DayOff"].includes(driver.driverStatus) &&
+      !assignedIds.includes(driver.id) &&
+      !driver.isAssigned &&
+      matchesBusIds &&
+      (
+        driver.fullName.toLowerCase().includes(q) ||
+        driver.serviceNumber.toLowerCase().includes(q)
+      )
+    );
+  });
 }
 
 export function filterBuses({
@@ -37,7 +46,7 @@ export function filterBuses({
 }) {
   const q = query.toLowerCase();
   return buses.filter(bus =>
-    ["OnWork", "DayOff"].includes(bus.status) &&
+    ["OnWork", "DayOff"].includes(bus.status ?? "") &&
     !assignedIds.includes(bus.id) &&
     !bus.isAssigned &&
     (
