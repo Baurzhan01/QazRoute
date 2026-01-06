@@ -1,6 +1,6 @@
 // utils/dateUtils.ts
 
-import { holidays } from "@/app/dashboard/fleet-manager/release-plan/data/holidays"
+import { getHolidaysForYear } from "@/app/dashboard/fleet-manager/release-plan/data/holidays"
 import type { ValidDayType } from "@/types/releasePlanTypes"
 import { parseISO } from "date-fns"
 
@@ -64,7 +64,9 @@ export function parseDate(dateString: string): Date {
 
   export function getDayTypeFromDate(dateStr: string): ValidDayType {
     const date = parseDate(dateStr) // ✅ вместо parseISO
-    const holidayDates = holidays.map(h => parseDate(h.date))
+    const holidayDates = getHolidaysForYear(date.getFullYear()).map((holiday) =>
+      parseDate(holiday.date)
+    )
     return getDayType(date, holidayDates)
   }
   

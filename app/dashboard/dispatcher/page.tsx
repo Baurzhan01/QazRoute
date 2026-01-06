@@ -9,7 +9,7 @@ import { busService } from "@/service/busService";
 import { routeService } from "@/service/routeService";
 import { getDayType, parseDate } from "../fleet-manager/release-plan/utils/dateUtils";
 import type { RouteStatus } from "@/types/route.types";
-import { holidays } from "@/app/dashboard/fleet-manager/release-plan/data/holidays";
+import { getHolidaysForYear } from "@/app/dashboard/fleet-manager/release-plan/data/holidays";
 
 import type { Convoy } from "@/types/convoy.types";
 import SummaryStats from "./components/SummaryStats";
@@ -58,7 +58,9 @@ export default function DispatcherDashboardPage() {
         setConvoys(convoyList);
 
         const today = new Date();
-        const holidayDates = holidays.map((h) => parseDate(h.date));
+        const holidayDates = getHolidaysForYear(today.getFullYear()).map((holiday) =>
+          parseDate(holiday.date)
+        );
         const dayType = getDayType(today, holidayDates); // workday | saturday | sunday | holiday
 
         const allSummaries: ConvoySummary[] = await Promise.all(
