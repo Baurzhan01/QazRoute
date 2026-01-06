@@ -2,26 +2,26 @@
 
 export function parseDate(dateString: string): Date {
   const [year, month, day] = dateString.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day)); // 🟢 оставляем строго UTC
+  return new Date(year, month - 1, day); // локальная дата без UTC-смещения
 }
 
 export function formatDate(date: Date): string {
-  const year = date.getFullYear(); // 🔁 было getUTCFullYear()
+  const year = date.getFullYear(); // ?? было getUTCFullYear()
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
 export function formatDateLabel(date: Date): string {
-  const day = date.getDate(); // 🔁 было getUTCDate()
+  const day = date.getDate(); // ?? было getUTCDate()
   const month = date.toLocaleString("ru-RU", { month: "long" });
-  const year = date.getFullYear(); // 🔁
+  const year = date.getFullYear(); // ??
   return `${day} ${month} ${year}`;
 }
 
 export function formatDayOfWeek(date: Date): string {
   const daysOfWeek = ["ВС", "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ"];
-  return daysOfWeek[date.getDay()]; // 🔁 было getUTCDay()
+  return daysOfWeek[date.getDay()]; // ?? было getUTCDay()
 }
 
 export function getDayType(
@@ -29,7 +29,7 @@ export function getDayType(
   holidayDates: Date[]
 ): "workday" | "saturday" | "sunday" | "holiday" {
   if (isHoliday(date, holidayDates)) return "holiday";
-  const day = date.getDay(); // 🔁
+  const day = date.getDay(); // ??
   if (day === 0) return "sunday";
   if (day === 6) return "saturday";
   return "workday";
@@ -54,5 +54,5 @@ export function isToday(date: Date): boolean {
 }
 
 export function getMonthName(date: Date): string {
-  return date.toLocaleString("ru-RU", { month: "long" }); // 🔁 без timeZone
+  return date.toLocaleString("ru-RU", { month: "long" }); // ?? без timeZone
 }

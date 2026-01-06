@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { convoyService } from "@/service/convoyService"
 import type { Convoy } from "@/types/convoy.types"
 import { CalendarCheck2, FileText } from "lucide-react"
-import { getDayType, formatDate } from "./release-plan/utils/dateUtils"
+import { getDayType, formatDate, parseDate } from "./release-plan/utils/dateUtils"
 import { getHolidaysForYear } from "@/app/dashboard/fleet-manager/release-plan/data/holidays"
 import { useConvoy } from "../../context/ConvoyContext"
 
@@ -21,8 +21,8 @@ export default function DispatcherConvoyPage() {
 
   const todayDate = new Date()
   const today = formatDate(todayDate)
-  const holidayDates = getHolidaysForYear(todayDate.getFullYear()).map(
-    (holiday) => new Date(holiday.date)
+  const holidayDates = getHolidaysForYear(todayDate.getFullYear()).map((holiday) =>
+    parseDate(holiday.date)
   )
   const dayType = getDayType(todayDate, holidayDates)
 

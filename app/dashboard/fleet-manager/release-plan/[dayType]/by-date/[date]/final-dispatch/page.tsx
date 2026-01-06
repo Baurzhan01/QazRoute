@@ -70,20 +70,20 @@ export default function FinalDispatchPage() {
   const handleSaveAsImage = async () => {
     const node = document.getElementById("final-dispatch-table-only")
     if (!node) return
-  
+
     setReadOnlyExportMode(true)
     node.classList.add("print-clean")
-  
+
     await new Promise((r) => setTimeout(r, 300))
-  
+
     try {
       const htmlToImage = await import("html-to-image")
       const dataUrl = await htmlToImage.toPng(node, {
         cacheBust: true,
         backgroundColor: "white",
-        pixelRatio: 2, // 👈 ключ к решению без transform
+        pixelRatio: 2, // ключ к решению без transform
       })
-  
+
       const link = document.createElement("a")
       link.href = dataUrl
       link.download = `План_выпуска_${dateParam}.png`
@@ -98,7 +98,7 @@ export default function FinalDispatchPage() {
       node.classList.remove("print-clean")
       setReadOnlyExportMode(false)
     }
-  }  
+  }
   const handleGoBack = () => {
     router.push(`/dashboard/fleet-manager/release-plan/${dayType}/by-date/${dateParam}`)
   }
@@ -129,7 +129,7 @@ export default function FinalDispatchPage() {
     return <div className="p-6 text-gray-500">⏳ Загрузка данных на {dateParam}...</div>
   }
 
-  const depotName = convoyNumber ? `Автоколонна №${convoyNumber}` : "—"
+  const depotName = convoyNumber ? `Автоколонна №${convoyNumber}` : "-"
 
   return (
     <div className="flex flex-col gap-6">
@@ -173,7 +173,7 @@ export default function FinalDispatchPage() {
             📥 Скачать Excel
           </Button>
           <Button variant="secondary" onClick={handleGoBack}>
-            ← Назад к маршрутам
+            ⬅ Назад к маршрутам
           </Button>
         </div>
       </div>

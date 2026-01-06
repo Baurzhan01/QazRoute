@@ -2,12 +2,12 @@
 
 import type { CalendarMonth, CalendarDay } from "../types/plan"
 import { getHolidaysForYear } from "../data/holidays"
-import { getDayType, isToday, formatDate } from "../utils/dateUtils"
+import { getDayType, isToday, formatDate, parseDate } from "../utils/dateUtils"
 
 export function generateCalendarMonth(year: number, month: number): CalendarMonth {
   const days: CalendarDay[] = []
   const yearHolidays = getHolidaysForYear(year)
-  const holidayDates = yearHolidays.map((holiday) => new Date(holiday.date))
+  const holidayDates = yearHolidays.map((holiday) => parseDate(holiday.date))
   const current = new Date(year, month, 1)
 
   while (current.getMonth() === month) {

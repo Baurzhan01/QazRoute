@@ -2,7 +2,6 @@
 
 import { getHolidaysForYear } from "@/app/dashboard/fleet-manager/release-plan/data/holidays"
 import type { ValidDayType } from "@/types/releasePlanTypes"
-import { parseISO } from "date-fns"
 
 export function parseDate(dateString: string): Date {
   const [year, month, day] = dateString.split("-").map(Number)
