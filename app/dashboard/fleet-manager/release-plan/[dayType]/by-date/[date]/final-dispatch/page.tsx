@@ -143,12 +143,12 @@ export default function FinalDispatchPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="default" onClick={handleSendTelegram} disabled={isSending}>
+          {/* <Button variant="default" onClick={handleSendTelegram} disabled={isSending}>
             {isSending ? "📨 Отправка..." : "📩 Разослать водителям"}
           </Button>
           <Button variant="outline" onClick={handleSaveAsImage}>
             📷 Файл на печать
-          </Button>
+          </Button> */}
           <Button
             variant="outline"
             onClick={async () => {
